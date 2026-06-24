@@ -1,0 +1,9 @@
+fastapi>=0.100.0
+uvicorn>=0.20.0
+yt-dlp>=2023.7.6
+edge-tts>=6.1.8
+deep-translator>=1.11.4
+openai-whisper
+torch
+python-multipart>=0.0.6
+aiohttp>=3.8.0

@@ -1,0 +1,210 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Video Dubber - Dịch Thuật & Lồng Tiếng Bilibili</title>
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <!-- FontAwesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Custom CSS -->
+    <link rel="stylesheet" href="style.css?v=6">
+</head>
+<body>
+    <div class="background-decor">
+        <div class="circle circle-1"></div>
+        <div class="circle circle-2"></div>
+    </div>
+
+    <div class="app-container">
+        <header>
+            <div class="header-top">
+                <div class="logo">
+                    <i class="fa-solid fa-wand-magic-sparkles icon-glow"></i>
+                    <h1>AI Video <span>Dubber</span></h1>
+                </div>
+                <div class="lang-switch">
+                    <button type="button" id="btn-lang-vi" class="lang-btn active">VI</button>
+                    <span class="lang-divider">|</span>
+                    <button type="button" id="btn-lang-en" class="lang-btn">EN</button>
+                </div>
+            </div>
+            <p class="subtitle" id="i18n-subtitle">Dịch thuật & Lồng tiếng video Bilibili tự động bằng trí tuệ nhân tạo</p>
+        </header>
+
+        <main class="grid-layout">
+            <!-- Left panel: Control & Settings -->
+            <section class="card settings-panel">
+                <h2 class="section-title"><i class="fa-solid fa-sliders"></i> <span id="i18n-config-title">Cấu hình dự án</span></h2>
+                
+                <!-- URL Input -->
+                <div class="input-group">
+                    <label for="video-url" id="i18n-url-label">Link video Bilibili / YouTube</label>
+                    <div class="url-input-wrapper">
+                        <i class="fa-solid fa-link input-icon"></i>
+                        <input type="text" id="video-url" placeholder="https://www.bilibili.com/video/BV..." required>
+                    </div>
+                </div>
+
+                <!-- Voice Selection -->
+                <div class="input-group">
+                    <label for="voice-select" id="i18n-voice-label">Giọng đọc lồng tiếng</label>
+                    <div class="select-wrapper">
+                        <i class="fa-solid fa-microphone-lines input-icon"></i>
+                        <select id="voice-select">
+                            <option value="tiktok_girl" selected id="opt-voice-tiktok">Cô gái hoạt ngôn (TikTok style - Nhanh, vui vẻ) 🌟</option>
+                            <option value="gentle_girl" id="opt-voice-gentle">Cô gái nhẹ nhàng (Truyền cảm, ngọt ngào)</option>
+                            <option value="warm_man" id="opt-voice-warm">Giọng nam trầm ấm (Thuyết minh phim/tài liệu)</option>
+                            <option value="fast_man" id="opt-voice-fast">Giọng nam năng động (Nhanh, tự tin)</option>
+                        </select>
+                    </div>
+                </div>
+
+                <!-- Source Language Selection -->
+                <div class="input-group">
+                    <label for="source-lang" id="i18n-lang-label">Ngôn ngữ gốc</label>
+                    <div class="select-wrapper">
+                        <i class="fa-solid fa-language input-icon"></i>
+                        <select id="source-lang">
+                            <option value="Chinese" selected id="opt-lang-zh">Tiếng Trung (Giản thể)</option>
+                            <option value="English" id="opt-lang-en">Tiếng Anh</option>
+                            <option value="Japanese" id="opt-lang-ja">Tiếng Nhật</option>
+                            <option value="Korean" id="opt-lang-ko">Tiếng Hàn</option>
+                        </select>
+                    </div>
+                </div>
+
+                <!-- Volume adjustment -->
+                <div class="volume-controls">
+                    <h3 class="subsection-title" id="i18n-volume-title">Căn chỉnh âm lượng</h3>
+                    
+                    <div class="volume-slider">
+                        <div class="slider-labels">
+                            <span id="i18n-tts-vol-label">Giọng lồng tiếng Việt (TTS)</span>
+                            <span id="tts-vol-value">100%</span>
+                        </div>
+                        <input type="range" id="tts-volume" min="0" max="1" step="0.05" value="1.0">
+                    </div>
+
+                    <div class="volume-slider">
+                        <div class="slider-labels">
+                            <span id="i18n-bg-vol-label">Âm thanh gốc/Nhạc nền (Background)</span>
+                            <span id="bg-vol-value">15%</span>
+                        </div>
+                        <input type="range" id="bg-volume" min="0" max="1" step="0.05" value="0.15">
+                    </div>
+                </div>
+
+                <!-- Advanced Settings -->
+                <div class="advanced-settings-accordion">
+                    <button type="button" class="accordion-trigger" id="btn-toggle-advanced">
+                        <span><i class="fa-solid fa-gear"></i> <span id="i18n-advanced-title">Cấu hình nâng cao</span></span>
+                        <i class="fa-solid fa-chevron-down chevron-icon"></i>
+                    </button>
+                    <div class="accordion-content d-none" id="advanced-settings-content">
+                        <div class="input-group">
+                            <label for="bilibili-cookie" id="i18n-cookie-label">Bilibili Cookie (SESSDATA)</label>
+                            <p class="input-desc" id="i18n-cookie-desc">Nhập giá trị SESSDATA từ Cookie của Bilibili để khắc phục lỗi tải video (HTTP 412).</p>
+                            <div class="textarea-wrapper">
+                                <i class="fa-solid fa-cookie input-icon-textarea"></i>
+                                <textarea id="bilibili-cookie" placeholder="SESSDATA=xxxxxx; hoặc dán toàn bộ chuỗi Cookie từ trình duyệt của bạn..."></textarea>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <button id="start-btn" class="primary-btn"><i class="fa-solid fa-play"></i> <span id="i18n-start-btn">Bắt Đầu Dịch & Lồng Tiếng</span></button>
+            </section>
+
+            <!-- Right panel: Status & Results -->
+            <section class="card output-panel">
+                <h2 class="section-title"><i class="fa-solid fa-circle-nodes"></i> <span id="i18n-status-title">Trạng thái xử lý</span></h2>
+
+                <!-- Idle State -->
+                <div class="status-state" id="state-idle">
+                    <div class="idle-graphic">
+                        <i class="fa-solid fa-clapperboard animation-bounce"></i>
+                    </div>
+                    <p class="status-tip" id="i18n-idle-tip">Nhập link video và nhấn nút "Bắt đầu" để khởi chạy tiến trình.</p>
+                </div>
+
+                <!-- Processing State -->
+                <div class="status-state d-none" id="state-processing">
+                    <div class="progress-header">
+                        <span id="status-badge" class="badge badge-processing">Đang xử lý</span>
+                        <span id="progress-percent" class="progress-percent-text">0%</span>
+                    </div>
+
+                    <!-- Modern progress bar -->
+                    <div class="progress-bar-container">
+                        <div class="progress-bar-fill" id="progress-bar" style="width: 0%"></div>
+                    </div>
+
+                    <p id="status-message" class="status-message-text">Đang chuẩn bị tác vụ...</p>
+
+                    <!-- Steps Timeline -->
+                    <div class="timeline">
+                        <div class="timeline-item" id="step-download">
+                            <div class="step-indicator"><i class="fa-solid fa-circle-dot"></i></div>
+                            <div class="step-content" id="i18n-step-download">Tải video & Tách âm thanh</div>
+                        </div>
+                        <div class="timeline-item" id="step-translate">
+                            <div class="step-indicator"><i class="fa-solid fa-circle-dot"></i></div>
+                            <div class="step-content" id="i18n-step-translate">Nhận dạng giọng nói & Dịch phụ đề</div>
+                        </div>
+                        <div class="timeline-item" id="step-tts">
+                            <div class="step-indicator"><i class="fa-solid fa-circle-dot"></i></div>
+                            <div class="step-content" id="i18n-step-tts">Tạo giọng lồng tiếng Việt</div>
+                        </div>
+                        <div class="timeline-item" id="step-merge">
+                            <div class="step-indicator"><i class="fa-solid fa-circle-dot"></i></div>
+                            <div class="step-content" id="i18n-step-merge">Ghép nối & Xuất video hoàn chỉnh</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Finished/Success State -->
+                <div class="status-state d-none" id="state-success">
+                    <div class="success-header">
+                        <i class="fa-solid fa-circle-check success-icon"></i>
+                        <h3 id="i18n-success-title">Dịch video thành công!</h3>
+                    </div>
+                    
+                    <div class="video-preview-container">
+                        <video id="video-preview" controls></video>
+                    </div>
+
+                    <div class="action-buttons">
+                        <a id="download-btn" href="#" class="success-btn" download><i class="fa-solid fa-download"></i> <span id="i18n-download-btn">Tải Video Thành Phẩm</span></a>
+                        <button id="reset-btn" class="secondary-btn"><i class="fa-solid fa-rotate-left"></i> <span id="i18n-reset-btn">Dịch Video Khác</span></button>
+                    </div>
+                </div>
+
+                <!-- Error State -->
+                <div class="status-state d-none" id="state-error">
+                    <div class="error-header">
+                        <i class="fa-solid fa-circle-exclamation error-icon"></i>
+                        <h3 id="i18n-error-title">Đã xảy ra lỗi!</h3>
+                    </div>
+                    <div class="error-box">
+                        <p id="error-message">Mô tả chi tiết lỗi ở đây...</p>
+                    </div>
+                    <div class="action-buttons">
+                        <button id="retry-btn" class="secondary-btn"><i class="fa-solid fa-arrow-rotate-right"></i> <span id="i18n-retry-btn">Thử Lại</span></button>
+                    </div>
+                </div>
+            </section>
+        </main>
+        
+        <footer>
+            <p id="i18n-footer">Made with <i class="fa-solid fa-heart"></i> &middot; Chạy hoàn toàn trên máy local của bạn</p>
+        </footer>
+    </div>
+
+    <!-- Main JS -->
+    <script src="app.js?v=6"></script>
+</body>
+</html>
