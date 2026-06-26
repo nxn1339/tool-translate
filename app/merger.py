@@ -83,7 +83,7 @@ def merge_audio_segments_to_video(
     # 2. Mix all delayed TTS segments together
     # IMPORTANT: normalize=0 prevents amix from dividing volume by the number of inputs
     mix_inputs = "".join(f"[delayed_{idx}]" for idx in range(len(active_segments)))
-    filter_parts.append(f"{mix_inputs}amix=inputs={len(active_segments)}:duration=first:dropout_transition=0:normalize=0,volume={tts_volume}[tts_mixed];")
+    filter_parts.append(f"{mix_inputs}amix=inputs={len(active_segments)}:duration=longest:dropout_transition=0:normalize=0,volume={tts_volume}[tts_mixed];")
 
     # 3. Mix with original audio if available, otherwise just use TTS
     if has_original_audio:

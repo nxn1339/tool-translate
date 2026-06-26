@@ -19,6 +19,36 @@ logger = logging.getLogger(__name__)
 
 app = FastAPI(title="Bilibili Video Translator & Dubber")
 
+@app.on_event("startup")
+def startup_event():
+    import asyncio
+    import sys
+    
+    # Silence the annoying ProactorBasePipeTransport connection lost logs on Windows
+    if sys.platform == "win32":
+        try:
+            loop = asyncio.get_event_loop()
+            old_handler = loop.get_exception_handler()
+            
+            def custom_exception_handler(loop, context):
+                exception = context.get("exception")
+                # Filter out ConnectionResetError (WinError 10054) and Proactor connection lost messages
+                if (
+                    isinstance(exception, ConnectionResetError)
+                    or "ConnectionResetError" in str(exception)
+                    or "_call_connection_lost" in context.get("message", "")
+                ):
+                    return
+                if old_handler:
+                    old_handler(loop, context)
+                else:
+                    loop.default_exception_handler(context)
+                    
+            loop.set_exception_handler(custom_exception_handler)
+            logger.info("Custom asyncio exception handler set to suppress WinError 10054 logs.")
+        except Exception as e:
+            logger.warning(f"Could not set custom asyncio exception handler: {e}")
+
 # Define base paths
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 TEMP_DIR = os.path.join(BASE_DIR, "app", "temp")

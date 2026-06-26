@@ -117,6 +117,9 @@ def download_bilibili_video(url: str, output_video_path: str, output_audio_path:
         'progress_hooks': [ytdl_hook],
         'nocheckcertificate': True,
         'quiet': True,
+        'socket_timeout': 60,       # Increase timeout from 20s to 60s for slow connections
+        'retries': 10,              # Retry 10 times on transient network errors
+        'fragment_retries': 10,     # Retry 10 times for chunk/fragment download failures
         'http_headers': {
             'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36',
             'Referer': 'https://www.bilibili.com/',
