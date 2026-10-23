@@ -1,0 +1,4 @@
+interface:
+  display_name: "Docs Consistency Review"
+  short_description: "Rà soát requirements, design, contract-first Dev gate, tests và traceability bằng tiếng Việt UTF-8."
+  default_prompt: "Dùng $docs-consistency-review để rà traceability và phân loại READY/PARTIAL/BLOCKED, gồm contract-first Dev task và merge gate còn thiếu."

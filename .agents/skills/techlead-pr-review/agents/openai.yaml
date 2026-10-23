@@ -1,0 +1,4 @@
+interface:
+  display_name: "Tech Lead PR Review"
+  short_description: "Review PRs against dev tasks and merge gates."
+  default_prompt: "Use $techlead-pr-review to review Smile app PRs against docs tasks and merge readiness."

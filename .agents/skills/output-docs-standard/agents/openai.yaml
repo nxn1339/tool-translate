@@ -1,0 +1,4 @@
+interface:
+  display_name: "Output Docs Standard"
+  short_description: "Chuẩn hóa tên file output, source-of-truth theo slice VS, artifact phụ trợ và tiếng Việt UTF-8."
+  default_prompt: "Dùng $output-docs-standard để đặt tên file, xác định source-of-truth, kiểm tra artifact phụ trợ và giữ tiếng Việt UTF-8 nhất quán."

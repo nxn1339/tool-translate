@@ -1,0 +1,4 @@
+interface:
+  display_name: "Test Workflow"
+  short_description: "Chuyển AC, design và Dev contract thành test coverage hoặc gap bằng tiếng Việt UTF-8."
+  default_prompt: "Dùng $test-workflow để lập test plan/cases từ AC + Design; nếu DEV task contract-first thiếu API/DB/security thì ghi coverage gap rõ."

@@ -1,0 +1,4 @@
+interface:
+  display_name: "PM Task Assignment"
+  short_description: "Tách scope PM thành task role, contract-first Dev task và readiness bằng tiếng Việt UTF-8."
+  default_prompt: "Dùng $pm-task-assignment để tách scope thành task BA, Design, Dev spec, Test; tạo DEV contract-first sau BA + Design khi DoD có merge gate API/DB/security/test rõ."

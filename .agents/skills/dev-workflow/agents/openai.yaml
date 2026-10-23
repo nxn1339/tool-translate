@@ -1,0 +1,4 @@
+interface:
+  display_name: "Dev Workflow"
+  short_description: "Chuyển scope thành technical specs, contract-first Dev work và merge evidence."
+  default_prompt: "Dùng $dev-workflow để lập technical contract/spec cho slice, cập nhật API/DB/security/test evidence và xử lý DEV contract-first trước merge."

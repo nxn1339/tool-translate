@@ -1,0 +1,3 @@
+interface:
+  display_name: "BA Workflow"
+  short_description: "Chuyển feedback và ghi chú sản phẩm thành yêu cầu, user story, acceptance criteria và traceability bằng tiếng Việt UTF-8."

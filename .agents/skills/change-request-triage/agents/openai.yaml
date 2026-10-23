@@ -1,0 +1,5 @@
+interface:
+  display_name: "Change Request Triage"
+  short_description: "Triages Google Sheet change requests into draft task proposals."
+  default_prompt: "Use $change-request-triage to turn Google Sheet CR feedback into change-log-feedback.md and draft-only task proposals."
+
