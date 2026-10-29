@@ -28,6 +28,9 @@ Dự án phân chia các cụm tính năng độc lập theo chiều dọc (Vert
 - `VS-002`: Web Interface & Task Monitoring (FastAPI Web App, giao diện dashboard điều khiển, polling tiến độ real-time, preview và tải video hoàn thiện).
 - `VS-003`: Bilibili Cookie & Authentication (Quản lý SESSDATA, buvid3/buvid4 chống chặn HTTP 412, cấu hình cookie nâng cao).
 - `VS-004`: Voice Settings & Audio Customization (Tùy chỉnh giọng đọc TikTok/Hoài My/Nam Minh, tốc độ rate, cao độ pitch, cân bằng âm lượng nhạc nền vs lồng tiếng).
+- `VS-005`: Subtitle OCR, Masking & Multi-Tab Workspace (Phân tách giao diện 2 Tab Video Có Sub / Không Sub, 2 khung tương tác kéo-thả che sub cũ và định vị sub mới, tích hợp RapidOCR và FFmpeg Hardsub/SRT).
+- `VS-006`: CapCut Subtitle Studio & Modular Settings (Module hóa Cài đặt hệ thống thành 3 thẻ con; Tab chuyên biệt Kiểu Phụ Đề phong cách CapCut với 6 presets hot TikTok/Shorts, color picker, stroke, box background, font, live monitor và đồng bộ bounding box trực quan).
+
 
 ## ID Convention
 

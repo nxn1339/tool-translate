@@ -7,3 +7,5 @@
 | `DEC-003` | Lưu trạng thái tác vụ trong RAM (`tasks_db` dict) | TechLead | 2026-08-10 | Phù hợp công cụ cá nhân / local running, không cần cài đặt Redis/PostgreSQL phức tạp | Approved |
 | `DEC-004` | Bổ sung cơ chế tự sinh `buvid3/buvid4` cookie | TechLead | 2026-08-15 | Bilibili chặn tải video với lỗi HTTP 412 nếu thiếu thông số anti-bot thiết bị | Approved |
 | `DEC-005` | Áp dụng cấu trúc tài liệu Enterprise Source-of-Truth | PM / TechLead | 2026-10-24 | Chuẩn hóa quy trình quản lý, tăng tính minh bạch và hỗ trợ phối hợp giữa các AI Agents | Approved |
+| `DEC-006` | Dùng RapidOCR và cơ chế 2 Bounding Boxes độc lập (Mask & Subtitle) | BA / TechLead | 2026-10-24 | RapidOCR siêu nhẹ trên ONNX CPU, bắt chính xác chữ tiếng Trung; 2 Bounding Boxes cho phép người dùng tự do che sub cũ và đặt sub mới ở bất kỳ tọa độ nào | Approved |
+

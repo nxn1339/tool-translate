@@ -151,7 +151,8 @@ def main():
     # 5. Run FastAPI Server via Uvicorn
     print(f"[System] Starting server on port {PORT}...")
     import uvicorn
-    uvicorn.run("app.main:app", host="localhost", port=PORT, reload=False)
+    uvicorn.run("app.main:app", host="localhost", port=PORT, reload=True)
+
 
 if __name__ == "__main__":
     main()

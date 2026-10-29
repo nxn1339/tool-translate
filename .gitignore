@@ -1,1 +1,43 @@
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
+
+# C extensions
+*.so
+*.pyd
+
+# Virtual Environments
+.venv/
+venv/
+ENV/
+env/
+
+# Environment Variables & Secrets
+.env
+.env.*
+!.env.example
+
+# Editor & IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Runtime & Generated Project Data
 app/temp/
+temp/
+app/projects/*
+!app/projects/.gitkeep
+
+# Model weights & Checkpoints (>50MB-100MB, not suitable for git repo)
+*.pth
+*.pt
+*.index
+*.bin
+*.onnx
+*.zip
+
+# External cloned backend repositories
+capcut_backend/
+rvc_backend/

@@ -15,7 +15,7 @@
 ```json
 {
   "url": "https://www.bilibili.com/video/BV1xx411c7mD",
-  "voice": "tiktok_girl",
+  "voice": "female_hoaimy",
   "source_lang": "Chinese",
   "bg_volume": 0.15,
   "tts_volume": 1.0,

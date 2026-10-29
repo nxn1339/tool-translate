@@ -1,4 +1,5 @@
 import os
+import re
 import yt_dlp
 import logging
 
@@ -17,11 +18,12 @@ def get_ffmpeg_path():
     if ffmpeg_sys:
         return ffmpeg_sys
     
-    # Check local bin directory
+    # Check local bin or ffmpeg directory
     base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-    local_ffmpeg = os.path.join(base_dir, "bin", "ffmpeg.exe")
-    if os.path.exists(local_ffmpeg):
-        return local_ffmpeg
+    for folder in ("bin", "ffmpeg"):
+        local_ffmpeg = os.path.join(base_dir, folder, "ffmpeg.exe")
+        if os.path.exists(local_ffmpeg):
+            return local_ffmpeg
 
     # Check WinGet links directory (added for Windows convenience)
     local_appdata = os.environ.get("LOCALAPPDATA")
@@ -32,20 +34,42 @@ def get_ffmpeg_path():
         
     return None
 
+def get_ffprobe_path():
+    """
+    Get the path to the ffprobe executable.
+    Checks system path first, then checks the same directory as ffmpeg.
+    """
+    import shutil
+    ffprobe_sys = shutil.which("ffprobe")
+    if ffprobe_sys:
+        return ffprobe_sys
+        
+    ffmpeg_path = get_ffmpeg_path()
+    if ffmpeg_path:
+        ffmpeg_dir = os.path.dirname(ffmpeg_path)
+        for name in ("ffprobe.exe", "ffprobe.EXE", "ffprobe"):
+            candidate = os.path.join(ffmpeg_dir, name)
+            if os.path.exists(candidate):
+                return candidate
+
+    return "ffprobe"
+
 def _create_temp_cookie_file(cookie_str: str, task_dir: str) -> str:
     """
     Creates a temporary Netscape format cookie file from raw cookie string or SESSDATA.
+    Automatically enriches with DedeUserID, buvid3 and buvid4 for seamless Bilibili extraction.
     """
     import urllib.parse
     import uuid
     import random
+    import requests
 
     cookies = {}
     cookie_str = cookie_str.strip()
     
     # Check if it's a simple token or a full cookie string
     if "=" not in cookie_str and len(cookie_str) > 16:
-        cookies["SESSDATA"] = urllib.parse.unquote(cookie_str)
+        cookies["SESSDATA"] = cookie_str
     else:
         for part in cookie_str.split(";"):
             part = part.strip()
@@ -53,8 +77,29 @@ def _create_temp_cookie_file(cookie_str: str, task_dir: str) -> str:
                 continue
             if "=" in part:
                 k, v = part.split("=", 1)
-                cookies[k.strip()] = urllib.parse.unquote(v.strip())
+                cookies[k.strip()] = v.strip()
                 
+    # Auto-fetch DedeUserID (Member ID) if missing from cookies
+    sessdata = cookies.get("SESSDATA")
+    if sessdata and "DedeUserID" not in cookies:
+        try:
+            r = requests.get(
+                "https://api.bilibili.com/x/web-interface/nav",
+                headers={
+                    "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
+                    "Referer": "https://www.bilibili.com/"
+                },
+                cookies={"SESSDATA": urllib.parse.unquote(sessdata)},
+                timeout=5
+            )
+            if r.status_code == 200:
+                mid = r.json().get("data", {}).get("mid")
+                if mid:
+                    cookies["DedeUserID"] = str(mid)
+                    logger.info(f"Automatically retrieved DedeUserID ({mid}) for SESSDATA.")
+        except Exception as e:
+            logger.warning(f"Could not auto-fetch DedeUserID: {e}")
+
     # Auto-generate buvid3 and buvid4 if not present in the provided cookies
     # to bypass Bilibili anti-bot HTTP 412 Precondition Failed error
     if "buvid3" not in cookies:
@@ -90,6 +135,15 @@ def download_bilibili_video(url: str, output_video_path: str, output_audio_path:
     - progress_callback: A function to call with progress updates
     - bilibili_cookie: Optional manually provided Cookie string
     """
+    # Clean and normalize Bilibili URL:
+    # 1. Remove language prefixes like /vi/, /en/, /id/, /th/, etc. that break yt-dlp's Bilibili extractor
+    # 2. Strip tracking parameters like ?spm_id_from=... but retain ?p= if present
+    if "bilibili.com" in url:
+        url = re.sub(r'bilibili\.com/[a-z]{2}(?:-[a-z]{2,4})?/video/', 'bilibili.com/video/', url)
+        p_match = re.search(r'[?&](p=\d+)', url)
+        clean_base = url.split('?')[0].rstrip('/')
+        url = f"{clean_base}?{p_match.group(1)}" if p_match else clean_base
+
     ffmpeg_path = get_ffmpeg_path()
     if not ffmpeg_path:
         logger.warning("ffmpeg was not found. Download might fail if merge is required.")
@@ -137,9 +191,6 @@ def download_bilibili_video(url: str, output_video_path: str, output_audio_path:
             logger.info(f"Using manually provided cookie file: {temp_cookie_path}")
         except Exception as e:
             logger.error(f"Failed to create temp cookie file: {e}")
-    else:
-        # Fallback to Chrome cookies if manual cookies are not provided
-        ydl_opts_video['cookiesfrombrowser'] = ('chrome',)
 
     if ffmpeg_path:
         ydl_opts_video['ffmpeg_location'] = ffmpeg_path
@@ -153,42 +204,19 @@ def download_bilibili_video(url: str, output_video_path: str, output_audio_path:
             with yt_dlp.YoutubeDL(ydl_opts_video) as ydl:
                 ydl.download([url])
         except Exception as e:
-            # If Chrome cookie extraction fails, try Edge, then retry without cookies
-            if 'cookiesfrombrowser' in ydl_opts_video:
-                if ydl_opts_video['cookiesfrombrowser'] == ('chrome',):
-                    logger.warning(f"Failed to extract cookies from Chrome ({e}). Trying Edge...")
-                    ydl_opts_video['cookiesfrombrowser'] = ('edge',)
-                    try:
-                        with yt_dlp.YoutubeDL(ydl_opts_video) as ydl:
-                            ydl.download([url])
-                        return
-                    except Exception as e2:
-                        e = e2
-                
-                logger.warning(f"Failed to extract cookies from browser ({e}). Retrying without cookies...")
-                del ydl_opts_video['cookiesfrombrowser']
-                try:
-                    with yt_dlp.YoutubeDL(ydl_opts_video) as ydl:
-                        ydl.download([url])
-                except Exception as e3:
-                    # Check for Bilibili anti-bot HTTP 412 Precondition Failed
-                    err_str = str(e3)
-                    if "412" in err_str or "Precondition Failed" in err_str:
-                        raise ValueError(
-                            "Bilibili chặn tải video (Lỗi HTTP 412: Precondition Failed). "
-                            "Vui lòng vào phần 'Cấu hình nâng cao' ở cột bên trái và nhập 'Bilibili Cookie (SESSDATA)' "
-                            "từ tài khoản Bilibili của bạn trên trình duyệt để tiếp tục tải."
-                        )
-                    raise e3
-            else:
-                err_str = str(e)
-                if "412" in err_str or "Precondition Failed" in err_str:
-                    raise ValueError(
-                        "Bilibili chặn tải video (Lỗi HTTP 412: Precondition Failed). "
-                        "Vui lòng vào phần 'Cấu hình nâng cao' ở cột bên trái và nhập 'Bilibili Cookie (SESSDATA)' "
-                        "từ tài khoản Bilibili của bạn trên trình duyệt để tiếp tục tải."
-                    )
-                raise e
+            err_str = str(e)
+            if "412" in err_str or "Precondition Failed" in err_str or "Unable to extract initial state" in err_str:
+                raise ValueError(
+                    "Bilibili chặn tải video từ địa chỉ IP này (Lỗi HTTP 412 / Cần xác thực). "
+                    "Vui lòng mở mục 'Cookie Bilibili (Tùy chọn)' ở Bước 1 và dán mã SESSDATA "
+                    "từ tài khoản Bilibili của bạn trên trình duyệt để tiếp tục tải."
+                )
+            if "unusual and will be skipped" in err_str or "extension ('html')" in err_str:
+                raise ValueError(
+                    "Không thể bóc tách luồng video từ link này (Lỗi nhận diện trang HTML). "
+                    "Vui lòng kiểm tra lại đường link video chuẩn (dạng https://www.bilibili.com/video/BV...)."
+                )
+            raise e
     finally:
         # Clean up temporary cookie file if created
         if temp_cookie_path and os.path.exists(temp_cookie_path):

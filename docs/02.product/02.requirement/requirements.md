@@ -9,6 +9,8 @@ File này định nghĩa quy chuẩn mẫu cho tài liệu yêu cầu. Chi tiế
 - `docs/02.product/02.requirement/VS-002.md` (Web Interface & Monitoring)
 - `docs/02.product/02.requirement/VS-003.md` (Cookie & Authentication)
 - `docs/02.product/02.requirement/VS-004.md` (Voice Settings & Audio Mixing)
+- `docs/02.product/02.requirement/VS-005.md` (Subtitle OCR, Masking & Multi-Tab Workspace)
+
 
 ## Mẫu cấu trúc lát cắt (Slice Template)
 ```markdown
