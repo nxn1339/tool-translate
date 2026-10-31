@@ -4083,3 +4083,265 @@ input[type="color"]::-webkit-color-swatch {
 }
 
 
+
+/* ========================================================
+   LOGO / WATERMARK OVERLAY STYLING
+   ======================================================== */
+.bbox-logo {
+    border: 2px dashed #38bdf8;
+    background-color: rgba(56, 189, 248, 0.15) !important;
+    box-shadow: 0 0 15px rgba(56, 189, 248, 0.35);
+    z-index: 8;
+    transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+.bbox-logo.active-focus {
+    border-color: #7dd3fc !important;
+    background-color: rgba(56, 189, 248, 0.25) !important;
+    box-shadow: 0 0 20px rgba(56, 189, 248, 0.65);
+}
+
+.badge-logo {
+    background: #0284c7;
+    color: #ffffff;
+}
+
+.bbox-logo-inner {
+    width: 100%;
+    height: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
+    pointer-events: none;
+    padding: 2px;
+}
+
+.bbox-logo-img {
+    max-width: 100%;
+    max-height: 100%;
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+    pointer-events: none;
+    user-select: none;
+}
+
+.bbox-logo-placeholder {
+    font-size: 11px;
+    font-weight: 600;
+    color: #94a3b8;
+    text-shadow: 0 1px 3px rgba(0, 0, 0, 0.85);
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    background: rgba(15, 23, 42, 0.65);
+    padding: 2px 6px;
+    border-radius: 4px;
+}
+
+/* Logo Card in Step 4 */
+.logo-watermark-card {
+    background: rgba(30, 41, 59, 0.5);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 12px;
+    padding: 1rem 1.25rem;
+    margin-bottom: 1.25rem;
+    transition: border-color 0.2s ease, background 0.2s ease;
+}
+
+.logo-watermark-card:hover {
+    border-color: rgba(56, 189, 248, 0.3);
+}
+
+.logo-card-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+}
+
+.logo-header-left {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+}
+
+.logo-header-left i.icon-accent {
+    font-size: 1.4rem;
+    color: #38bdf8;
+    background: rgba(56, 189, 248, 0.15);
+    padding: 0.6rem;
+    border-radius: 10px;
+}
+
+.logo-title {
+    margin: 0;
+    font-size: 1rem;
+    font-weight: 700;
+    color: #f8fafc;
+}
+
+.logo-desc {
+    margin: 0.2rem 0 0 0;
+    font-size: 0.82rem;
+    color: #94a3b8;
+}
+
+.logo-header-right {
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+}
+
+.toggle-label-sm {
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: #cbd5e1;
+    min-width: 45px;
+}
+
+.logo-body {
+    margin-top: 1rem;
+    padding-top: 1rem;
+    border-top: 1px solid rgba(255, 255, 255, 0.08);
+    display: flex;
+    flex-direction: column;
+    gap: 0.85rem;
+    animation: fadeInSlide 0.25s ease-out;
+}
+
+.logo-upload-row {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    flex-wrap: wrap;
+}
+
+.logo-filename-text {
+    font-size: 0.85rem;
+    color: #38bdf8;
+    font-weight: 500;
+    max-width: 250px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.logo-controls-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
+    gap: 0.85rem;
+}
+
+.logo-ctrl-item {
+    background: rgba(15, 23, 42, 0.45);
+    border: 1px solid rgba(255, 255, 255, 0.06);
+    border-radius: 8px;
+    padding: 0.6rem 0.85rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.4rem;
+}
+
+.logo-ctrl-label-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+}
+
+.logo-ctrl-label-row label {
+    font-size: 0.8rem;
+    font-weight: 600;
+    color: #94a3b8;
+    margin: 0;
+}
+
+.ctrl-badge-val {
+    font-size: 0.8rem;
+    font-weight: 700;
+    color: #38bdf8;
+}
+
+.logo-presets-row {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    flex-wrap: wrap;
+    background: rgba(15, 23, 42, 0.3);
+    padding: 0.5rem 0.75rem;
+    border-radius: 8px;
+}
+
+.preset-label {
+    font-size: 0.82rem;
+    font-weight: 600;
+    color: #94a3b8;
+    margin-right: 0.25rem;
+}
+
+.logo-pos-btn {
+    background: rgba(255, 255, 255, 0.06);
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    color: #cbd5e1;
+    font-size: 0.78rem;
+    font-weight: 600;
+    padding: 0.35rem 0.65rem;
+    border-radius: 6px;
+    cursor: pointer;
+    transition: all 0.15s ease;
+}
+
+.logo-pos-btn:hover {
+    background: rgba(56, 189, 248, 0.15);
+    border-color: #38bdf8;
+    color: #ffffff;
+}
+
+.logo-pos-btn.active {
+    background: #0284c7;
+    border-color: #38bdf8;
+    color: #ffffff;
+    box-shadow: 0 0 10px rgba(56, 189, 248, 0.4);
+}
+
+/* Step 3 Logo Quick Toolbar & Canvas Logo Action */
+.logo-quick-toolbar-step3 {
+    background: rgba(56, 189, 248, 0.04);
+    border: 1px solid rgba(56, 189, 248, 0.25);
+    border-radius: 12px;
+    padding: 0.85rem 1rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.65rem;
+    transition: all 0.2s ease;
+    box-shadow: 0 4px 14px rgba(0, 0, 0, 0.15);
+}
+
+.logo-quick-toolbar-step3:hover {
+    border-color: rgba(56, 189, 248, 0.45);
+    background: rgba(56, 189, 248, 0.08);
+}
+
+.logo-step3-options {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+    margin-top: 0.25rem;
+    padding-top: 0.75rem;
+    border-top: 1px solid rgba(255, 255, 255, 0.08);
+    animation: fadeInSlide 0.25s ease-out;
+}
+
+#btn-quick-canvas-logo.active,
+#step3-btn-toggle-logo-box.active,
+#btn-toggle-logo-box-preview.active {
+    background: rgba(56, 189, 248, 0.25);
+    border-color: #38bdf8;
+    color: #38bdf8;
+}
+
+#meta-tag-logo {
+    color: #38bdf8;
+    border-color: rgba(56, 189, 248, 0.3);
+}

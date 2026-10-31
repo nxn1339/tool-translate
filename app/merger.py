@@ -328,12 +328,14 @@ def merge_audio_segments_to_video(
     sub_box: Optional[Dict[str, Any]] = None,
     burn_subtitles: bool = True,
     sub_styling: Optional[Dict[str, Any]] = None,
-    auto_extend_video: bool = False
+    auto_extend_video: bool = False,
+    logo_box: Optional[Dict[str, Any]] = None
 ):
     """
     Merges generated audio segments with the original video,
     using either Elastic Timeline Sync (smooth video, 0% word loss, 0% overlap)
-    or Freeze-Frame Auto-Extend, applying video masking and burning subtitles (Hardsub).
+    or Freeze-Frame Auto-Extend, applying video masking, burning subtitles (Hardsub),
+    and overlaying customizable logo/watermark.
     """
     ffmpeg_path = get_ffmpeg_path()
     if not ffmpeg_path:
@@ -427,11 +429,22 @@ def merge_audio_segments_to_video(
     ]
 
     has_mask = bool(mask_box and mask_box.get("enabled", False))
-    need_video_filter = has_mask or burn_subtitles or (needs_extension and bool(slices))
+    has_logo = bool(
+        logo_box
+        and logo_box.get("enabled", False)
+        and logo_box.get("image_path")
+        and os.path.exists(logo_box["image_path"])
+    )
+    need_video_filter = has_mask or burn_subtitles or (needs_extension and bool(slices)) or has_logo
 
     cmd = [ffmpeg_path, "-y", "-i", original_video_path]
     for seg in active_timeline_segments:
         cmd.extend(["-i", seg["audio_path"]])
+
+    logo_input_idx = None
+    if has_logo:
+        logo_input_idx = 1 + len(active_timeline_segments)
+        cmd.extend(["-i", logo_box["image_path"]])
 
     filter_parts = []
 
@@ -513,6 +526,36 @@ def merge_audio_segments_to_video(
             sub_filter = f"subtitles={rel_ass}"
         filter_parts.append(f"[{current_video_label}]{sub_filter}[v_subbed];")
         current_video_label = "v_subbed"
+
+    # --- 1.3 Video Filters: Logo / Watermark Overlay ---
+    if has_logo and logo_input_idx is not None:
+        lx_pct = max(0.0, min(100.0, float(logo_box.get("x", 80.0))))
+        ly_pct = max(0.0, min(100.0, float(logo_box.get("y", 5.0))))
+        lw_pct = max(2.0, min(100.0, float(logo_box.get("w", 15.0))))
+        l_opacity = max(0.05, min(1.0, float(logo_box.get("opacity", 1.0))))
+        l_keep_aspect = bool(logo_box.get("keep_aspect", True))
+
+        target_lw = max(16, int(round((lw_pct / 100.0) * video_w)))
+        pos_x = max(0, min(max(0, video_w - 10), int(round((lx_pct / 100.0) * video_w))))
+        pos_y = max(0, min(max(0, video_h - 10), int(round((ly_pct / 100.0) * video_h))))
+
+        if l_keep_aspect:
+            scale_filter = f"scale={target_lw}:-1"
+        else:
+            lh_pct = max(2.0, min(100.0, float(logo_box.get("h", 10.0))))
+            target_lh = max(16, int(round((lh_pct / 100.0) * video_h)))
+            scale_filter = f"scale={target_lw}:{target_lh}"
+
+        logo_chain = f"[{logo_input_idx}:v]{scale_filter}"
+        if l_opacity < 0.99:
+            logo_chain += f",format=rgba,colorchannelmixer=aa={l_opacity:.2f}"
+        logo_chain += "[v_logo_prepared];"
+        filter_parts.append(logo_chain)
+
+        filter_parts.append(
+            f"[{current_video_label}][v_logo_prepared]overlay=x={pos_x}:y={pos_y}[v_logo_out];"
+        )
+        current_video_label = "v_logo_out"
 
     # --- 2. Audio Filters: Non-overlapping Elastic Delay & Background Mixing ---
     if active_timeline_segments:

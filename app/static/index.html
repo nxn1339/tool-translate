@@ -1,1181 +1,2518 @@
-<!DOCTYPE html>
-<html lang="vi">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>AI Video Dubber - Dịch Thuật & Lồng Tiếng Thông Minh</title>
-    <!-- Google Fonts -->
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@700;800;900&family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
-    <!-- FontAwesome Icons -->
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <!-- Custom CSS -->
-    <link rel="stylesheet" href="style.css?v=32">
-</head>
-<body>
-    <div class="background-decor">
-        <div class="circle circle-1"></div>
-        <div class="circle circle-2"></div>
-    </div>
-
-    <div class="app-container">
-        <header>
-            <div class="header-top">
-                <div class="logo">
-                    <i class="fa-solid fa-wand-magic-sparkles icon-glow"></i>
-                    <h1>AI Video <span>Dubber Studio</span></h1>
-                </div>
-                <div class="lang-switch">
-                    <button type="button" id="btn-lang-vi" class="lang-btn active">VI</button>
-                    <span class="lang-divider">|</span>
-                    <button type="button" id="btn-lang-en" class="lang-btn">EN</button>
-                </div>
-            </div>
-            <p class="subtitle" id="i18n-subtitle">Dịch thuật, xóa sub cũ, tạo phụ đề CapCut & lồng tiếng thông minh</p>
-
-            <!-- 3 Main Navigation Tabs -->
-            <nav class="tabs-nav">
-                <button type="button" class="tab-btn active" data-tab="tab-ocr" id="tab-btn-ocr">
-                    <i class="fa-solid fa-wand-magic-sparkles"></i> <span id="i18n-tab-ocr">Studio Dựng Từng Bước</span>
-                </button>
-                <button type="button" class="tab-btn" data-tab="tab-subtitles" id="tab-btn-subtitles">
-                    <i class="fa-solid fa-palette"></i> <span id="i18n-tab-subtitles">Kiểu Phụ Đề (CapCut)</span>
-                </button>
-                <button type="button" class="tab-btn" data-tab="tab-settings" id="tab-btn-settings">
-                    <i class="fa-solid fa-sliders"></i> <span id="i18n-tab-settings">Cài Đặt Hệ Thống</span>
-                </button>
-            </nav>
-        </header>
-
-        <!-- Main Workspace -->
-        <main class="studio-workspace" id="workspace-layout">
-            
-            <!-- THANH QUẢN LÝ DỰ ÁN (PROJECT CONTROL BAR) -->
-            <div class="card project-bar" id="project-bar">
-                <div class="project-bar-left">
-                    <div class="project-icon-badge">
-                        <i class="fa-solid fa-folder-closed"></i>
-                    </div>
-                    <div class="project-info-group">
-                        <div class="project-name-wrapper">
-                            <span class="project-name" id="project-name-display" title="Nhấp để đổi tên dự án">Chưa có dự án</span>
-                            <input type="text" class="project-name-input d-none" id="project-name-input" maxlength="60" placeholder="Nhập tên dự án...">
-                            <button type="button" class="btn-icon-subtle" id="btn-edit-project-name" title="Đổi tên dự án">
-                                <i class="fa-solid fa-pen"></i>
-                            </button>
-                        </div>
-                        <div class="project-meta-line">
-                            <span class="project-save-status" id="project-save-status">
-                                <i class="fa-solid fa-circle-check"></i> <span id="project-save-text">Đã tự động lưu</span>
-                            </span>
-                            <span class="project-meta-dot">•</span>
-                            <span class="project-step-badge" id="project-step-indicator">Bước 1: Tải Video</span>
-                        </div>
-                    </div>
-                </div>
-                <div class="project-bar-right">
-                    <button type="button" class="secondary-btn btn-sm" id="btn-project-open">
-                        <i class="fa-solid fa-folder-tree"></i> <span>Mở Dự Án...</span>
-                    </button>
-                    <button type="button" class="secondary-btn btn-sm" id="btn-project-new">
-                        <i class="fa-solid fa-plus"></i> <span>Dự Án Mới</span>
-                    </button>
-                    <button type="button" class="primary-btn btn-sm btn-accent" id="btn-header-quick-export" title="Xuất và tải video đã ghép (MP4)">
-                        <i class="fa-solid fa-download"></i> <span>Tải Video MP4</span>
-                    </button>
-                    <button type="button" class="secondary-btn btn-sm" id="btn-header-download-audio" style="border-color: rgba(168, 85, 247, 0.45); color: #c084fc;" title="Tải riêng file âm thanh chỉ có lời dịch tiếng Việt (MP3)">
-                        <i class="fa-solid fa-file-audio"></i> <span>Tải Audio MP3</span>
-                    </button>
-                    <button type="button" class="primary-btn btn-sm" id="btn-project-save-manual" title="Lưu ngay lập tức">
-                        <i class="fa-solid fa-floppy-disk"></i> <span>Lưu Ngay</span>
-                    </button>
-                </div>
-            </div>
-
-            <!-- HÀNG TRÊN: TAB BÊN TRÁI & MÀN HÌNH XEM TRƯỚC BÊN PHẢI -->
-            <div class="studio-top-row">
-                <!-- CỘT TRÁI: Thanh Tab Điều Hướng 4 Bước (Vùng khung đỏ) -->
-                <aside class="card studio-step-sidebar">
-                    <div class="sidebar-header">
-                        <i class="fa-solid fa-layer-group icon-purple"></i>
-                        <span class="sidebar-header-title">Quy Trình 4 Bước</span>
-                    </div>
-
-                    <div class="studio-step-nav vertical">
-                        <button type="button" class="step-tab-btn active" data-step="1" id="tab-step-1">
-                            <span class="step-badge">1</span>
-                            <div class="step-tab-info">
-                                <span class="step-title">Tải Video</span>
-                                <span class="step-desc">Nhập link Bilibili / YT</span>
-                            </div>
-                        </button>
-                        <button type="button" class="step-tab-btn" data-step="2" id="tab-step-2">
-                            <span class="step-badge">2</span>
-                            <div class="step-tab-info">
-                                <span class="step-title">Quét OCR</span>
-                                <span class="step-desc">Bóc tách phụ đề gốc</span>
-                            </div>
-                        </button>
-                        <button type="button" class="step-tab-btn" data-step="3" id="tab-step-3">
-                            <span class="step-badge">3</span>
-                            <div class="step-tab-info">
-                                <span class="step-title">Dịch &amp; Sub</span>
-                                <span class="step-desc">Giọng AI &amp; Mẫu CapCut</span>
-                            </div>
-                        </button>
-                        <button type="button" class="step-tab-btn" data-step="4" id="tab-step-4">
-                            <span class="step-badge">4</span>
-                            <div class="step-tab-info">
-                                <span class="step-title">Xuất Video</span>
-                                <span class="step-desc">Ghép sub &amp; tải MP4</span>
-                            </div>
-                        </button>
-                    </div>
-
-                    <div class="sidebar-footer-hint">
-                        <i class="fa-solid fa-circle-info"></i>
-                        <span>Thực hiện tuần tự 4 bước để hoàn thiện video.</span>
-                    </div>
-                </aside>
-
-                <!-- CỘT PHẢI: Màn hình xem trước & Trạng thái -->
-                <section class="card output-panel">
-                    <h2 class="section-title"><i class="fa-solid fa-circle-nodes"></i> <span id="i18n-status-title">Màn hình xem trước & Trạng thái</span></h2>
-
-                    <!-- 1. Interactive Video Player & Bounding Box Canvas Overlay -->
-                    <div class="canvas-video-wrapper" id="canvas-video-wrapper">
-                        <div class="video-container-relative" id="video-container-relative">
-                            <video id="preview-video-element" controls preload="metadata"></video>
-                            
-                            <!-- Studio Watermark Placeholder when Idle -->
-                            <div class="canvas-watermark" id="canvas-watermark">
-                                <i class="fa-solid fa-film"></i>
-                                <span>Màn hình xem trước & Định vị Bounding Box</span>
-                            </div>
-
-                            <!-- Interactive Drag & Drop Overlay -->
-                            <div class="canvas-overlay" id="canvas-overlay">
-                                <!-- RED BOX: Mask & OCR Box (Hidden initially until Step 2) -->
-                                <div class="bbox bbox-mask d-none" id="bbox-mask" style="left: 10%; top: 78%; width: 80%; height: 14%;">
-                                    <span class="bbox-badge badge-mask"><i class="fa-solid fa-eraser"></i> Vùng che & OCR</span>
-                                    <div class="bbox-handle handle-nw" data-handle="nw"></div>
-                                    <div class="bbox-handle handle-ne" data-handle="ne"></div>
-                                    <div class="bbox-handle handle-sw" data-handle="sw"></div>
-                                    <div class="bbox-handle handle-se" data-handle="se"></div>
-                                </div>
-
-                                <!-- GREEN BOX: Subtitle Placement Box (Hidden initially until Step 3) -->
-                                <div class="bbox bbox-sub d-none" id="bbox-sub" style="left: 10%; top: 78%; width: 80%; height: 14%;">
-                                    <span class="bbox-badge badge-sub"><i class="fa-solid fa-closed-captioning"></i> Vị trí Sub Việt</span>
-                                    <div class="bbox-handle handle-nw" data-handle="nw"></div>
-                                    <div class="bbox-handle handle-ne" data-handle="ne"></div>
-                                    <div class="bbox-handle handle-sw" data-handle="sw"></div>
-                                    <div class="bbox-handle handle-se" data-handle="se"></div>
-                                    <div class="bbox-sub-preview-text" id="bbox-sub-preview-text">Phụ đề tiếng Việt mẫu</div>
-                                </div>
-                            </div>
-                        </div>
-                        <div class="canvas-hint-bar">
-                            <i class="fa-solid fa-arrows-up-down-left-right"></i> Dùng chuột kéo thân hộp để di chuyển &bull; Kéo 4 góc để co giãn kích thước &bull; Nhấn nút căn nhanh để định vị chuẩn.
-                        </div>
-
-                        <!-- CapCut-style Interactive Visual Timeline Editor Suite -->
-                        <div class="timeline-editor-card" id="timeline-editor-card">
-                            <!-- 1. Timeline Action Toolbar -->
-                            <div class="timeline-toolbar">
-                                <div class="tl-tools-group">
-                                    <button type="button" class="btn-tl-tool btn-tl-play" id="btn-tl-play" title="Phát / Tạm dừng (Space)">
-                                        <i class="fa-solid fa-play" id="icon-tl-play"></i>
-                                    </button>
-                                    <div class="timeline-timecode-box">
-                                        <span id="tl-current-time" class="tl-time-active">00:00.0</span>
-                                        <span class="tl-time-sep">/</span>
-                                        <span id="tl-total-time" class="tl-time-total">00:00.0</span>
-                                    </div>
-                                </div>
-
-                                <div class="tl-tools-group tl-tools-actions">
-                                    <button type="button" class="btn-tl-tool btn-tl-accent" id="btn-tl-split" title="Tách câu tại vị trí kim đọc (Phím S hoặc C)">
-                                        <i class="fa-solid fa-scissors"></i> <span>Tách đoạn (S)</span>
-                                    </button>
-                                    <button type="button" class="btn-tl-tool" id="btn-tl-merge" title="Gộp đoạn được chọn với câu tiếp theo">
-                                        <i class="fa-solid fa-code-merge"></i> <span>Gộp câu</span>
-                                    </button>
-                                    <button type="button" class="btn-tl-tool btn-tl-danger" id="btn-tl-delete" title="Xóa đoạn đang chọn (Phím Delete)">
-                                        <i class="fa-solid fa-trash-can"></i> <span>Xóa</span>
-                                    </button>
-                                </div>
-
-                                <div class="tl-tools-group tl-tools-right">
-                                    <button type="button" class="btn-tl-tool btn-tl-dub active" id="btn-tl-toggle-dub" title="Bật/Tắt phát giọng lồng tiếng khi xem trước video">
-                                        <i class="fa-solid fa-headphones"></i> <span id="lbl-tl-dub">Lồng tiếng (BẬT)</span>
-                                    </button>
-                                    <button type="button" class="btn-tl-icon" id="btn-tl-refresh-dub" title="Tạo/Cập nhật âm thanh lồng tiếng sau khi sửa câu">
-                                        <i class="fa-solid fa-arrows-rotate"></i>
-                                    </button>
-                                    <button type="button" class="btn-tl-tool btn-tl-audio" id="btn-tl-preview-audio" title="Nghe thử giọng đọc câu đang chọn">
-                                        <i class="fa-solid fa-volume-high"></i> <span>Nghe câu</span>
-                                    </button>
-                                    <button type="button" class="btn-tl-tool btn-tl-accent" id="btn-tl-quick-export" title="Xuất và tải video đã ghép (MP4) ngay tại đây">
-                                        <i class="fa-solid fa-download" id="icon-tl-quick-export"></i> <span id="lbl-tl-quick-export">Tải Video</span>
-                                    </button>
-                                    <button type="button" class="btn-tl-tool" id="btn-tl-download-audio" style="border-color: rgba(168, 85, 247, 0.45); color: #c084fc;" title="Tải riêng file âm thanh chỉ có lời dịch tiếng Việt (MP3)">
-                                        <i class="fa-solid fa-file-audio"></i> <span>Tải Audio</span>
-                                    </button>
-                                    <div class="tl-zoom-box">
-                                        <button type="button" class="btn-tl-icon" id="btn-tl-zoom-out" title="Thu nhỏ timeline"><i class="fa-solid fa-minus"></i></button>
-                                        <span id="tl-zoom-val" class="tl-zoom-text">100%</span>
-                                        <button type="button" class="btn-tl-icon" id="btn-tl-zoom-in" title="Phóng to timeline"><i class="fa-solid fa-plus"></i></button>
-                                        <button type="button" class="btn-tl-icon" id="btn-tl-zoom-fit" title="Vừa khung hình"><i class="fa-solid fa-arrows-left-right-to-line"></i></button>
-                                    </div>
-                                </div>
-                            </div>
-
-                            <!-- 2. Scrollable Timeline Workspace -->
-                            <div class="timeline-scroll-container" id="timeline-scroll-container">
-                                <div class="timeline-workspace" id="timeline-workspace">
-                                    <!-- Time Ruler (Thước đo thời gian) -->
-                                    <div class="timeline-ruler" id="timeline-ruler">
-                                        <!-- Dynamic seconds ticks -->
-                                    </div>
-
-                                    <!-- Red Draggable Playhead Needle -->
-                                    <div class="timeline-playhead" id="timeline-playhead">
-                                        <div class="playhead-head"><i class="fa-solid fa-caret-down"></i></div>
-                                        <div class="playhead-line"></div>
-                                    </div>
-
-                                    <!-- Timeline Tracks -->
-                                    <div class="timeline-tracks" id="timeline-tracks">
-                                        <!-- Track 1: Subtitle & TTS Voiceover Blocks -->
-                                        <div class="tl-track-row" id="tl-track-sub">
-                                            <div class="tl-track-label"><i class="fa-solid fa-closed-captioning"></i> Sub &amp; Thoại</div>
-                                            <div class="tl-track-lane" id="tl-lane-sub">
-                                                <!-- Dynamic clip blocks -->
-                                            </div>
-                                        </div>
-
-                                        <!-- Track 2: Video Slices / Waveform Track -->
-                                        <div class="tl-track-row" id="tl-track-video">
-                                            <div class="tl-track-label"><i class="fa-solid fa-film"></i> Video gốc</div>
-                                            <div class="tl-track-lane" id="tl-lane-video">
-                                                <!-- Dynamic video track blocks -->
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-
-                            <!-- 3. Floating Quick Inspector Bar for Selected Clip -->
-                            <div class="timeline-clip-inspector d-none" id="timeline-clip-inspector">
-                                <div class="inspector-top">
-                                    <div class="inspector-badge-title">
-                                        <i class="fa-solid fa-pen-to-square"></i>
-                                        <span id="insp-clip-index">Đoạn #1</span>
-                                        <span class="insp-timing-tag" id="insp-clip-timing">00:00.4 - 00:01.6 (1.2s)</span>
-                                    </div>
-                                    <div class="inspector-top-actions">
-                                        <button type="button" class="btn-sm secondary-btn" id="btn-insp-listen" title="Nghe thử TTS câu này"><i class="fa-solid fa-volume-high"></i> Nghe TTS</button>
-                                        <button type="button" class="btn-close-insp" id="btn-insp-close" title="Đóng bảng"><i class="fa-solid fa-xmark"></i></button>
-                                    </div>
-                                </div>
-                                <div class="inspector-controls-grid">
-                                    <div class="insp-control-item item-trans">
-                                        <label>Bản dịch Tiếng Việt:</label>
-                                        <input type="text" id="insp-input-translation" class="insp-input-text" placeholder="Nhập bản dịch tiếng Việt cho câu này...">
-                                    </div>
-                                    <div class="insp-control-item">
-                                        <label>Tốc độ đọc:</label>
-                                        <select id="insp-select-speed" class="insp-select">
-                                            <option value="0.9">0.9x (Chậm)</option>
-                                            <option value="1.0" selected>1.0x (Chuẩn)</option>
-                                            <option value="1.1">1.1x</option>
-                                            <option value="1.2">1.2x</option>
-                                            <option value="1.3">1.3x (Nhanh)</option>
-                                        </select>
-                                    </div>
-                                    <div class="insp-control-item item-time">
-                                        <label>Bắt đầu (s):</label>
-                                        <input type="number" step="0.1" min="0" id="insp-input-start" class="insp-input-num">
-                                    </div>
-                                    <div class="insp-control-item item-time">
-                                        <label>Kết thúc (s):</label>
-                                        <input type="number" step="0.1" min="0" id="insp-input-end" class="insp-input-num">
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- 2. Idle State: Sleek Studio Status Deck -->
-                    <div class="studio-status-deck" id="state-idle">
-                        <div class="status-deck-left">
-                            <span class="status-pill status-ready"><i class="fa-solid fa-circle-dot"></i> Studio Sẵn Sàng</span>
-                            <span class="status-deck-text" id="i18n-idle-tip">Nhập link video ở panel bên dưới và nhấn nút "Tải Video Vào Studio" để bắt đầu.</span>
-                        </div>
-                        <div class="status-deck-right">
-                            <span class="meta-tag"><i class="fa-solid fa-expand"></i> Khung hình 16:9</span>
-                            <span class="meta-tag"><i class="fa-solid fa-layer-group"></i> 2 Lớp Bounding Box</span>
-                        </div>
-                    </div>
-
-                    <!-- 3. Processing State: Modern Progress Console & Horizontal Timeline -->
-                    <div class="status-state-card d-none" id="state-processing">
-                        <div class="progress-header">
-                            <div class="progress-header-left">
-                                <span id="status-badge" class="badge badge-processing"><i class="fa-solid fa-gear fa-spin"></i> Đang xử lý</span>
-                                <p id="status-message" class="status-message-text">Đang chuẩn bị tác vụ...</p>
-                            </div>
-                            <span id="progress-percent" class="progress-percent-text">0%</span>
-                        </div>
-
-                        <div class="progress-bar-container">
-                            <div class="progress-bar-fill" id="progress-bar" style="width: 0%"></div>
-                        </div>
-
-                        <!-- Steps Horizontal Timeline -->
-                        <div class="timeline">
-                            <div class="timeline-item" id="step-download">
-                                <div class="step-indicator"><i class="fa-solid fa-download"></i></div>
-                                <div class="step-content">1. Tải video & tách âm</div>
-                            </div>
-                            <div class="timeline-item" id="step-translate">
-                                <div class="step-indicator"><i class="fa-solid fa-language"></i></div>
-                                <div class="step-content">2. Quét OCR / Whisper & Dịch</div>
-                            </div>
-                            <div class="timeline-item" id="step-tts">
-                                <div class="step-indicator"><i class="fa-solid fa-microphone-lines"></i></div>
-                                <div class="step-content">3. Tạo giọng đọc AI</div>
-                            </div>
-                            <div class="timeline-item" id="step-merge">
-                                <div class="step-indicator"><i class="fa-solid fa-video"></i></div>
-                                <div class="step-content">4. Che sub cũ & Xuất file</div>
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- 4. Success State -->
-                    <div class="status-state-card d-none" id="state-success">
-                        <div class="success-header">
-                            <i class="fa-solid fa-circle-check success-icon"></i>
-                            <h3 id="i18n-success-title">Dịch & Xuất Video Thành Công!</h3>
-                        </div>
-                        
-                        <div class="video-preview-container">
-                            <video id="video-preview" controls></video>
-                        </div>
-
-                        <div class="action-buttons-grid">
-                            <a id="download-btn" href="#" class="success-btn" download><i class="fa-solid fa-download"></i> <span>Tải Video MP4 Hoàn Thiện</span></a>
-                            <a id="download-srt-btn" href="#" class="primary-btn btn-secondary-accent" download><i class="fa-solid fa-file-lines"></i> <span>Tải Phụ Đề Chuẩn (.srt)</span></a>
-                            <button id="reset-btn" class="secondary-btn"><i class="fa-solid fa-rotate-left"></i> <span>Dịch Video Tiếp Theo</span></button>
-                        </div>
-                    </div>
-
-                    <!-- 5. Error State -->
-                    <div class="status-state-card d-none" id="state-error">
-                        <div class="error-header">
-                            <i class="fa-solid fa-circle-exclamation error-icon"></i>
-                            <h3 id="i18n-error-title">Đã xảy ra lỗi trong quá trình xử lý!</h3>
-                        </div>
-                        <div class="error-box">
-                            <p id="error-message">Mô tả chi tiết lỗi ở đây...</p>
-                        </div>
-                        <div class="action-buttons">
-                            <button id="retry-btn" class="secondary-btn"><i class="fa-solid fa-arrow-rotate-right"></i> <span>Thử Lại Tác Vụ</span></button>
-                        </div>
-                    </div>
-                </section>
-            </div>
-
-            <!-- HÀNG DƯỚI: NỘI DUNG CÁC THAO TÁC -->
-            <section class="card studio-action-panel">
-                <!-- STEP 1 CONTENT -->
-                <div class="step-tab-content active" id="content-step-1">
-                    <div class="step-intro-box">
-                        <h3 class="step-card-title"><i class="fa-solid fa-cloud-arrow-down icon-purple"></i> Bước 1: Tải Video Gốc</h3>
-                        <p class="step-card-desc">Nhập link Bilibili hoặc YouTube để tải video về máy và nạp lên màn hình xem trước.</p>
-                    </div>
-
-                    <div class="step-action-body">
-                        <div class="input-group">
-                            <div class="label-with-action">
-                                <label for="video-url-input">Link video Bilibili / YouTube</label>
-                                <button type="button" id="btn-paste-url" class="text-action-btn" title="Dán từ Clipboard">
-                                    <i class="fa-solid fa-paste"></i> <span>Dán</span>
-                                </button>
-                            </div>
-                            <div class="url-input-wrapper">
-                                <i class="fa-solid fa-link input-icon"></i>
-                                <input type="text" id="video-url-input" placeholder="https://www.bilibili.com/video/BV... hoặc link YouTube" required>
-                                <button type="button" id="btn-clear-url" class="clear-input-btn d-none" title="Xóa link">
-                                    <i class="fa-solid fa-xmark"></i>
-                                </button>
-                            </div>
-                        </div>
-
-                        <div class="collapsible-toggle-wrap">
-                            <button type="button" class="collapsible-btn" id="btn-toggle-cookie">
-                                <i class="fa-solid fa-cookie-bite"></i> <span>Cookie Bilibili (Tùy chọn cho video VIP / HD)</span> <i class="fa-solid fa-chevron-down toggle-arrow"></i>
-                            </button>
-                            <div class="collapsible-content d-none" id="cookie-panel">
-                                <input type="text" id="bilibili-cookie-input" placeholder="Dán SESSDATA hoặc chuỗi cookie nếu video yêu cầu đăng nhập...">
-                            </div>
-                        </div>
-
-                        <div class="step-btn-action-row">
-                            <button type="button" id="btn-step1-download" class="primary-btn btn-action-large"><i class="fa-solid fa-download"></i> 1. Tải Video Vào Studio</button>
-                        </div>
-
-                        <div class="step-mini-progress d-none" id="step1-progress-box">
-                            <div class="progress-bar-container"><div class="progress-bar-fill" id="step1-progress-bar" style="width: 0%"></div></div>
-                            <div class="step-progress-labels"><span id="step1-progress-msg">Đang chuẩn bị...</span><span id="step1-progress-pct">0%</span></div>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- STEP 2 CONTENT -->
-                <div class="step-tab-content d-none" id="content-step-2">
-                    <div class="step-intro-box">
-                        <h3 class="step-card-title"><i class="fa-solid fa-crop-simple icon-purple"></i> Bước 2: Quét Phụ Đề Gốc &amp; Che Chữ Cũ</h3>
-                        <p class="step-card-desc">Căn khung đỏ đè lên dòng chữ tiếng Trung trên màn hình xem trước. AI sẽ bóc tách phụ đề tự động.</p>
-                    </div>
-
-                    <div class="step-action-body">
-                        <div class="segmented-control">
-                            <button type="button" class="segmented-btn active" id="btn-mode-ocr" data-mode="ocr"><i class="fa-solid fa-crop-simple"></i> Quét OCR Màn Hình (Mặc định)</button>
-                            <button type="button" class="segmented-btn" id="btn-mode-whisper" data-mode="whisper"><i class="fa-solid fa-microphone-lines"></i> Whisper Giọng Nói</button>
-                        </div>
-
-                        <div id="step2-ocr-options">
-                            <div class="step-hint-box">
-                                <i class="fa-solid fa-lightbulb"></i> Khung đỏ đã hiện trên màn hình xem trước. Bạn hãy kéo khung đỏ đặt đúng vị trí dòng sub tiếng Trung để AI quét chuẩn xác.
-                            </div>
-                            <div class="toggle-row">
-                                <label class="switch-container">
-                                    <input type="checkbox" id="mask-enabled" checked>
-                                    <span class="switch-slider"></span>
-                                </label>
-                                <span class="toggle-label">Bật che phụ đề cũ (Masking - Mặc định bật)</span>
-                            </div>
-                            <div class="form-row-2col">
-                                <div class="input-group-sub">
-                                    <label for="mask-style">Kiểu che</label>
-                                    <select id="mask-style">
-                                        <option value="blur" selected>Làm mờ (Box Blur)</option>
-                                        <option value="solid">Dải nền tối (Solid Black)</option>
-                                    </select>
-                                </div>
-                                <div class="input-group-sub">
-                                    <label>Căn nhanh</label>
-                                    <button type="button" id="btn-preset-bottom" class="tool-btn-full" title="Căn chữ xuống đáy video">
-                                        <i class="fa-solid fa-arrow-down-wide-short"></i> Căn đáy chuẩn
-                                    </button>
-                                </div>
-                            </div>
-                        </div>
-
-                        <div id="step2-whisper-options" class="d-none">
-                            <div class="step-hint-box">
-                                <i class="fa-solid fa-info-circle"></i> Whisper sẽ bóc tách lời thoại trực tiếp từ âm thanh video mà không cần quét hình ảnh.
-                            </div>
-                        </div>
-
-                        <div class="step-btn-action-row">
-                            <button type="button" id="btn-step2-transcribe" class="primary-btn btn-action-large"><i class="fa-solid fa-wand-magic-sparkles"></i> 2. Bắt Đầu Quét Chữ &rarr;</button>
-                        </div>
-
-                        <div class="step-mini-progress d-none" id="step2-progress-box">
-                            <div class="progress-bar-container"><div class="progress-bar-fill" id="step2-progress-bar" style="width: 0%"></div></div>
-                            <div class="step-progress-labels"><span id="step2-progress-msg">Đang quét...</span><span id="step2-progress-pct">0%</span></div>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- STEP 3 CONTENT -->
-                <div class="step-tab-content d-none" id="content-step-3">
-                    <div class="step-intro-box">
-                        <h3 class="step-card-title"><i class="fa-solid fa-closed-captioning icon-purple"></i> Bước 3: Dịch, Giọng Đọc AI &amp; Mẫu CapCut</h3>
-                        <p class="step-card-desc">Cấu hình giọng đọc tiếng Việt, mẫu phụ đề và kiểm tra bảng dịch chi tiết bên dưới.</p>
-                    </div>
-
-                    <div class="step-action-body">
-                        <div class="step3-controls-grid">
-                            <div class="input-group-sub">
-                                <label for="voice-select-step3"><i class="fa-solid fa-microphone"></i> Giọng đọc lồng tiếng (Voice)</label>
-                                <div class="voice-picker-row">
-                                    <select id="voice-select-step3">
-                                        <optgroup label="Giọng TikTok / CapCut (Đặc sắc & Siêu hot)">
-                                            <option value="capcut_cogaithoatngon" selected>🔥 Cô Gái Hoạt Ngôn (CapCut Hot TikTok)</option>
-                                            <option value="capcut_thanhnientutin">⚡ Thanh Niên Tự Tin (CapCut Recap Phim)</option>
-                                            <option value="capcut_nhongotngao">🌸 Nhỏ Ngọt Ngào (CapCut Nữ Dễ Thương)</option>
-                                            <option value="capcut_giongbe">👶 Giọng Bé (CapCut Trẻ Em)</option>
-                                            <option value="capcut_namtram">🎙️ Giọng Nam Trầm (CapCut Kể Chuyện)</option>
-                                            <option value="capcut_reviewphim">🎬 Review Phim (CapCut Nữ Truyền Cảm)</option>
-                                        </optgroup>
-                                        <optgroup label="Giọng Chuẩn Edge-TTS">
-                                            <option value="female_hoaimy">Hoài My (Nữ chuẩn - vi-VN-HoaiMyNeural)</option>
-                                            <option value="male_namminh">Nam Minh (Nam chuẩn - vi-VN-NamMinhNeural)</option>
-                                        </optgroup>
-                                    </select>
-                                    <button type="button" id="btn-preview-voice-step3" class="secondary-btn btn-icon" title="Nghe thử giọng mẫu"><i class="fa-solid fa-volume-high"></i></button>
-                                </div>
-                            </div>
-
-                            <div class="input-group-sub">
-                                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.35rem;">
-                                    <label for="rvc-model-select-step3" style="margin-bottom: 0;"><i class="fa-solid fa-wand-magic-sparkles"></i> Đổi âm sắc giọng (RVC Model)</label>
-                                    <button type="button" id="btn-refresh-rvc" class="secondary-btn btn-icon" style="width: auto; height: auto; padding: 2px 8px; font-size: 0.75rem;" title="Quét lại thư mục app/models/rvc">
-                                        <i class="fa-solid fa-rotate-right"></i> Quét lại
-                                    </button>
-                                </div>
-                                <div class="voice-picker-row">
-                                    <select id="rvc-model-select-step3">
-                                        <option value="none" selected>Không dùng (Chỉ giữ Edge-TTS gốc)</option>
-                                    </select>
-                                </div>
-                                <small id="rvc-status-hint" style="display: block; margin-top: 4px; font-size: 0.75rem; color: var(--text-muted);">
-                                    Thả file model <code>.pth</code> & <code>.index</code> vào thư mục <code>app/models/rvc/</code>.
-                                </small>
-                            </div>
-
-                            <div class="form-row-2col" id="rvc-pitch-row" style="display: none;">
-                                <div class="input-group-sub">
-                                    <label>Cao độ Pitch (F0 Shift): <span id="rvc-pitch-val">0</span> bán âm</label>
-                                    <input type="range" id="rvc-pitch-slider" min="-14" max="14" step="1" value="0">
-                                </div>
-                                <div class="input-group-sub" style="display: flex; align-items: center;">
-                                    <small style="color: var(--text-muted); font-size: 0.75rem;">+12: Nam &rarr; Nữ | -12: Nữ &rarr; Nam | 0: Giữ nguyên</small>
-                                </div>
-                            </div>
-
-                            <div class="form-row-2col">
-                                <div class="input-group-sub">
-                                    <label>Âm lượng nền gốc: <span id="bg-vol-label">15%</span></label>
-                                    <input type="range" id="bg-volume-slider" min="0" max="1" step="0.05" value="0.15">
-                                </div>
-                                <div class="input-group-sub">
-                                    <label>Âm giọng đọc AI: <span id="tts-vol-label">100%</span></label>
-                                    <input type="range" id="tts-volume-slider" min="0.5" max="2" step="0.1" value="1.0">
-                                </div>
-                            </div>
-
-                            <!-- Che Mờ Phụ Đề Tiếng Trung Cũ (Masking) ngay tại Bước 3 -->
-                            <div class="mask-quick-toolbar-step3">
-                                <div class="toolbar-label-row">
-                                    <span class="toolbar-label"><i class="fa-solid fa-eye-slash"></i> Che mờ phụ đề gốc cũ:</span>
-                                    <div style="display: flex; align-items: center; gap: 0.75rem;">
-                                        <button type="button" class="btn-subtle-toggle" id="btn-toggle-mask-box-preview" title="Bật/Tắt hiển thị khung đỏ quét cũ">
-                                            <i class="fa-solid fa-vector-square"></i> Hiện khung đỏ
-                                        </button>
-                                        <label class="switch-container">
-                                            <input type="checkbox" id="step3-mask-enabled" checked>
-                                            <span class="switch-slider"></span>
-                                        </label>
-                                    </div>
-                                </div>
-                                <div class="mask-style-options-step3" id="step3-mask-options">
-                                    <div class="mask-chip-row">
-                                        <button type="button" class="mask-chip active" data-style="blur">
-                                            <i class="fa-solid fa-wand-magic-sparkles"></i> Làm mờ kính mờ (Blur)
-                                        </button>
-                                        <button type="button" class="mask-chip" data-style="solid">
-                                            <i class="fa-solid fa-square"></i> Dải nền đen (Solid)
-                                        </button>
-                                    </div>
-                                    <div class="mask-preview-note">
-                                        <i class="fa-solid fa-circle-info"></i> Hiệu ứng làm mờ được mô phỏng trực tiếp trên video xem trước. Phụ đề tiếng Việt mới sẽ nổi bật trên nền mờ này khi xuất video.
-                                    </div>
-                                </div>
-                            </div>
-
-                            <div class="capcut-quick-toolbar">
-                                <div class="capcut-quick-header">
-                                    <span class="toolbar-label"><i class="fa-solid fa-palette"></i> Mẫu Phụ Đề Nổi Bật (Mặc định: Trắng Viền Đen Viral):</span>
-                                    <button type="button" class="link-btn-substudio" id="btn-goto-substudio" title="Mở Studio phối màu & viền chi tiết">
-                                        <i class="fa-solid fa-wand-magic-sparkles"></i> Chỉnh chi tiết &rarr;
-                                    </button>
-                                </div>
-                                <div class="capcut-chip-row">
-                                    <button type="button" class="capcut-chip active" data-preset="viral_white">⚪ Trắng Viền Đen (Mẫu Hot)</button>
-                                    <button type="button" class="capcut-chip" data-preset="tiktok_yellow">🟡 Vàng Neon</button>
-                                    <button type="button" class="capcut-chip" data-preset="neon_green">🟢 Xanh Neon</button>
-                                    <button type="button" class="capcut-chip" data-preset="neon_cyan">🔵 Cyan Sáng</button>
-                                    <button type="button" class="capcut-chip" data-preset="yellow_box">🟨 Hộp Vàng</button>
-                                    <button type="button" class="capcut-chip" data-preset="black_box">⬛ Hộp Đen</button>
-                                </div>
-
-                                <!-- Thanh đổi màu chữ nhanh ngay tại Bước 3 -->
-                                <div class="color-quick-picker-step3">
-                                    <span class="toolbar-label"><i class="fa-solid fa-fill-drip"></i> Đổi màu chữ nhanh:</span>
-                                    <div class="color-palette-row-step3">
-                                        <button type="button" class="color-swatch-btn active" data-color="#FFFFFF" style="background:#FFFFFF;" title="Trắng tinh"></button>
-                                        <button type="button" class="color-swatch-btn" data-color="#FFE600" style="background:#FFE600;" title="Vàng Neon"></button>
-                                        <button type="button" class="color-swatch-btn" data-color="#00FF88" style="background:#00FF88;" title="Xanh Dạ Quang"></button>
-                                        <button type="button" class="color-swatch-btn" data-color="#00F5FF" style="background:#00F5FF;" title="Cyan Sáng"></button>
-                                        <button type="button" class="color-swatch-btn" data-color="#FF4757" style="background:#FF4757;" title="Đỏ Cam"></button>
-                                        <button type="button" class="color-swatch-btn" data-color="#FFA502" style="background:#FFA502;" title="Cam Nổi"></button>
-                                        <button type="button" class="color-swatch-btn" data-color="#A55EEA" style="background:#A55EEA;" title="Tím Sáng"></button>
-                                        <div class="custom-color-inline">
-                                            <input type="color" id="step3-sub-color" value="#FFFFFF" title="Chọn màu tự do">
-                                            <span class="color-hex-mini" id="step3-sub-color-hex">#FFFFFF</span>
-                                        </div>
-                                    </div>
-                                </div>
-
-                                <!-- Thanh đổi cỡ chữ nhanh ngay tại Bước 3 -->
-                                <div class="font-size-quick-picker-step3">
-                                    <div class="toolbar-label-row">
-                                        <span class="toolbar-label"><i class="fa-solid fa-text-height"></i> Đổi cỡ chữ nhanh:</span>
-                                        <span class="font-size-badge" id="step3-font-size-badge">48px (Chuẩn đẹp)</span>
-                                    </div>
-                                    <div class="font-size-chip-row">
-                                        <button type="button" class="font-size-chip" data-size="36">36px (Nhỏ gọn)</button>
-                                        <button type="button" class="font-size-chip" data-size="42">42px (Vừa)</button>
-                                        <button type="button" class="font-size-chip active" data-size="48">48px (Chuẩn đẹp)</button>
-                                        <button type="button" class="font-size-chip" data-size="56">56px (Lớn nổi bật)</button>
-                                        <button type="button" class="font-size-chip" data-size="68">68px (Khổng lồ / Anime)</button>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-
-                        <div class="render-mode-card">
-                            <div class="render-mode-header">
-                                <div class="render-mode-icon"><i class="fa-solid fa-bolt"></i></div>
-                                <div class="render-mode-info">
-                                    <div class="render-mode-title">
-                                        <span>Giữ khung hình khi câu quá dài (Freeze Frame)</span>
-                                    </div>
-                                    <div class="render-mode-desc">
-                                        Mặc định TẮT: Video chạy mượt mà 100% không khựng, giọng đọc tự động co giãn thông minh cho vừa vặn với cảnh. Chỉ BẬT nếu bạn muốn video tự đứng hình để đọc trọn vẹn.
-                                    </div>
-                                </div>
-                                <label class="switch-container" title="Bật/Tắt giữ đứng hình ảnh video">
-                                    <input type="checkbox" id="chk-auto-extend-video">
-                                    <span class="switch-slider"></span>
-                                </label>
-                            </div>
-                        </div>
-
-                        <div class="step-btn-action-row" style="display: flex; gap: 0.75rem; flex-wrap: wrap;">
-                            <button type="button" id="btn-step3-render-download" class="primary-btn btn-accent btn-action-large" style="flex: 1; min-width: 220px;">
-                                <i class="fa-solid fa-download" id="icon-step3-render-download"></i> 
-                                <span id="lbl-step3-render-download">⚡ Xuất &amp; Tải Video (MP4)</span>
-                            </button>
-                            <button type="button" id="btn-step3-download-audio" class="secondary-btn btn-action-large" style="flex: 1; min-width: 200px; border-color: rgba(168, 85, 247, 0.45); color: #c084fc; background: rgba(168, 85, 247, 0.1);" title="Tải riêng file âm thanh chỉ có lời dịch tiếng Việt (không lẫn nhạc nền)">
-                                <i class="fa-solid fa-file-audio"></i> 
-                                <span>🎵 Tải Audio Dịch (MP3)</span>
-                            </button>
-                            <button type="button" id="btn-step3-next" class="secondary-btn btn-action-large" style="min-width: 150px;">
-                                <i class="fa-solid fa-arrow-right"></i> Sang Bước 4 &rarr;
-                            </button>
-                        </div>
-
-                        <!-- Thanh tiến trình xuất video ngay tại Bước 3 -->
-                        <div class="step-mini-progress d-none" id="step3-progress-box" style="margin-top: 1rem;">
-                            <div class="progress-bar-container">
-                                <div class="progress-bar-fill" id="step3-progress-bar" style="width: 0%"></div>
-                            </div>
-                            <div class="step-progress-labels">
-                                <span id="step3-progress-msg"><i class="fa-solid fa-spinner fa-spin"></i> Đang xuất video...</span>
-                                <span id="step3-progress-pct">0%</span>
-                            </div>
-                        </div>
-
-                        <!-- Hộp thông báo tải video thành công ngay tại Bước 3 -->
-                        <div class="step-download-success-box d-none" id="step3-success-box" style="margin-top: 0.85rem; padding: 0.85rem 1rem; background: rgba(34, 197, 94, 0.12); border: 1px solid rgba(34, 197, 94, 0.4); border-radius: 8px; color: #4ade80; display: flex; align-items: center; justify-content: space-between; gap: 0.75rem;">
-                            <div style="display: flex; align-items: center; gap: 0.6rem;">
-                                <i class="fa-solid fa-circle-check" style="font-size: 1.3rem;"></i>
-                                <div>
-                                    <div style="font-weight: 600; font-size: 0.92rem;">Đã xuất &amp; tải video về máy thành công!</div>
-                                    <div style="font-size: 0.8rem; color: rgba(255,255,255,0.75);">Bạn vẫn đang ở chế độ chỉnh sửa. Sửa tiếp câu từ hoặc giao diện và bấm Tải lại bất kỳ lúc nào.</div>
-                                </div>
-                            </div>
-                            <button type="button" class="primary-btn btn-sm" id="btn-step3-redownload" style="white-space: nowrap; padding: 0.4rem 0.75rem; font-size: 0.82rem;">
-                                <i class="fa-solid fa-file-arrow-down"></i> Tải lại file
-                            </button>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- STEP 4 CONTENT -->
-                <div class="step-tab-content d-none" id="content-step-4">
-                    <div class="step-intro-box">
-                        <h3 class="step-card-title"><i class="fa-solid fa-film icon-purple"></i> Bước 4: Xuất Video Hoàn Chỉnh</h3>
-                        <p class="step-card-desc">Ghép giọng đọc AI lồng tiếng và ép phụ đề CapCut vào video gốc.</p>
-                    </div>
-
-                    <div class="step-action-body">
-                        <div class="summary-card">
-                            <div class="summary-item"><i class="fa-solid fa-video"></i> Video gốc: <span class="summary-val text-success">Đã sẵn sàng</span></div>
-                            <div class="summary-item"><i class="fa-solid fa-closed-captioning"></i> Phụ đề: <span class="summary-val text-success" id="summary-sub-count">Đã sẵn sàng</span></div>
-                            <div class="summary-item"><i class="fa-solid fa-microphone"></i> Giọng đọc: <span class="summary-val" id="summary-voice-name">Hoài My (Nữ chuẩn)</span></div>
-                            <div class="summary-item"><i class="fa-solid fa-clock-rotate-left"></i> Tự dãn video: <span class="summary-val text-success" id="summary-auto-extend">Đang bật (Chống mất từ)</span></div>
-                        </div>
-
-                        <div class="step-btn-action-row">
-                            <button type="button" id="btn-step4-render" class="primary-btn btn-accent btn-action-large"><i class="fa-solid fa-wand-magic-sparkles"></i> 4. Bắt Đầu Ghép &amp; Xuất Video</button>
-                        </div>
-
-                        <div class="step-mini-progress d-none" id="step4-progress-box">
-                            <div class="progress-bar-container"><div class="progress-bar-fill" id="step4-progress-bar" style="width: 0%"></div></div>
-                            <div class="step-progress-labels"><span id="step4-progress-msg">Đang ghép...</span><span id="step4-progress-pct">0%</span></div>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Interactive Subtitle Review & Editor Table (Bảng phụ đề hiển thị trải rộng bên dưới) -->
-                <div class="subtitle-editor-card d-none" id="subtitle-editor-card">
-                    <div class="editor-header">
-                        <div class="editor-header-left">
-                            <h3 class="card-heading"><i class="fa-solid fa-list-check"></i> Bảng Phụ Đề &amp; Bản Dịch (<span id="segments-count">0</span> câu)</h3>
-                            <span class="editor-subtitle">Nhấp vào ô tiếng Việt để sửa chữ &bull; Nhấp thời gian để tua video đến câu đó</span>
-                        </div>
-                        <div class="editor-header-actions">
-                            <button type="button" id="btn-export-srt-zh" class="secondary-btn btn-sm" title="Tải file phụ đề Tiếng Trung (.srt) để tự dịch bên ngoài"><i class="fa-solid fa-file-export"></i> Xuất SRT Trung (.srt)</button>
-                            <button type="button" id="btn-open-import-srt" class="secondary-btn btn-sm" style="border-color: rgba(56, 189, 248, 0.55); color: #38bdf8; background: rgba(56, 189, 248, 0.1);" title="Tải file .SRT Tiếng Việt lên hoặc dán bản dịch để gắn vào từng câu"><i class="fa-solid fa-file-import"></i> Nhập SRT Tiếng Việt</button>
-                            <button type="button" id="btn-export-srt-vi" class="secondary-btn btn-sm" title="Tải file phụ đề Tiếng Việt (.srt)"><i class="fa-solid fa-file-arrow-down"></i> Xuất SRT Việt (.srt)</button>
-                            <button type="button" id="btn-add-segment" class="secondary-btn btn-sm"><i class="fa-solid fa-plus"></i> Thêm câu</button>
-                            <button type="button" id="btn-save-segments" class="primary-btn btn-sm"><i class="fa-solid fa-floppy-disk"></i> Lưu thay đổi phụ đề</button>
-                        </div>
-                    </div>
-                    <div class="subtitle-table-container">
-                        <table class="subtitle-table" id="subtitle-table">
-                            <thead>
-                                <tr>
-                                    <th style="width: 40px;">#</th>
-                                    <th style="width: 220px;">Thời gian &amp; Cắt nối (s)</th>
-                                    <th style="width: 105px;">Tốc độ đọc</th>
-                                    <th style="width: 24%;">Tiếng Trung gốc</th>
-                                    <th>Bản dịch Tiếng Việt (Sửa &amp; Cân nhịp câu)</th>
-                                    <th style="width: 85px; text-align: center;">Thao tác</th>
-                                </tr>
-                            </thead>
-                            <tbody id="subtitle-table-body">
-                                <!-- Dynamic rows -->
-                            </tbody>
-                        </table>
-                    </div>
-                </div>
-            </section>
-        </main>
-
-        <!-- TAB 3 CONTENT: CapCut Subtitle Studio -->
-        <div class="capcut-studio-section d-none" id="panel-subtitles">
-            <!-- Header with Live Preview Frame -->
-            <div class="card capcut-stage-card">
-                <div class="stage-header">
-                    <div>
-                        <h2 class="section-title"><i class="fa-solid fa-wand-magic-sparkles"></i> Thiết Kế Phụ Đề Chuyên Nghiệp (Phong Cách CapCut)</h2>
-                        <p class="section-desc">Tùy biến màu chữ, màu viền, nền hộp phụ đề và kích thước. Màn hình bên dưới cập nhật trực quan theo thời gian thực.</p>
-                    </div>
-                    <div class="stage-actions">
-                        <button type="button" id="btn-reset-sub-styling" class="secondary-btn btn-sm">
-                            <i class="fa-solid fa-rotate-left"></i> Đặt lại mặc định
-                        </button>
-                    </div>
-                </div>
-
-                <!-- Live Subtitle Monitor -->
-                <div class="capcut-live-monitor">
-                    <div class="monitor-header">
-                        <span class="monitor-tag"><i class="fa-solid fa-eye"></i> Màn Hình Xem Trước Thời Gian Thực</span>
-                        <span class="monitor-info" id="monitor-style-desc">Mẫu: Trắng Chuẩn (Hot Trend) &bull; Font: Nunito &bull; Cỡ: 30px</span>
-                    </div>
-                    <div class="monitor-screen">
-                        <div class="monitor-sub-wrapper">
-                            <div class="capcut-sample-text" id="capcut-live-sample">
-                                Anh em, tôi lên trước đây!
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            <!-- CapCut Presets Library -->
-            <div class="card capcut-presets-card">
-                <h3 class="card-heading"><i class="fa-solid fa-layer-group"></i> Thư Viện Mẫu Chữ Hot (CapCut Presets)</h3>
-                <p class="input-desc">Nhấp chọn các bộ màu xu hướng phổ biến trên TikTok, Reels và YouTube Shorts:</p>
-                <div class="presets-grid">
-                    <div class="preset-card active" data-preset="viral_white">
-                        <div class="preset-preview preview-viral-white">Anh em, lên trước!</div>
-                        <div class="preset-meta">
-                            <span class="preset-name">⚪ Trắng Viền Đen (Chuẩn Mẫu Hot)</span>
-                            <span class="preset-desc">Chữ trắng tinh, viền đen dày bo tròn siêu nét</span>
-                        </div>
-                    </div>
-                    <div class="preset-card" data-preset="tiktok_yellow">
-                        <div class="preset-preview preview-tiktok-yellow">Vàng Neon</div>
-                        <div class="preset-meta">
-                            <span class="preset-name">🟡 Vàng Neon Nổi Bật</span>
-                            <span class="preset-desc">Chữ vàng tươi sáng rực, viền đen dày tương phản</span>
-                        </div>
-                    </div>
-                    <div class="preset-card" data-preset="neon_green">
-                        <div class="preset-preview preview-neon-green">Xanh Dạ Quang</div>
-                        <div class="preset-meta">
-                            <span class="preset-name">🟢 Xanh Neon Dạ Quang</span>
-                            <span class="preset-desc">Chữ xanh lá neon sáng chói, viền đen gaming</span>
-                        </div>
-                    </div>
-                    <div class="preset-card" data-preset="neon_cyan">
-                        <div class="preset-preview preview-neon-cyan">Cyan Sáng Rực</div>
-                        <div class="preset-meta">
-                            <span class="preset-name">🔵 Cyan Sáng Hiện Đại</span>
-                            <span class="preset-desc">Chữ xanh cyan sáng, viền đen dày bắt mắt</span>
-                        </div>
-                    </div>
-                    <div class="preset-card" data-preset="yellow_box">
-                        <div class="preset-preview preview-yellow-box"><span>Hộp Vàng</span></div>
-                        <div class="preset-meta">
-                            <span class="preset-name">🟨 Hộp Vàng Bo Góc</span>
-                            <span class="preset-desc">Chữ đen, nền hộp vàng neon bo cong</span>
-                        </div>
-                    </div>
-                    <div class="preset-card" data-preset="black_box">
-                        <div class="preset-preview preview-black-box"><span>Hộp Đen</span></div>
-                        <div class="preset-meta">
-                            <span class="preset-name">⬛ Hộp Đen Kính Mờ</span>
-                            <span class="preset-desc">Chữ trắng, nền kính đen mờ trong suốt</span>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Detailed Customizer 2x2 Grid -->
-            <div class="capcut-customizer-grid">
-                <!-- 1. Text Color -->
-                <div class="card capcut-tool-card">
-                    <h4 class="tool-heading"><i class="fa-solid fa-fill-drip"></i> 1. Màu Chữ Chính</h4>
-                    <div class="color-palette-row">
-                        <button type="button" class="color-swatch-btn active" data-color="#FFFFFF" style="background:#FFFFFF;" title="Trắng tinh"></button>
-                        <button type="button" class="color-swatch-btn" data-color="#FFE600" style="background:#FFE600;" title="Vàng Neon"></button>
-                        <button type="button" class="color-swatch-btn" data-color="#00FF88" style="background:#00FF88;" title="Xanh Dạ Quang"></button>
-                        <button type="button" class="color-swatch-btn" data-color="#00F5FF" style="background:#00F5FF;" title="Cyan Sáng"></button>
-                        <button type="button" class="color-swatch-btn" data-color="#FF4757" style="background:#FF4757;" title="Đỏ Cam"></button>
-                        <button type="button" class="color-swatch-btn" data-color="#FFA502" style="background:#FFA502;" title="Cam Nổi"></button>
-                        <button type="button" class="color-swatch-btn" data-color="#A55EEA" style="background:#A55EEA;" title="Tím Sáng"></button>
-                        <button type="button" class="color-swatch-btn" data-color="#000000" style="background:#000000; border-color:#555;" title="Đen"></button>
-                    </div>
-                    <div class="custom-color-picker-row">
-                        <label for="sub-primary-color">Màu tự chọn:</label>
-                        <input type="color" id="sub-primary-color" value="#FFFFFF">
-                        <span class="color-hex-label" id="sub-primary-hex">#FFFFFF</span>
-                    </div>
-                </div>
-
-                <!-- 2. Text Outline / Stroke -->
-                <div class="card capcut-tool-card">
-                    <h4 class="tool-heading"><i class="fa-solid fa-border-all"></i> 2. Viền Chữ (Stroke)</h4>
-                    <div class="form-row-2col">
-                        <div class="input-group-sub">
-                            <label>Màu viền:</label>
-                            <div class="outline-color-picker-row">
-                                <input type="color" id="sub-outline-color" value="#000000">
-                                <span class="color-hex-label" id="sub-outline-hex">#000000</span>
-                            </div>
-                        </div>
-                        <div class="input-group-sub">
-                            <label for="sub-outline-width">Độ dày viền:</label>
-                            <select id="sub-outline-width">
-                                <option value="0">Không viền (0px)</option>
-                                <option value="2.0">Mỏng vừa (2.0px)</option>
-                                <option value="3.5" selected>Dày chuẩn nét (3.5px - Như mẫu)</option>
-                                <option value="4.5">Rất dày siêu nổi (4.5px)</option>
-                            </select>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- 3. Background Box Style -->
-                <div class="card capcut-tool-card">
-                    <h4 class="tool-heading"><i class="fa-solid fa-shapes"></i> 3. Nền Hộp Phụ Đề (CapCut Box)</h4>
-                    <div class="toggle-container mb-3">
-                        <button type="button" class="toggle-option active" id="btn-boxstyle-outline">Không nền (Chữ nổi)</button>
-                        <button type="button" class="toggle-option" id="btn-boxstyle-box">Hộp chữ nhật (Box)</button>
-                    </div>
-                    <div id="box-options-wrapper" class="d-none">
-                        <div class="form-row-2col">
-                            <div class="input-group-sub">
-                                <label>Màu nền hộp:</label>
-                                <div class="outline-color-picker-row">
-                                    <input type="color" id="sub-box-color" value="#000000">
-                                    <span class="color-hex-label" id="sub-box-hex">#000000</span>
-                                </div>
-                            </div>
-                            <div class="input-group-sub">
-                                <label>Độ mờ nền: <span id="sub-box-opacity-val">75%</span></label>
-                                <input type="range" id="sub-box-opacity" min="0.3" max="1.0" step="0.05" value="0.75">
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- 4. Typography & Font -->
-                <div class="card capcut-tool-card">
-                    <h4 class="tool-heading"><i class="fa-solid fa-text-height"></i> 4. Phông & Kích Thước</h4>
-                    <div class="form-row-2col">
-                        <div class="input-group-sub">
-                            <label for="sub-font-size">Cỡ chữ:</label>
-                            <select id="sub-font-size">
-                                <option value="32">Rất nhỏ (32px)</option>
-                                <option value="36">Nhỏ gọn (36px)</option>
-                                <option value="42">Vừa phải (42px)</option>
-                                <option value="48" selected>Chuẩn đẹp (48px - Khuyên dùng)</option>
-                                <option value="56">Lớn nổi bật (56px)</option>
-                                <option value="68">Khổng lồ / Anime (68px)</option>
-                                <option value="80">Cực đại (80px)</option>
-                            </select>
-                        </div>
-                        <div class="input-group-sub">
-                            <label for="sub-font-name">Phông chữ:</label>
-                            <select id="sub-font-name">
-                                <option value="Nunito" selected>Nunito (Bo tròn dễ thương - Giống ảnh mẫu)</option>
-                                <option value="Segoe UI">Segoe UI (Chuẩn nét Windows)</option>
-                                <option value="Montserrat">Montserrat (Hiện đại, Đậm nét)</option>
-                                <option value="Arial">Arial (Cơ bản)</option>
-                                <option value="Trebuchet MS">Trebuchet MS</option>
-                            </select>
-                        </div>
-                    </div>
-                    <div class="toggle-row mt-3">
-                        <label class="switch-container">
-                            <input type="checkbox" id="sub-bold" checked>
-                            <span class="switch-slider"></span>
-                        </label>
-                        <span class="toggle-label">In đậm chữ (Bold font)</span>
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <!-- TAB 4 CONTENT: Modular System Settings -->
-        <div class="settings-modular-section d-none" id="panel-settings">
-            <!-- Modular Subnav Pills -->
-            <div class="settings-subnav-bar">
-                <button type="button" class="subnav-pill active" data-subpane="subpane-voice">
-                    <i class="fa-solid fa-microphone-lines"></i> <span>Giọng Đọc & Âm Lượng</span>
-                </button>
-                <button type="button" class="subnav-pill" data-subpane="subpane-cookie">
-                    <i class="fa-solid fa-cookie"></i> <span>Cookie Bilibili 1080p</span>
-                </button>
-                <button type="button" class="subnav-pill" data-subpane="subpane-tts">
-                    <i class="fa-solid fa-bullhorn"></i> <span>TTS Studio (Đọc Văn Bản)</span>
-                </button>
-            </div>
-
-            <!-- Subpane 1: Voice & Volume -->
-            <div class="subpane-content" id="subpane-voice">
-                <div class="settings-fullwidth-grid">
-                    <div class="card settings-card">
-                        <h3 class="card-heading"><i class="fa-solid fa-microphone-lines"></i> Cấu hình Giọng đọc AI (Edge-TTS)</h3>
-                        <div class="input-group">
-                            <label for="shared-voice-select">Giọng đọc lồng tiếng</label>
-                            <div class="voice-input-row">
-                                <div class="select-wrapper voice-select-flex">
-                                    <i class="fa-solid fa-user input-icon"></i>
-                                    <select id="shared-voice-select">
-                                        <optgroup label="Giọng TikTok / CapCut (Đặc sắc & Siêu hot)">
-                                            <option value="capcut_cogaithoatngon" selected>🔥 Cô Gái Hoạt Ngôn (CapCut Hot TikTok)</option>
-                                            <option value="capcut_thanhnientutin">⚡ Thanh Niên Tự Tin (CapCut Recap Phim)</option>
-                                            <option value="capcut_nhongotngao">🌸 Nhỏ Ngọt Ngào (CapCut Nữ Dễ Thương)</option>
-                                            <option value="capcut_giongbe">👶 Giọng Bé (CapCut Trẻ Em)</option>
-                                            <option value="capcut_namtram">🎙️ Giọng Nam Trầm (CapCut Kể Chuyện)</option>
-                                            <option value="capcut_reviewphim">🎬 Review Phim (CapCut Nữ Truyền Cảm)</option>
-                                        </optgroup>
-                                        <optgroup label="Giọng Chuẩn Edge-TTS">
-                                            <option value="female_hoaimy">Hoài My (Nữ chuẩn - vi-VN-HoaiMyNeural)</option>
-                                            <option value="male_namminh">Nam Minh (Nam chuẩn - vi-VN-NamMinhNeural)</option>
-                                        </optgroup>
-                                    </select>
-                                </div>
-                                <button type="button" id="btn-shared-preview-voice" class="preview-btn">
-                                    <i class="fa-solid fa-volume-high"></i> <span>Nghe thử</span>
-                                </button>
-                            </div>
-                        </div>
-                        <div class="input-group">
-                            <label for="shared-voice-rate">Tốc độ đọc mặc định</label>
-                            <select id="shared-voice-rate">
-                                <option value="-10%">Chậm hơn (-10%)</option>
-                                <option value="+0%" selected>Chuẩn (+0%)</option>
-                                <option value="+10%">Nhanh hơn (+10%)</option>
-                                <option value="+20%">Nhanh (+20%)</option>
-                            </select>
-                        </div>
-                    </div>
-
-                    <div class="card settings-card">
-                        <h3 class="card-heading"><i class="fa-solid fa-volume-high"></i> Cân bằng Âm lượng Video</h3>
-                        <div class="volume-slider">
-                            <div class="slider-labels">
-                                <span>Giọng lồng tiếng Việt (TTS)</span>
-                                <span id="shared-tts-vol-val">100%</span>
-                            </div>
-                            <input type="range" id="shared-tts-vol" min="0" max="1" step="0.05" value="1.0">
-                        </div>
-                        <div class="volume-slider">
-                            <div class="slider-labels">
-                                <span>Nhạc nền/Âm thanh gốc (Background)</span>
-                                <span id="shared-bg-vol-val">15%</span>
-                            </div>
-                            <input type="range" id="shared-bg-vol" min="0" max="1" step="0.05" value="0.15">
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Subpane 2: Cookie Bilibili -->
-            <div class="subpane-content d-none" id="subpane-cookie">
-                <div class="card settings-card">
-                    <h3 class="card-heading"><i class="fa-solid fa-cookie"></i> Bilibili SESSDATA Cookie</h3>
-                    <div class="input-group">
-                        <label for="shared-bilibili-cookie">Chuỗi Cookie xác thực trình duyệt</label>
-                        <div class="textarea-wrapper">
-                            <textarea id="shared-bilibili-cookie" placeholder="SESSDATA=xxxxxx; hoặc dán toàn bộ chuỗi Cookie từ trình duyệt..."></textarea>
-                        </div>
-                    </div>
-                    <p class="input-desc">Nhập giá trị này để vượt qua lỗi chặn HTTP 412 của Bilibili và tải video chất lượng cao 1080p.</p>
-                </div>
-            </div>
-
-            <!-- Subpane 3: TTS Studio -->
-            <div class="subpane-content d-none" id="subpane-tts">
-                <div class="card settings-card tts-studio-card">
-                    <h3 class="card-heading"><i class="fa-solid fa-bullhorn"></i> Tiện ích Đọc Văn Bản Tự Do (TTS Studio)</h3>
-                    <p class="input-desc">Gõ hoặc dán bất kỳ đoạn văn bản tiếng Việt nào để AI đọc trực tiếp và tải file âm thanh MP3 về máy.</p>
-                    <div class="textarea-wrapper">
-                        <textarea id="tts-studio-text" rows="3" placeholder="Nhập văn bản bạn muốn đọc thử ở đây..."></textarea>
-                    </div>
-                    <div class="action-buttons mt-3">
-                        <button type="button" id="btn-studio-play" class="primary-btn"><i class="fa-solid fa-play"></i> <span>Đọc Trực Tiếp</span></button>
-                        <button type="button" id="btn-studio-download" class="secondary-btn"><i class="fa-solid fa-download"></i> <span>Tải File MP3</span></button>
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <footer>
-            <p id="i18n-footer">Made with <i class="fa-solid fa-heart"></i> &middot; Chạy hoàn toàn trên máy local của bạn</p>
-        </footer>
-    </div>
-
-    <!-- MODAL: QUẢN LÝ DỰ ÁN (PROJECT MANAGER) -->
-    <div class="studio-modal-backdrop d-none" id="modal-projects">
-        <div class="studio-modal-dialog">
-            <div class="studio-modal-header">
-                <div class="modal-title-group">
-                    <i class="fa-solid fa-folder-tree icon-purple"></i>
-                    <h3>Quản Lý Dự Án</h3>
-                </div>
-                <button type="button" class="modal-close-btn" id="btn-close-project-modal" title="Đóng">
-                    <i class="fa-solid fa-xmark"></i>
-                </button>
-            </div>
-            <div class="studio-modal-body">
-                <div class="project-modal-toolbar">
-                    <div class="project-search-wrapper">
-                        <i class="fa-solid fa-magnifying-glass"></i>
-                        <input type="text" id="project-search-input" placeholder="Tìm kiếm theo tên dự án hoặc link...">
-                    </div>
-                    <button type="button" class="primary-btn btn-sm" id="btn-modal-create-new">
-                        <i class="fa-solid fa-plus"></i> Tạo Dự Án Mới
-                    </button>
-                </div>
-                
-                <div class="project-list-container" id="project-list-container">
-                    <!-- Dynamic project cards inserted via JS -->
-                </div>
-                
-                <div class="project-list-empty d-none" id="project-list-empty">
-                    <i class="fa-solid fa-folder-open empty-icon"></i>
-                    <p>Chưa có dự án nào được lưu.</p>
-                    <span>Hãy tạo dự án mới hoặc bắt đầu dịch video để hệ thống tự động lưu trữ!</span>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <!-- MODAL: HỘP THOẠI XÁC NHẬN (CONFIRM DIALOG) -->
-    <div class="studio-modal-backdrop d-none" id="modal-confirm">
-        <div class="studio-modal-dialog modal-dialog-sm">
-            <div class="studio-modal-header">
-                <div class="modal-title-group">
-                    <i class="fa-solid fa-triangle-exclamation icon-yellow" id="confirm-modal-icon"></i>
-                    <h3 id="confirm-modal-title">Xác Nhận Thao Tác</h3>
-                </div>
-                <button type="button" class="modal-close-btn" id="btn-confirm-cancel-x" title="Đóng">
-                    <i class="fa-solid fa-xmark"></i>
-                </button>
-            </div>
-            <div class="studio-modal-body">
-                <p id="confirm-modal-message" class="confirm-message-text">Bạn có chắc chắn muốn thực hiện thao tác này?</p>
-            </div>
-            <div class="studio-modal-footer">
-                <button type="button" class="secondary-btn" id="btn-confirm-cancel">Hủy Bỏ</button>
-                <button type="button" class="primary-btn btn-accent" id="btn-confirm-ok">Đồng Ý</button>
-            </div>
-        </div>
-    </div>
-
-    <!-- Main JS -->
-    <!-- MODAL: XUẤT / NHẬP FILE SRT TIẾNG TRUNG - TIẾNG VIỆT -->
-    <div class="studio-modal-backdrop d-none" id="modal-srt-import">
-        <div class="studio-modal-dialog" style="max-width: 680px;">
-            <div class="studio-modal-header">
-                <div class="modal-title-group">
-                    <i class="fa-solid fa-language icon-purple"></i>
-                    <h3>Xuất SRT Tiếng Trung &amp; Gắn SRT Tiếng Việt</h3>
-                </div>
-                <button type="button" class="modal-close-btn" id="btn-close-srt-modal" title="Đóng">
-                    <i class="fa-solid fa-xmark"></i>
-                </button>
-            </div>
-            <div class="studio-modal-body" style="display: flex; flex-direction: column; gap: 1rem;">
-                <div style="background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.1); border-radius: 8px; padding: 0.85rem 1rem; display: flex; align-items: center; justify-content: space-between; gap: 0.75rem; flex-wrap: wrap;">
-                    <div style="font-size: 0.88rem; color: #cbd5e1;">
-                        <strong>Bước A:</strong> Lấy phụ đề gốc Tiếng Trung (tải file <code>.srt</code> hoặc copy nhanh):
-                    </div>
-                    <div style="display: flex; gap: 0.5rem;">
-                        <button type="button" class="secondary-btn btn-sm" id="btn-modal-copy-zh-srt">
-                            <i class="fa-solid fa-copy"></i> Copy SRT Trung
-                        </button>
-                        <button type="button" class="secondary-btn btn-sm" id="btn-modal-download-zh-srt">
-                            <i class="fa-solid fa-download"></i> Tải File SRT Trung
-                        </button>
-                    </div>
-                </div>
-
-                <div style="display: flex; align-items: center; justify-content: space-between; gap: 0.75rem; flex-wrap: wrap;">
-                    <label for="textarea-import-srt" style="font-weight: 600; font-size: 0.92rem; color: #f8fafc;">
-                        Bước B: Chọn file <code>.srt</code> Tiếng Việt hoặc dán trực tiếp nội dung vào đây:
-                    </label>
-                    <div>
-                        <input type="file" id="input-file-srt-vi" accept=".srt,.txt" class="d-none">
-                        <button type="button" class="primary-btn btn-sm" id="btn-choose-srt-file" style="background: rgba(56, 189, 248, 0.2); border: 1px solid #38bdf8; color: #38bdf8;">
-                            <i class="fa-solid fa-folder-open"></i> Chọn File .SRT Từ Máy...
-                        </button>
-                    </div>
-                </div>
-
-                <div class="textarea-wrapper">
-                    <textarea id="textarea-import-srt" rows="10" style="font-family: monospace; font-size: 0.85rem; line-height: 1.45;" placeholder="Dán nội dung file .SRT tiếng Việt vào đây (hoặc nhấn 'Chọn File .SRT Từ Máy...')"></textarea>
-                </div>
-                <p style="font-size: 0.8rem; color: #94a3b8; margin: 0;">
-                    <i class="fa-solid fa-circle-info"></i> Hỗ trợ cả định dạng chuẩn <code>.srt</code> (có mốc thời gian) lẫn danh sách câu dịch theo từng dòng. Hệ thống sẽ tự động khớp vào từng khung thời gian và tạo lại giọng đọc AI mới.
-                </p>
-            </div>
-            <div class="studio-modal-footer">
-                <button type="button" class="secondary-btn" id="btn-cancel-srt-modal">Đóng</button>
-                <button type="button" class="primary-btn btn-accent" id="btn-apply-srt-import">
-                    <i class="fa-solid fa-check"></i> Gắn Bản Dịch Vào Dự Án
-                </button>
-            </div>
-        </div>
-    </div>
-
-    <script src="app.js?v=44"></script>
-</body>
-</html>
+<!DOCTYPE html>
+
+<html lang="vi">
+
+<head>
+    <meta charset="UTF-8">
+
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <title>AI Video Dubber - Dịch Thuật & Lồng Tiếng Thông Minh</title>
+
+    <!-- Google Fonts -->
+
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+
+    <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@700;800;900&family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+
+    <!-- FontAwesome Icons -->
+
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+
+    <!-- Custom CSS -->
+
+    <link rel="stylesheet" href="style.css?v=50">
+
+</head>
+
+<body>
+
+    <div class="background-decor">
+
+        <div class="circle circle-1"></div>
+
+        <div class="circle circle-2"></div>
+
+    </div>
+
+
+
+    <div class="app-container">
+
+        <header>
+
+            <div class="header-top">
+
+                <div class="logo">
+
+                    <i class="fa-solid fa-wand-magic-sparkles icon-glow"></i>
+
+                    <h1>AI Video <span>Dubber Studio</span></h1>
+
+                </div>
+
+                <div class="lang-switch">
+
+                    <button type="button" id="btn-lang-vi" class="lang-btn active">VI</button>
+
+                    <span class="lang-divider">|</span>
+
+                    <button type="button" id="btn-lang-en" class="lang-btn">EN</button>
+
+                </div>
+
+            </div>
+
+            <p class="subtitle" id="i18n-subtitle">Dịch thuật, xóa sub cũ, tạo phụ đề CapCut & lồng tiếng thông minh</p>
+
+
+
+            <!-- 3 Main Navigation Tabs -->
+
+            <nav class="tabs-nav">
+
+                <button type="button" class="tab-btn active" data-tab="tab-ocr" id="tab-btn-ocr">
+
+                    <i class="fa-solid fa-wand-magic-sparkles"></i> <span id="i18n-tab-ocr">Studio Dựng Từng Bước</span>
+
+                </button>
+
+                <button type="button" class="tab-btn" data-tab="tab-subtitles" id="tab-btn-subtitles">
+
+                    <i class="fa-solid fa-palette"></i> <span id="i18n-tab-subtitles">Kiểu Phụ Đề (CapCut)</span>
+
+                </button>
+
+                <button type="button" class="tab-btn" data-tab="tab-settings" id="tab-btn-settings">
+
+                    <i class="fa-solid fa-sliders"></i> <span id="i18n-tab-settings">Cài Đặt Hệ Thống</span>
+
+                </button>
+
+            </nav>
+
+        </header>
+
+
+
+        <!-- Main Workspace -->
+
+        <main class="studio-workspace" id="workspace-layout">
+
+            
+
+            <!-- THANH QUẢN LÝ DỰ ÁN (PROJECT CONTROL BAR) -->
+
+            <div class="card project-bar" id="project-bar">
+
+                <div class="project-bar-left">
+
+                    <div class="project-icon-badge">
+
+                        <i class="fa-solid fa-folder-closed"></i>
+
+                    </div>
+
+                    <div class="project-info-group">
+
+                        <div class="project-name-wrapper">
+
+                            <span class="project-name" id="project-name-display" title="Nhấp để đổi tên dự án">Chưa có dự án</span>
+
+                            <input type="text" class="project-name-input d-none" id="project-name-input" maxlength="60" placeholder="Nhập tên dự án...">
+
+                            <button type="button" class="btn-icon-subtle" id="btn-edit-project-name" title="Đổi tên dự án">
+
+                                <i class="fa-solid fa-pen"></i>
+
+                            </button>
+
+                        </div>
+
+                        <div class="project-meta-line">
+
+                            <span class="project-save-status" id="project-save-status">
+
+                                <i class="fa-solid fa-circle-check"></i> <span id="project-save-text">Đã tự động lưu</span>
+
+                            </span>
+
+                            <span class="project-meta-dot">•</span>
+
+                            <span class="project-step-badge" id="project-step-indicator">Bước 1: Tải Video</span>
+
+                        </div>
+
+                    </div>
+
+                </div>
+
+                <div class="project-bar-right">
+
+                    <button type="button" class="secondary-btn btn-sm" id="btn-project-open">
+
+                        <i class="fa-solid fa-folder-tree"></i> <span>Mở Dự Án...</span>
+
+                    </button>
+
+                    <button type="button" class="secondary-btn btn-sm" id="btn-project-new">
+
+                        <i class="fa-solid fa-plus"></i> <span>Dự Án Mới</span>
+
+                    </button>
+
+                    <button type="button" class="primary-btn btn-sm btn-accent" id="btn-header-quick-export" title="Xuất và tải video đã ghép (MP4)">
+
+                        <i class="fa-solid fa-download"></i> <span>Tải Video MP4</span>
+
+                    </button>
+
+                    <button type="button" class="secondary-btn btn-sm" id="btn-header-download-audio" style="border-color: rgba(168, 85, 247, 0.45); color: #c084fc;" title="Tải riêng file âm thanh chỉ có lời dịch tiếng Việt (MP3)">
+
+                        <i class="fa-solid fa-file-audio"></i> <span>Tải Audio MP3</span>
+
+                    </button>
+
+                    <button type="button" class="primary-btn btn-sm" id="btn-project-save-manual" title="Lưu ngay lập tức">
+
+                        <i class="fa-solid fa-floppy-disk"></i> <span>Lưu Ngay</span>
+
+                    </button>
+
+                </div>
+
+            </div>
+
+
+
+            <!-- HÀNG TRÊN: TAB BÊN TRÁI & MÀN HÌNH XEM TRƯỚC BÊN PHẢI -->
+
+            <div class="studio-top-row">
+
+                <!-- CỘT TRÁI: Thanh Tab Điều Hướng 4 Bước (Vùng khung đỏ) -->
+
+                <aside class="card studio-step-sidebar">
+
+                    <div class="sidebar-header">
+
+                        <i class="fa-solid fa-layer-group icon-purple"></i>
+
+                        <span class="sidebar-header-title">Quy Trình 4 Bước</span>
+
+                    </div>
+
+
+
+                    <div class="studio-step-nav vertical">
+
+                        <button type="button" class="step-tab-btn active" data-step="1" id="tab-step-1">
+
+                            <span class="step-badge">1</span>
+
+                            <div class="step-tab-info">
+
+                                <span class="step-title">Tải Video</span>
+
+                                <span class="step-desc">Nhập link Bilibili / YT</span>
+
+                            </div>
+
+                        </button>
+
+                        <button type="button" class="step-tab-btn" data-step="2" id="tab-step-2">
+
+                            <span class="step-badge">2</span>
+
+                            <div class="step-tab-info">
+
+                                <span class="step-title">Quét OCR</span>
+
+                                <span class="step-desc">Bóc tách phụ đề gốc</span>
+
+                            </div>
+
+                        </button>
+
+                        <button type="button" class="step-tab-btn" data-step="3" id="tab-step-3">
+
+                            <span class="step-badge">3</span>
+
+                            <div class="step-tab-info">
+
+                                <span class="step-title">Dịch, Sub &amp; Logo</span>
+
+                                <span class="step-desc">Giọng AI, CapCut &amp; Logo</span>
+
+                            </div>
+
+                        </button>
+
+                        <button type="button" class="step-tab-btn" data-step="4" id="tab-step-4">
+
+                            <span class="step-badge">4</span>
+
+                            <div class="step-tab-info">
+
+                                <span class="step-title">Xuất Video &amp; Logo</span>
+
+                                <span class="step-desc">Ghép sub, chèn logo &amp; tải MP4</span>
+
+                            </div>
+
+                        </button>
+
+                    </div>
+
+
+
+                    <div class="sidebar-footer-hint">
+
+                        <i class="fa-solid fa-circle-info"></i>
+
+                        <span>Thực hiện tuần tự 4 bước để hoàn thiện video.</span>
+
+                    </div>
+
+                </aside>
+
+
+
+                <!-- CỘT PHẢI: Màn hình xem trước & Trạng thái -->
+
+                <section class="card output-panel">
+
+                    <h2 class="section-title"><i class="fa-solid fa-circle-nodes"></i> <span id="i18n-status-title">Màn hình xem trước & Trạng thái</span></h2>
+
+
+
+                    <!-- 1. Interactive Video Player & Bounding Box Canvas Overlay -->
+
+                    <div class="canvas-video-wrapper" id="canvas-video-wrapper">
+
+                        <div class="video-container-relative" id="video-container-relative">
+
+                            <video id="preview-video-element" controls preload="metadata"></video>
+
+                            
+
+                            <!-- Studio Watermark Placeholder when Idle -->
+
+                            <div class="canvas-watermark" id="canvas-watermark">
+
+                                <i class="fa-solid fa-film"></i>
+
+                                <span>Màn hình xem trước & Định vị Bounding Box</span>
+
+                            </div>
+
+
+
+                            <!-- Interactive Drag & Drop Overlay -->
+
+                            <div class="canvas-overlay" id="canvas-overlay">
+
+                                <!-- RED BOX: Mask & OCR Box (Hidden initially until Step 2) -->
+
+                                <div class="bbox bbox-mask d-none" id="bbox-mask" style="left: 10%; top: 78%; width: 80%; height: 14%;">
+
+                                    <span class="bbox-badge badge-mask"><i class="fa-solid fa-eraser"></i> Vùng che & OCR</span>
+
+                                    <div class="bbox-handle handle-nw" data-handle="nw"></div>
+
+                                    <div class="bbox-handle handle-ne" data-handle="ne"></div>
+
+                                    <div class="bbox-handle handle-sw" data-handle="sw"></div>
+
+                                    <div class="bbox-handle handle-se" data-handle="se"></div>
+
+                                </div>
+
+
+
+                                <!-- GREEN BOX: Subtitle Placement Box (Hidden initially until Step 3) -->
+
+                                <div class="bbox bbox-sub d-none" id="bbox-sub" style="left: 10%; top: 78%; width: 80%; height: 14%;">
+
+                                    <span class="bbox-badge badge-sub"><i class="fa-solid fa-closed-captioning"></i> Vị trí Sub Việt</span>
+
+                                    <div class="bbox-handle handle-nw" data-handle="nw"></div>
+
+                                    <div class="bbox-handle handle-ne" data-handle="ne"></div>
+
+                                    <div class="bbox-handle handle-sw" data-handle="sw"></div>
+
+                                    <div class="bbox-handle handle-se" data-handle="se"></div>
+
+                                    <div class="bbox-sub-preview-text" id="bbox-sub-preview-text">Phụ đề tiếng Việt mẫu</div>
+
+                                </div>
+                                <!-- BLUE/AMBER BOX: Logo / Watermark Overlay Box -->
+                                <div class="bbox bbox-logo d-none" id="bbox-logo" style="left: 78%; top: 5%; width: 18%; height: 12%;">
+                                    <span class="bbox-badge badge-logo"><i class="fa-solid fa-stamp"></i> Logo / Watermark</span>
+                                    <div class="bbox-handle handle-nw" data-handle="nw"></div>
+                                    <div class="bbox-handle handle-ne" data-handle="ne"></div>
+                                    <div class="bbox-handle handle-sw" data-handle="sw"></div>
+                                    <div class="bbox-handle handle-se" data-handle="se"></div>
+                                    <div class="bbox-logo-inner" id="bbox-logo-inner">
+                                        <img id="bbox-logo-img" class="bbox-logo-img d-none" alt="Logo Preview" />
+                                        <span id="bbox-logo-placeholder" class="bbox-logo-placeholder"><i class="fa-solid fa-image"></i> Chưa có Logo</span>
+                                    </div>
+                                </div>
+
+                            </div>
+
+                        </div>
+
+                            <div class="canvas-hint-bar">
+                            <div style="display: flex; align-items: center; gap: 0.5rem; flex: 1;">
+                                <i class="fa-solid fa-arrows-up-down-left-right"></i> 
+                                <span>Kéo thân hộp để di chuyển &bull; Kéo 4 góc để co giãn &bull; Căn chỉnh 3 lớp: Sub, Che mờ &amp; Logo</span>
+                            </div>
+                            <button type="button" class="btn-subtle-toggle" id="btn-quick-canvas-logo" title="Bật/Tắt và căn chỉnh Logo thương hiệu trên video" style="margin-left: auto;">
+                                <i class="fa-solid fa-stamp"></i> Khung Logo
+                            </button>
+                        </div>
+
+
+
+                        <!-- CapCut-style Interactive Visual Timeline Editor Suite -->
+
+                        <div class="timeline-editor-card" id="timeline-editor-card">
+
+                            <!-- 1. Timeline Action Toolbar -->
+
+                            <div class="timeline-toolbar">
+
+                                <div class="tl-tools-group">
+
+                                    <button type="button" class="btn-tl-tool btn-tl-play" id="btn-tl-play" title="Phát / Tạm dừng (Space)">
+
+                                        <i class="fa-solid fa-play" id="icon-tl-play"></i>
+
+                                    </button>
+
+                                    <div class="timeline-timecode-box">
+
+                                        <span id="tl-current-time" class="tl-time-active">00:00.0</span>
+
+                                        <span class="tl-time-sep">/</span>
+
+                                        <span id="tl-total-time" class="tl-time-total">00:00.0</span>
+
+                                    </div>
+
+                                </div>
+
+
+
+                                <div class="tl-tools-group tl-tools-actions">
+
+                                    <button type="button" class="btn-tl-tool btn-tl-accent" id="btn-tl-split" title="Tách câu tại vị trí kim đọc (Phím S hoặc C)">
+
+                                        <i class="fa-solid fa-scissors"></i> <span>Tách đoạn (S)</span>
+
+                                    </button>
+
+                                    <button type="button" class="btn-tl-tool" id="btn-tl-merge" title="Gộp đoạn được chọn với câu tiếp theo">
+
+                                        <i class="fa-solid fa-code-merge"></i> <span>Gộp câu</span>
+
+                                    </button>
+
+                                    <button type="button" class="btn-tl-tool btn-tl-danger" id="btn-tl-delete" title="Xóa đoạn đang chọn (Phím Delete)">
+
+                                        <i class="fa-solid fa-trash-can"></i> <span>Xóa</span>
+
+                                    </button>
+
+                                </div>
+
+
+
+                                <div class="tl-tools-group tl-tools-right">
+
+                                    <button type="button" class="btn-tl-tool btn-tl-dub active" id="btn-tl-toggle-dub" title="Bật/Tắt phát giọng lồng tiếng khi xem trước video">
+
+                                        <i class="fa-solid fa-headphones"></i> <span id="lbl-tl-dub">Lồng tiếng (BẬT)</span>
+
+                                    </button>
+
+                                    <button type="button" class="btn-tl-icon" id="btn-tl-refresh-dub" title="Tạo/Cập nhật âm thanh lồng tiếng sau khi sửa câu">
+
+                                        <i class="fa-solid fa-arrows-rotate"></i>
+
+                                    </button>
+
+                                    <button type="button" class="btn-tl-tool btn-tl-audio" id="btn-tl-preview-audio" title="Nghe thử giọng đọc câu đang chọn">
+
+                                        <i class="fa-solid fa-volume-high"></i> <span>Nghe câu</span>
+
+                                    </button>
+
+                                    <button type="button" class="btn-tl-tool btn-tl-accent" id="btn-tl-quick-export" title="Xuất và tải video đã ghép (MP4) ngay tại đây">
+
+                                        <i class="fa-solid fa-download" id="icon-tl-quick-export"></i> <span id="lbl-tl-quick-export">Tải Video</span>
+
+                                    </button>
+
+                                    <button type="button" class="btn-tl-tool" id="btn-tl-download-audio" style="border-color: rgba(168, 85, 247, 0.45); color: #c084fc;" title="Tải riêng file âm thanh chỉ có lời dịch tiếng Việt (MP3)">
+
+                                        <i class="fa-solid fa-file-audio"></i> <span>Tải Audio</span>
+
+                                    </button>
+
+                                    <div class="tl-zoom-box">
+
+                                        <button type="button" class="btn-tl-icon" id="btn-tl-zoom-out" title="Thu nhỏ timeline"><i class="fa-solid fa-minus"></i></button>
+
+                                        <span id="tl-zoom-val" class="tl-zoom-text">100%</span>
+
+                                        <button type="button" class="btn-tl-icon" id="btn-tl-zoom-in" title="Phóng to timeline"><i class="fa-solid fa-plus"></i></button>
+
+                                        <button type="button" class="btn-tl-icon" id="btn-tl-zoom-fit" title="Vừa khung hình"><i class="fa-solid fa-arrows-left-right-to-line"></i></button>
+
+                                    </div>
+
+                                </div>
+
+                            </div>
+
+
+
+                            <!-- 2. Scrollable Timeline Workspace -->
+
+                            <div class="timeline-scroll-container" id="timeline-scroll-container">
+
+                                <div class="timeline-workspace" id="timeline-workspace">
+
+                                    <!-- Time Ruler (Thước đo thời gian) -->
+
+                                    <div class="timeline-ruler" id="timeline-ruler">
+
+                                        <!-- Dynamic seconds ticks -->
+
+                                    </div>
+
+
+
+                                    <!-- Red Draggable Playhead Needle -->
+
+                                    <div class="timeline-playhead" id="timeline-playhead">
+
+                                        <div class="playhead-head"><i class="fa-solid fa-caret-down"></i></div>
+
+                                        <div class="playhead-line"></div>
+
+                                    </div>
+
+
+
+                                    <!-- Timeline Tracks -->
+
+                                    <div class="timeline-tracks" id="timeline-tracks">
+
+                                        <!-- Track 1: Subtitle & TTS Voiceover Blocks -->
+
+                                        <div class="tl-track-row" id="tl-track-sub">
+
+                                            <div class="tl-track-label"><i class="fa-solid fa-closed-captioning"></i> Sub &amp; Thoại</div>
+
+                                            <div class="tl-track-lane" id="tl-lane-sub">
+
+                                                <!-- Dynamic clip blocks -->
+
+                                            </div>
+
+                                        </div>
+
+
+
+                                        <!-- Track 2: Video Slices / Waveform Track -->
+
+                                        <div class="tl-track-row" id="tl-track-video">
+
+                                            <div class="tl-track-label"><i class="fa-solid fa-film"></i> Video gốc</div>
+
+                                            <div class="tl-track-lane" id="tl-lane-video">
+
+                                                <!-- Dynamic video track blocks -->
+
+                                            </div>
+
+                                        </div>
+
+                                    </div>
+
+                                </div>
+
+                            </div>
+
+
+
+                            <!-- 3. Floating Quick Inspector Bar for Selected Clip -->
+
+                            <div class="timeline-clip-inspector d-none" id="timeline-clip-inspector">
+
+                                <div class="inspector-top">
+
+                                    <div class="inspector-badge-title">
+
+                                        <i class="fa-solid fa-pen-to-square"></i>
+
+                                        <span id="insp-clip-index">Đoạn #1</span>
+
+                                        <span class="insp-timing-tag" id="insp-clip-timing">00:00.4 - 00:01.6 (1.2s)</span>
+
+                                    </div>
+
+                                    <div class="inspector-top-actions">
+
+                                        <button type="button" class="btn-sm secondary-btn" id="btn-insp-listen" title="Nghe thử TTS câu này"><i class="fa-solid fa-volume-high"></i> Nghe TTS</button>
+
+                                        <button type="button" class="btn-close-insp" id="btn-insp-close" title="Đóng bảng"><i class="fa-solid fa-xmark"></i></button>
+
+                                    </div>
+
+                                </div>
+
+                                <div class="inspector-controls-grid">
+
+                                    <div class="insp-control-item item-trans">
+
+                                        <label>Bản dịch Tiếng Việt:</label>
+
+                                        <input type="text" id="insp-input-translation" class="insp-input-text" placeholder="Nhập bản dịch tiếng Việt cho câu này...">
+
+                                    </div>
+
+                                    <div class="insp-control-item">
+
+                                        <label>Tốc độ đọc:</label>
+
+                                        <select id="insp-select-speed" class="insp-select">
+
+                                            <option value="0.9">0.9x (Chậm)</option>
+
+                                            <option value="1.0" selected>1.0x (Chuẩn)</option>
+
+                                            <option value="1.1">1.1x</option>
+
+                                            <option value="1.2">1.2x</option>
+
+                                            <option value="1.3">1.3x (Nhanh)</option>
+
+                                        </select>
+
+                                    </div>
+
+                                    <div class="insp-control-item item-time">
+
+                                        <label>Bắt đầu (s):</label>
+
+                                        <input type="number" step="0.1" min="0" id="insp-input-start" class="insp-input-num">
+
+                                    </div>
+
+                                    <div class="insp-control-item item-time">
+
+                                        <label>Kết thúc (s):</label>
+
+                                        <input type="number" step="0.1" min="0" id="insp-input-end" class="insp-input-num">
+
+                                    </div>
+
+                                </div>
+
+                            </div>
+
+                        </div>
+
+                    </div>
+
+
+
+                    <!-- 2. Idle State: Sleek Studio Status Deck -->
+
+                    <div class="studio-status-deck" id="state-idle">
+
+                        <div class="status-deck-left">
+
+                            <span class="status-pill status-ready"><i class="fa-solid fa-circle-dot"></i> Studio Sẵn Sàng</span>
+
+                            <span class="status-deck-text" id="i18n-idle-tip">Nhập link video ở panel bên dưới và nhấn nút "Tải Video Vào Studio" để bắt đầu.</span>
+
+                        </div>
+
+                        <div class="status-deck-right">
+
+                            <span class="meta-tag"><i class="fa-solid fa-expand"></i> Khung hình 16:9</span>
+
+                            <span class="meta-tag"><i class="fa-solid fa-layer-group"></i> 3 Lớp Bounding Box (Sub / Che / Logo)</span>
+                            <span class="meta-tag" id="meta-tag-logo"><i class="fa-solid fa-stamp"></i> Ghép Logo</span>
+
+                        </div>
+
+                    </div>
+
+
+
+                    <!-- 3. Processing State: Modern Progress Console & Horizontal Timeline -->
+
+                    <div class="status-state-card d-none" id="state-processing">
+
+                        <div class="progress-header">
+
+                            <div class="progress-header-left">
+
+                                <span id="status-badge" class="badge badge-processing"><i class="fa-solid fa-gear fa-spin"></i> Đang xử lý</span>
+
+                                <p id="status-message" class="status-message-text">Đang chuẩn bị tác vụ...</p>
+
+                            </div>
+
+                            <span id="progress-percent" class="progress-percent-text">0%</span>
+
+                        </div>
+
+
+
+                        <div class="progress-bar-container">
+
+                            <div class="progress-bar-fill" id="progress-bar" style="width: 0%"></div>
+
+                        </div>
+
+
+
+                        <!-- Steps Horizontal Timeline -->
+
+                        <div class="timeline">
+
+                            <div class="timeline-item" id="step-download">
+
+                                <div class="step-indicator"><i class="fa-solid fa-download"></i></div>
+
+                                <div class="step-content">1. Tải video & tách âm</div>
+
+                            </div>
+
+                            <div class="timeline-item" id="step-translate">
+
+                                <div class="step-indicator"><i class="fa-solid fa-language"></i></div>
+
+                                <div class="step-content">2. Quét OCR / Whisper & Dịch</div>
+
+                            </div>
+
+                            <div class="timeline-item" id="step-tts">
+
+                                <div class="step-indicator"><i class="fa-solid fa-microphone-lines"></i></div>
+
+                                <div class="step-content">3. Tạo giọng đọc AI</div>
+
+                            </div>
+
+                            <div class="timeline-item" id="step-merge">
+
+                                <div class="step-indicator"><i class="fa-solid fa-video"></i></div>
+
+                                <div class="step-content">4. Che sub cũ & Xuất file</div>
+
+                            </div>
+
+                        </div>
+
+                    </div>
+
+
+
+                    <!-- 4. Success State -->
+
+                    <div class="status-state-card d-none" id="state-success">
+
+                        <div class="success-header">
+
+                            <i class="fa-solid fa-circle-check success-icon"></i>
+
+                            <h3 id="i18n-success-title">Dịch & Xuất Video Thành Công!</h3>
+
+                        </div>
+
+                        
+
+                        <div class="video-preview-container">
+
+                            <video id="video-preview" controls></video>
+
+                        </div>
+
+
+
+                        <div class="action-buttons-grid">
+
+                            <a id="download-btn" href="#" class="success-btn" download><i class="fa-solid fa-download"></i> <span>Tải Video MP4 Hoàn Thiện</span></a>
+
+                            <a id="download-srt-btn" href="#" class="primary-btn btn-secondary-accent" download><i class="fa-solid fa-file-lines"></i> <span>Tải Phụ Đề Chuẩn (.srt)</span></a>
+
+                            <button id="reset-btn" class="secondary-btn"><i class="fa-solid fa-rotate-left"></i> <span>Dịch Video Tiếp Theo</span></button>
+
+                        </div>
+
+                    </div>
+
+
+
+                    <!-- 5. Error State -->
+
+                    <div class="status-state-card d-none" id="state-error">
+
+                        <div class="error-header">
+
+                            <i class="fa-solid fa-circle-exclamation error-icon"></i>
+
+                            <h3 id="i18n-error-title">Đã xảy ra lỗi trong quá trình xử lý!</h3>
+
+                        </div>
+
+                        <div class="error-box">
+
+                            <p id="error-message">Mô tả chi tiết lỗi ở đây...</p>
+
+                        </div>
+
+                        <div class="action-buttons">
+
+                            <button id="retry-btn" class="secondary-btn"><i class="fa-solid fa-arrow-rotate-right"></i> <span>Thử Lại Tác Vụ</span></button>
+
+                        </div>
+
+                    </div>
+
+                </section>
+
+            </div>
+
+
+
+            <!-- HÀNG DƯỚI: NỘI DUNG CÁC THAO TÁC -->
+
+            <section class="card studio-action-panel">
+
+                <!-- STEP 1 CONTENT -->
+
+                <div class="step-tab-content active" id="content-step-1">
+
+                    <div class="step-intro-box">
+
+                        <h3 class="step-card-title"><i class="fa-solid fa-cloud-arrow-down icon-purple"></i> Bước 1: Tải Video Gốc</h3>
+
+                        <p class="step-card-desc">Nhập link Bilibili hoặc YouTube để tải video về máy và nạp lên màn hình xem trước.</p>
+
+                    </div>
+
+
+
+                    <div class="step-action-body">
+
+                        <div class="input-group">
+
+                            <div class="label-with-action">
+
+                                <label for="video-url-input">Link video Bilibili / YouTube</label>
+
+                                <button type="button" id="btn-paste-url" class="text-action-btn" title="Dán từ Clipboard">
+
+                                    <i class="fa-solid fa-paste"></i> <span>Dán</span>
+
+                                </button>
+
+                            </div>
+
+                            <div class="url-input-wrapper">
+
+                                <i class="fa-solid fa-link input-icon"></i>
+
+                                <input type="text" id="video-url-input" placeholder="https://www.bilibili.com/video/BV... hoặc link YouTube" required>
+
+                                <button type="button" id="btn-clear-url" class="clear-input-btn d-none" title="Xóa link">
+
+                                    <i class="fa-solid fa-xmark"></i>
+
+                                </button>
+
+                            </div>
+
+                        </div>
+
+
+
+                        <div class="collapsible-toggle-wrap">
+
+                            <button type="button" class="collapsible-btn" id="btn-toggle-cookie">
+
+                                <i class="fa-solid fa-cookie-bite"></i> <span>Cookie Bilibili (Tùy chọn cho video VIP / HD)</span> <i class="fa-solid fa-chevron-down toggle-arrow"></i>
+
+                            </button>
+
+                            <div class="collapsible-content d-none" id="cookie-panel">
+
+                                <input type="text" id="bilibili-cookie-input" placeholder="Dán SESSDATA hoặc chuỗi cookie nếu video yêu cầu đăng nhập...">
+
+                            </div>
+
+                        </div>
+
+
+
+                        <div class="step-btn-action-row">
+
+                            <button type="button" id="btn-step1-download" class="primary-btn btn-action-large"><i class="fa-solid fa-download"></i> 1. Tải Video Vào Studio</button>
+
+                        </div>
+
+
+
+                        <div class="step-mini-progress d-none" id="step1-progress-box">
+
+                            <div class="progress-bar-container"><div class="progress-bar-fill" id="step1-progress-bar" style="width: 0%"></div></div>
+
+                            <div class="step-progress-labels"><span id="step1-progress-msg">Đang chuẩn bị...</span><span id="step1-progress-pct">0%</span></div>
+
+                        </div>
+
+                    </div>
+
+                </div>
+
+
+
+                <!-- STEP 2 CONTENT -->
+
+                <div class="step-tab-content d-none" id="content-step-2">
+
+                    <div class="step-intro-box">
+
+                        <h3 class="step-card-title"><i class="fa-solid fa-crop-simple icon-purple"></i> Bước 2: Quét Phụ Đề Gốc &amp; Che Chữ Cũ</h3>
+
+                        <p class="step-card-desc">Căn khung đỏ đè lên dòng chữ tiếng Trung trên màn hình xem trước. AI sẽ bóc tách phụ đề tự động.</p>
+
+                    </div>
+
+
+
+                    <div class="step-action-body">
+
+                        <div class="segmented-control">
+
+                            <button type="button" class="segmented-btn active" id="btn-mode-ocr" data-mode="ocr"><i class="fa-solid fa-crop-simple"></i> Quét OCR Màn Hình (Mặc định)</button>
+
+                            <button type="button" class="segmented-btn" id="btn-mode-whisper" data-mode="whisper"><i class="fa-solid fa-microphone-lines"></i> Whisper Giọng Nói</button>
+
+                        </div>
+
+
+
+                        <div id="step2-ocr-options">
+
+                            <div class="step-hint-box">
+
+                                <i class="fa-solid fa-lightbulb"></i> Khung đỏ đã hiện trên màn hình xem trước. Bạn hãy kéo khung đỏ đặt đúng vị trí dòng sub tiếng Trung để AI quét chuẩn xác.
+
+                            </div>
+
+                            <div class="toggle-row">
+
+                                <label class="switch-container">
+
+                                    <input type="checkbox" id="mask-enabled" checked>
+
+                                    <span class="switch-slider"></span>
+
+                                </label>
+
+                                <span class="toggle-label">Bật che phụ đề cũ (Masking - Mặc định bật)</span>
+
+                            </div>
+
+                            <div class="form-row-2col">
+
+                                <div class="input-group-sub">
+
+                                    <label for="mask-style">Kiểu che</label>
+
+                                    <select id="mask-style">
+
+                                        <option value="blur" selected>Làm mờ (Box Blur)</option>
+
+                                        <option value="solid">Dải nền tối (Solid Black)</option>
+
+                                    </select>
+
+                                </div>
+
+                                <div class="input-group-sub">
+
+                                    <label>Căn nhanh</label>
+
+                                    <button type="button" id="btn-preset-bottom" class="tool-btn-full" title="Căn chữ xuống đáy video">
+
+                                        <i class="fa-solid fa-arrow-down-wide-short"></i> Căn đáy chuẩn
+
+                                    </button>
+
+                                </div>
+
+                            </div>
+
+                        </div>
+
+
+
+                        <div id="step2-whisper-options" class="d-none">
+
+                            <div class="step-hint-box">
+
+                                <i class="fa-solid fa-info-circle"></i> Whisper sẽ bóc tách lời thoại trực tiếp từ âm thanh video mà không cần quét hình ảnh.
+
+                            </div>
+
+                        </div>
+
+
+
+                        <div class="step-btn-action-row">
+
+                            <button type="button" id="btn-step2-transcribe" class="primary-btn btn-action-large"><i class="fa-solid fa-wand-magic-sparkles"></i> 2. Bắt Đầu Quét Chữ &rarr;</button>
+
+                        </div>
+
+
+
+                        <div class="step-mini-progress d-none" id="step2-progress-box">
+
+                            <div class="progress-bar-container"><div class="progress-bar-fill" id="step2-progress-bar" style="width: 0%"></div></div>
+
+                            <div class="step-progress-labels"><span id="step2-progress-msg">Đang quét...</span><span id="step2-progress-pct">0%</span></div>
+
+                        </div>
+
+                    </div>
+
+                </div>
+
+
+
+                <!-- STEP 3 CONTENT -->
+
+                <div class="step-tab-content d-none" id="content-step-3">
+
+                    <div class="step-intro-box">
+
+                        <h3 class="step-card-title"><i class="fa-solid fa-closed-captioning icon-purple"></i> Bước 3: Dịch, Giọng Đọc AI &amp; Mẫu CapCut</h3>
+
+                        <p class="step-card-desc">Cấu hình giọng đọc tiếng Việt, mẫu phụ đề và kiểm tra bảng dịch chi tiết bên dưới.</p>
+
+                    </div>
+
+
+
+                    <div class="step-action-body">
+
+                        <div class="step3-controls-grid">
+
+                            <div class="input-group-sub">
+
+                                <label for="voice-select-step3"><i class="fa-solid fa-microphone"></i> Giọng đọc lồng tiếng (Voice)</label>
+
+                                <div class="voice-picker-row">
+
+                                    <select id="voice-select-step3">
+
+                                        <optgroup label="Giọng TikTok / CapCut (Đặc sắc & Siêu hot)">
+
+                                            <option value="capcut_cogaithoatngon" selected>🔥 Cô Gái Hoạt Ngôn (CapCut Hot TikTok)</option>
+
+                                            <option value="capcut_thanhnientutin">⚡ Thanh Niên Tự Tin (CapCut Recap Phim)</option>
+
+                                            <option value="capcut_nhongotngao">🌸 Nhỏ Ngọt Ngào (CapCut Nữ Dễ Thương)</option>
+
+                                            <option value="capcut_giongbe">👶 Giọng Bé (CapCut Trẻ Em)</option>
+
+                                            <option value="capcut_namtram">🎙️ Giọng Nam Trầm (CapCut Kể Chuyện)</option>
+
+                                            <option value="capcut_reviewphim">🎬 Review Phim (CapCut Nữ Truyền Cảm)</option>
+
+                                        </optgroup>
+
+                                        <optgroup label="Giọng Chuẩn Edge-TTS">
+
+                                            <option value="female_hoaimy">Hoài My (Nữ chuẩn - vi-VN-HoaiMyNeural)</option>
+
+                                            <option value="male_namminh">Nam Minh (Nam chuẩn - vi-VN-NamMinhNeural)</option>
+
+                                        </optgroup>
+
+                                    </select>
+
+                                    <button type="button" id="btn-preview-voice-step3" class="secondary-btn btn-icon" title="Nghe thử giọng mẫu"><i class="fa-solid fa-volume-high"></i></button>
+
+                                </div>
+
+                            </div>
+
+
+
+                            <div class="input-group-sub">
+
+                                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.35rem;">
+
+                                    <label for="rvc-model-select-step3" style="margin-bottom: 0;"><i class="fa-solid fa-wand-magic-sparkles"></i> Đổi âm sắc giọng (RVC Model)</label>
+
+                                    <button type="button" id="btn-refresh-rvc" class="secondary-btn btn-icon" style="width: auto; height: auto; padding: 2px 8px; font-size: 0.75rem;" title="Quét lại thư mục app/models/rvc">
+
+                                        <i class="fa-solid fa-rotate-right"></i> Quét lại
+
+                                    </button>
+
+                                </div>
+
+                                <div class="voice-picker-row">
+
+                                    <select id="rvc-model-select-step3">
+
+                                        <option value="none" selected>Không dùng (Chỉ giữ Edge-TTS gốc)</option>
+
+                                    </select>
+
+                                </div>
+
+                                <small id="rvc-status-hint" style="display: block; margin-top: 4px; font-size: 0.75rem; color: var(--text-muted);">
+
+                                    Thả file model <code>.pth</code> & <code>.index</code> vào thư mục <code>app/models/rvc/</code>.
+
+                                </small>
+
+                            </div>
+
+
+
+                            <div class="form-row-2col" id="rvc-pitch-row" style="display: none;">
+
+                                <div class="input-group-sub">
+
+                                    <label>Cao độ Pitch (F0 Shift): <span id="rvc-pitch-val">0</span> bán âm</label>
+
+                                    <input type="range" id="rvc-pitch-slider" min="-14" max="14" step="1" value="0">
+
+                                </div>
+
+                                <div class="input-group-sub" style="display: flex; align-items: center;">
+
+                                    <small style="color: var(--text-muted); font-size: 0.75rem;">+12: Nam &rarr; Nữ | -12: Nữ &rarr; Nam | 0: Giữ nguyên</small>
+
+                                </div>
+
+                            </div>
+
+
+
+                            <div class="form-row-2col">
+
+                                <div class="input-group-sub">
+
+                                    <label>Âm lượng nền gốc: <span id="bg-vol-label">15%</span></label>
+
+                                    <input type="range" id="bg-volume-slider" min="0" max="1" step="0.05" value="0.15">
+
+                                </div>
+
+                                <div class="input-group-sub">
+
+                                    <label>Âm giọng đọc AI: <span id="tts-vol-label">100%</span></label>
+
+                                    <input type="range" id="tts-volume-slider" min="0.5" max="2" step="0.1" value="1.0">
+
+                                </div>
+
+                            </div>
+
+
+
+                            <!-- Che Mờ Phụ Đề Tiếng Trung Cũ (Masking) ngay tại Bước 3 -->
+
+                            <div class="mask-quick-toolbar-step3">
+
+                                <div class="toolbar-label-row">
+
+                                    <span class="toolbar-label"><i class="fa-solid fa-eye-slash"></i> Che mờ phụ đề gốc cũ:</span>
+
+                                    <div style="display: flex; align-items: center; gap: 0.75rem;">
+
+                                        <button type="button" class="btn-subtle-toggle" id="btn-toggle-mask-box-preview" title="Bật/Tắt hiển thị khung đỏ quét cũ">
+
+                                            <i class="fa-solid fa-vector-square"></i> Hiện khung đỏ
+
+                                        </button>
+
+                                        <label class="switch-container">
+
+                                            <input type="checkbox" id="step3-mask-enabled" checked>
+
+                                            <span class="switch-slider"></span>
+
+                                        </label>
+
+                                    </div>
+
+                                </div>
+
+                                <div class="mask-style-options-step3" id="step3-mask-options">
+
+                                    <div class="mask-chip-row">
+
+                                        <button type="button" class="mask-chip active" data-style="blur">
+
+                                            <i class="fa-solid fa-wand-magic-sparkles"></i> Làm mờ kính mờ (Blur)
+
+                                        </button>
+
+                                        <button type="button" class="mask-chip" data-style="solid">
+
+                                            <i class="fa-solid fa-square"></i> Dải nền đen (Solid)
+
+                                        </button>
+
+                                    </div>
+
+                                    <div class="mask-preview-note">
+
+                                        <i class="fa-solid fa-circle-info"></i> Hiệu ứng làm mờ được mô phỏng trực tiếp trên video xem trước. Phụ đề tiếng Việt mới sẽ nổi bật trên nền mờ này khi xuất video.
+
+                                    </div>
+
+                                </div>
+
+                            </div>
+
+                            <!-- Ghép Logo / Watermark Thương Hiệu ngay tại Bước 3 -->
+                            <div class="logo-quick-toolbar-step3" id="step3-logo-toolbar">
+                                <div class="toolbar-label-row">
+                                    <span class="toolbar-label"><i class="fa-solid fa-stamp icon-accent" style="color: #38bdf8;"></i> Ghép Logo / Watermark vào video:</span>
+                                    <div style="display: flex; align-items: center; gap: 0.75rem;">
+                                        <button type="button" class="btn-subtle-toggle" id="step3-btn-toggle-logo-box" title="Bật/Tắt hiển thị khung Logo trên video">
+                                            <i class="fa-solid fa-vector-square"></i> Hiện khung Logo
+                                        </button>
+                                        <label class="switch-container">
+                                            <input type="checkbox" id="step3-logo-enabled">
+                                            <span class="switch-slider"></span>
+                                        </label>
+                                        <span class="toggle-label-sm" id="step3-logo-status-label">Tắt</span>
+                                    </div>
+                                </div>
+                                <div class="logo-step3-options d-none" id="step3-logo-options">
+                                    <div class="logo-upload-row">
+                                        <input type="file" id="step3-logo-file-input" accept="image/png,image/jpeg,image/webp,image/svg+xml" class="d-none">
+                                        <button type="button" class="btn-subtle" id="step3-btn-upload-logo">
+                                            <i class="fa-solid fa-cloud-arrow-up"></i> Chọn ảnh Logo (PNG/JPG)
+                                        </button>
+                                        <span class="logo-filename-text" id="step3-logo-filename-display">Chưa chọn ảnh</span>
+                                    </div>
+                                    <div class="logo-controls-grid">
+                                        <div class="logo-ctrl-item">
+                                            <div class="logo-ctrl-label-row">
+                                                <label for="step3-logo-slider-w">Kích thước rộng</label>
+                                                <span id="step3-logo-w-val" class="ctrl-badge-val">18%</span>
+                                            </div>
+                                            <input type="range" id="step3-logo-slider-w" min="5" max="50" step="1" value="18" class="range-slider">
+                                        </div>
+                                        <div class="logo-ctrl-item">
+                                            <div class="logo-ctrl-label-row">
+                                                <label for="step3-logo-slider-opacity">Độ trong suốt (Opacity)</label>
+                                                <span id="step3-logo-opacity-val" class="ctrl-badge-val">100%</span>
+                                            </div>
+                                            <input type="range" id="step3-logo-slider-opacity" min="10" max="100" step="5" value="100" class="range-slider">
+                                        </div>
+                                        <div class="logo-ctrl-item">
+                                            <div class="logo-ctrl-label-row">
+                                                <label for="step3-logo-slider-x">Vị trí ngang (X)</label>
+                                                <span id="step3-logo-x-val" class="ctrl-badge-val">78%</span>
+                                            </div>
+                                            <input type="range" id="step3-logo-slider-x" min="0" max="95" step="1" value="78" class="range-slider">
+                                        </div>
+                                        <div class="logo-ctrl-item">
+                                            <div class="logo-ctrl-label-row">
+                                                <label for="step3-logo-slider-y">Vị trí dọc (Y)</label>
+                                                <span id="step3-logo-y-val" class="ctrl-badge-val">5%</span>
+                                            </div>
+                                            <input type="range" id="step3-logo-slider-y" min="0" max="95" step="1" value="5" class="range-slider">
+                                        </div>
+                                    </div>
+                                    <div class="logo-presets-row">
+                                        <span class="preset-label"><i class="fa-solid fa-crosshairs"></i> Vị trí mẫu:</span>
+                                        <button type="button" class="logo-pos-btn" data-pos="top-left">Trên-Trái</button>
+                                        <button type="button" class="logo-pos-btn active" data-pos="top-right">Trên-Phải</button>
+                                        <button type="button" class="logo-pos-btn" data-pos="bottom-left">Dưới-Trái</button>
+                                        <button type="button" class="logo-pos-btn" data-pos="bottom-right">Dưới-Phải</button>
+                                        <button type="button" class="logo-pos-btn" data-pos="center">Giữa màn hình</button>
+                                    </div>
+                                </div>
+                            </div>
+
+
+
+
+                            <div class="capcut-quick-toolbar">
+
+                                <div class="capcut-quick-header">
+
+                                    <span class="toolbar-label"><i class="fa-solid fa-palette"></i> Mẫu Phụ Đề Nổi Bật (Mặc định: Trắng Viền Đen Viral):</span>
+
+                                    <button type="button" class="link-btn-substudio" id="btn-goto-substudio" title="Mở Studio phối màu & viền chi tiết">
+
+                                        <i class="fa-solid fa-wand-magic-sparkles"></i> Chỉnh chi tiết &rarr;
+
+                                    </button>
+
+                                </div>
+
+                                <div class="capcut-chip-row">
+
+                                    <button type="button" class="capcut-chip active" data-preset="viral_white">⚪ Trắng Viền Đen (Mẫu Hot)</button>
+
+                                    <button type="button" class="capcut-chip" data-preset="tiktok_yellow">🟡 Vàng Neon</button>
+
+                                    <button type="button" class="capcut-chip" data-preset="neon_green">🟢 Xanh Neon</button>
+
+                                    <button type="button" class="capcut-chip" data-preset="neon_cyan">🔵 Cyan Sáng</button>
+
+                                    <button type="button" class="capcut-chip" data-preset="yellow_box">🟨 Hộp Vàng</button>
+
+                                    <button type="button" class="capcut-chip" data-preset="black_box">⬛ Hộp Đen</button>
+
+                                </div>
+
+
+
+                                <!-- Thanh đổi màu chữ nhanh ngay tại Bước 3 -->
+
+                                <div class="color-quick-picker-step3">
+
+                                    <span class="toolbar-label"><i class="fa-solid fa-fill-drip"></i> Đổi màu chữ nhanh:</span>
+
+                                    <div class="color-palette-row-step3">
+
+                                        <button type="button" class="color-swatch-btn active" data-color="#FFFFFF" style="background:#FFFFFF;" title="Trắng tinh"></button>
+
+                                        <button type="button" class="color-swatch-btn" data-color="#FFE600" style="background:#FFE600;" title="Vàng Neon"></button>
+
+                                        <button type="button" class="color-swatch-btn" data-color="#00FF88" style="background:#00FF88;" title="Xanh Dạ Quang"></button>
+
+                                        <button type="button" class="color-swatch-btn" data-color="#00F5FF" style="background:#00F5FF;" title="Cyan Sáng"></button>
+
+                                        <button type="button" class="color-swatch-btn" data-color="#FF4757" style="background:#FF4757;" title="Đỏ Cam"></button>
+
+                                        <button type="button" class="color-swatch-btn" data-color="#FFA502" style="background:#FFA502;" title="Cam Nổi"></button>
+
+                                        <button type="button" class="color-swatch-btn" data-color="#A55EEA" style="background:#A55EEA;" title="Tím Sáng"></button>
+
+                                        <div class="custom-color-inline">
+
+                                            <input type="color" id="step3-sub-color" value="#FFFFFF" title="Chọn màu tự do">
+
+                                            <span class="color-hex-mini" id="step3-sub-color-hex">#FFFFFF</span>
+
+                                        </div>
+
+                                    </div>
+
+                                </div>
+
+
+
+                                <!-- Thanh đổi cỡ chữ nhanh ngay tại Bước 3 -->
+
+                                <div class="font-size-quick-picker-step3">
+
+                                    <div class="toolbar-label-row">
+
+                                        <span class="toolbar-label"><i class="fa-solid fa-text-height"></i> Đổi cỡ chữ nhanh:</span>
+
+                                        <span class="font-size-badge" id="step3-font-size-badge">48px (Chuẩn đẹp)</span>
+
+                                    </div>
+
+                                    <div class="font-size-chip-row">
+
+                                        <button type="button" class="font-size-chip" data-size="36">36px (Nhỏ gọn)</button>
+
+                                        <button type="button" class="font-size-chip" data-size="42">42px (Vừa)</button>
+
+                                        <button type="button" class="font-size-chip active" data-size="48">48px (Chuẩn đẹp)</button>
+
+                                        <button type="button" class="font-size-chip" data-size="56">56px (Lớn nổi bật)</button>
+
+                                        <button type="button" class="font-size-chip" data-size="68">68px (Khổng lồ / Anime)</button>
+
+                                    </div>
+
+                                </div>
+
+                            </div>
+
+                        </div>
+
+
+
+                        <div class="render-mode-card">
+
+                            <div class="render-mode-header">
+
+                                <div class="render-mode-icon"><i class="fa-solid fa-bolt"></i></div>
+
+                                <div class="render-mode-info">
+
+                                    <div class="render-mode-title">
+
+                                        <span>Giữ khung hình khi câu quá dài (Freeze Frame)</span>
+
+                                    </div>
+
+                                    <div class="render-mode-desc">
+
+                                        Mặc định TẮT: Video chạy mượt mà 100% không khựng, giọng đọc tự động co giãn thông minh cho vừa vặn với cảnh. Chỉ BẬT nếu bạn muốn video tự đứng hình để đọc trọn vẹn.
+
+                                    </div>
+
+                                </div>
+
+                                <label class="switch-container" title="Bật/Tắt giữ đứng hình ảnh video">
+
+                                    <input type="checkbox" id="chk-auto-extend-video">
+
+                                    <span class="switch-slider"></span>
+
+                                </label>
+
+                            </div>
+
+                        </div>
+
+
+
+                        <div class="step-btn-action-row" style="display: flex; gap: 0.75rem; flex-wrap: wrap;">
+
+                            <button type="button" id="btn-step3-render-download" class="primary-btn btn-accent btn-action-large" style="flex: 1; min-width: 220px;">
+
+                                <i class="fa-solid fa-download" id="icon-step3-render-download"></i> 
+
+                                <span id="lbl-step3-render-download">⚡ Xuất &amp; Tải Video (MP4)</span>
+
+                            </button>
+
+                            <button type="button" id="btn-step3-download-audio" class="secondary-btn btn-action-large" style="flex: 1; min-width: 200px; border-color: rgba(168, 85, 247, 0.45); color: #c084fc; background: rgba(168, 85, 247, 0.1);" title="Tải riêng file âm thanh chỉ có lời dịch tiếng Việt (không lẫn nhạc nền)">
+
+                                <i class="fa-solid fa-file-audio"></i> 
+
+                                <span>🎵 Tải Audio Dịch (MP3)</span>
+
+                            </button>
+
+                            <button type="button" id="btn-step3-next" class="secondary-btn btn-action-large" style="min-width: 150px;">
+
+                                <i class="fa-solid fa-arrow-right"></i> Sang Bước 4 &rarr;
+
+                            </button>
+
+                        </div>
+
+
+
+                        <!-- Thanh tiến trình xuất video ngay tại Bước 3 -->
+
+                        <div class="step-mini-progress d-none" id="step3-progress-box" style="margin-top: 1rem;">
+
+                            <div class="progress-bar-container">
+
+                                <div class="progress-bar-fill" id="step3-progress-bar" style="width: 0%"></div>
+
+                            </div>
+
+                            <div class="step-progress-labels">
+
+                                <span id="step3-progress-msg"><i class="fa-solid fa-spinner fa-spin"></i> Đang xuất video...</span>
+
+                                <span id="step3-progress-pct">0%</span>
+
+                            </div>
+
+                        </div>
+
+
+
+                        <!-- Hộp thông báo tải video thành công ngay tại Bước 3 -->
+
+                        <div class="step-download-success-box d-none" id="step3-success-box" style="margin-top: 0.85rem; padding: 0.85rem 1rem; background: rgba(34, 197, 94, 0.12); border: 1px solid rgba(34, 197, 94, 0.4); border-radius: 8px; color: #4ade80; display: flex; align-items: center; justify-content: space-between; gap: 0.75rem;">
+
+                            <div style="display: flex; align-items: center; gap: 0.6rem;">
+
+                                <i class="fa-solid fa-circle-check" style="font-size: 1.3rem;"></i>
+
+                                <div>
+
+                                    <div style="font-weight: 600; font-size: 0.92rem;">Đã xuất &amp; tải video về máy thành công!</div>
+
+                                    <div style="font-size: 0.8rem; color: rgba(255,255,255,0.75);">Bạn vẫn đang ở chế độ chỉnh sửa. Sửa tiếp câu từ hoặc giao diện và bấm Tải lại bất kỳ lúc nào.</div>
+
+                                </div>
+
+                            </div>
+
+                            <button type="button" class="primary-btn btn-sm" id="btn-step3-redownload" style="white-space: nowrap; padding: 0.4rem 0.75rem; font-size: 0.82rem;">
+
+                                <i class="fa-solid fa-file-arrow-down"></i> Tải lại file
+
+                            </button>
+
+                        </div>
+
+                    </div>
+
+                </div>
+
+
+
+                <!-- STEP 4 CONTENT -->
+
+                <div class="step-tab-content d-none" id="content-step-4">
+
+                    <div class="step-intro-box">
+
+                        <h3 class="step-card-title"><i class="fa-solid fa-film icon-purple"></i> Bước 4: Xuất Video Hoàn Chỉnh</h3>
+
+                        <p class="step-card-desc">Ghép giọng đọc AI lồng tiếng và ép phụ đề CapCut vào video gốc.</p>
+
+                    </div>
+
+
+
+                    <div class="step-action-body">
+
+                        
+                        <!-- Logo & Watermark Settings Card -->
+                        <div class="logo-watermark-card" id="logo-watermark-card">
+                            <div class="logo-card-header">
+                                <div class="logo-header-left">
+                                    <i class="fa-solid fa-stamp icon-accent"></i>
+                                    <div>
+                                        <h4 class="logo-title">Ghép Logo / Watermark vào Video</h4>
+                                        <p class="logo-desc">Tải ảnh logo, kéo thả vị trí và co giãn kích thước trực tiếp trên khung video.</p>
+                                    </div>
+                                </div>
+                                <div class="logo-header-right">
+                                    <label class="switch-container">
+                                        <input type="checkbox" id="logo-enabled">
+                                        <span class="switch-slider"></span>
+                                    </label>
+                                    <span class="toggle-label-sm" id="logo-status-label">Tắt</span>
+                                </div>
+                            </div>
+
+                            <div class="logo-body d-none" id="logo-controls-body">
+                                <div class="logo-upload-row">
+                                    <input type="file" id="logo-file-input" accept="image/png,image/jpeg,image/webp,image/svg+xml" class="d-none">
+                                    <button type="button" class="btn-subtle" id="btn-upload-logo">
+                                        <i class="fa-solid fa-cloud-arrow-up"></i> Chọn ảnh Logo (PNG/JPG)
+                                    </button>
+                                    <button type="button" class="btn-subtle-toggle" id="btn-toggle-logo-box-preview" title="Ẩn/Hiện khung logo trên video">
+                                        <i class="fa-solid fa-vector-square"></i> Hiện khung Logo
+                                    </button>
+                                    <span class="logo-filename-text" id="logo-filename-display">Chưa chọn ảnh</span>
+                                </div>
+
+                                <div class="logo-controls-grid">
+                                    <div class="logo-ctrl-item">
+                                        <div class="logo-ctrl-label-row">
+                                            <label for="logo-slider-w">Kích thước rộng</label>
+                                            <span id="logo-w-val" class="ctrl-badge-val">18%</span>
+                                        </div>
+                                        <input type="range" id="logo-slider-w" min="5" max="50" step="1" value="18" class="range-slider">
+                                    </div>
+                                    <div class="logo-ctrl-item">
+                                        <div class="logo-ctrl-label-row">
+                                            <label for="logo-slider-opacity">Độ trong suốt (Opacity)</label>
+                                            <span id="logo-opacity-val" class="ctrl-badge-val">100%</span>
+                                        </div>
+                                        <input type="range" id="logo-slider-opacity" min="10" max="100" step="5" value="100" class="range-slider">
+                                    </div>
+                                    <div class="logo-ctrl-item">
+                                        <div class="logo-ctrl-label-row">
+                                            <label for="logo-slider-x">Vị trí ngang (X)</label>
+                                            <span id="logo-x-val" class="ctrl-badge-val">78%</span>
+                                        </div>
+                                        <input type="range" id="logo-slider-x" min="0" max="95" step="1" value="78" class="range-slider">
+                                    </div>
+                                    <div class="logo-ctrl-item">
+                                        <div class="logo-ctrl-label-row">
+                                            <label for="logo-slider-y">Vị trí dọc (Y)</label>
+                                            <span id="logo-y-val" class="ctrl-badge-val">5%</span>
+                                        </div>
+                                        <input type="range" id="logo-slider-y" min="0" max="95" step="1" value="5" class="range-slider">
+                                    </div>
+                                </div>
+
+                                <div class="logo-presets-row">
+                                    <span class="preset-label"><i class="fa-solid fa-crosshairs"></i> Vị trí mẫu:</span>
+                                    <button type="button" class="logo-pos-btn" data-pos="top-left">Trên-Trái</button>
+                                    <button type="button" class="logo-pos-btn active" data-pos="top-right">Trên-Phải</button>
+                                    <button type="button" class="logo-pos-btn" data-pos="bottom-left">Dưới-Trái</button>
+                                    <button type="button" class="logo-pos-btn" data-pos="bottom-right">Dưới-Phải</button>
+                                    <button type="button" class="logo-pos-btn" data-pos="center">Giữa màn hình</button>
+                                </div>
+                            </div>
+                        </div>
+
+<div class="summary-card">
+
+                            <div class="summary-item"><i class="fa-solid fa-video"></i> Video gốc: <span class="summary-val text-success">Đã sẵn sàng</span></div>
+
+                            <div class="summary-item"><i class="fa-solid fa-closed-captioning"></i> Phụ đề: <span class="summary-val text-success" id="summary-sub-count">Đã sẵn sàng</span></div>
+
+                            <div class="summary-item"><i class="fa-solid fa-microphone"></i> Giọng đọc: <span class="summary-val" id="summary-voice-name">Hoài My (Nữ chuẩn)</span></div>
+
+                            <div class="summary-item"><i class="fa-solid fa-clock-rotate-left"></i> Tự dãn video: <span class="summary-val text-success" id="summary-auto-extend">Đang bật (Chống mất từ)</span></div>
+                            <div class="summary-item"><i class="fa-solid fa-stamp"></i> Ghép Logo: <span class="summary-val" id="summary-logo-status">Chưa bật</span></div>
+
+                        </div>
+
+
+
+                        <div class="step-btn-action-row">
+
+                            <button type="button" id="btn-step4-render" class="primary-btn btn-accent btn-action-large"><i class="fa-solid fa-wand-magic-sparkles"></i> 4. Bắt Đầu Ghép &amp; Xuất Video</button>
+
+                        </div>
+
+
+
+                        <div class="step-mini-progress d-none" id="step4-progress-box">
+
+                            <div class="progress-bar-container"><div class="progress-bar-fill" id="step4-progress-bar" style="width: 0%"></div></div>
+
+                            <div class="step-progress-labels"><span id="step4-progress-msg">Đang ghép...</span><span id="step4-progress-pct">0%</span></div>
+
+                        </div>
+
+                    </div>
+
+                </div>
+
+
+
+                <!-- Interactive Subtitle Review & Editor Table (Bảng phụ đề hiển thị trải rộng bên dưới) -->
+
+                <div class="subtitle-editor-card d-none" id="subtitle-editor-card">
+
+                    <div class="editor-header">
+
+                        <div class="editor-header-left">
+
+                            <h3 class="card-heading"><i class="fa-solid fa-list-check"></i> Bảng Phụ Đề &amp; Bản Dịch (<span id="segments-count">0</span> câu)</h3>
+
+                            <span class="editor-subtitle">Nhấp vào ô tiếng Việt để sửa chữ &bull; Nhấp thời gian để tua video đến câu đó</span>
+
+                        </div>
+
+                        <div class="editor-header-actions">
+
+                            <button type="button" id="btn-export-srt-zh" class="secondary-btn btn-sm" title="Tải file phụ đề Tiếng Trung (.srt) để tự dịch bên ngoài"><i class="fa-solid fa-file-export"></i> Xuất SRT Trung (.srt)</button>
+
+                            <button type="button" id="btn-open-import-srt" class="secondary-btn btn-sm" style="border-color: rgba(56, 189, 248, 0.55); color: #38bdf8; background: rgba(56, 189, 248, 0.1);" title="Tải file .SRT Tiếng Việt lên hoặc dán bản dịch để gắn vào từng câu"><i class="fa-solid fa-file-import"></i> Nhập SRT Tiếng Việt</button>
+
+                            <button type="button" id="btn-export-srt-vi" class="secondary-btn btn-sm" title="Tải file phụ đề Tiếng Việt (.srt)"><i class="fa-solid fa-file-arrow-down"></i> Xuất SRT Việt (.srt)</button>
+
+                            <button type="button" id="btn-add-segment" class="secondary-btn btn-sm"><i class="fa-solid fa-plus"></i> Thêm câu</button>
+
+                            <button type="button" id="btn-save-segments" class="primary-btn btn-sm"><i class="fa-solid fa-floppy-disk"></i> Lưu thay đổi phụ đề</button>
+
+                        </div>
+
+                    </div>
+
+                    <div class="subtitle-table-container">
+
+                        <table class="subtitle-table" id="subtitle-table">
+
+                            <thead>
+
+                                <tr>
+
+                                    <th style="width: 40px;">#</th>
+
+                                    <th style="width: 220px;">Thời gian &amp; Cắt nối (s)</th>
+
+                                    <th style="width: 105px;">Tốc độ đọc</th>
+
+                                    <th style="width: 24%;">Tiếng Trung gốc</th>
+
+                                    <th>Bản dịch Tiếng Việt (Sửa &amp; Cân nhịp câu)</th>
+
+                                    <th style="width: 85px; text-align: center;">Thao tác</th>
+
+                                </tr>
+
+                            </thead>
+
+                            <tbody id="subtitle-table-body">
+
+                                <!-- Dynamic rows -->
+
+                            </tbody>
+
+                        </table>
+
+                    </div>
+
+                </div>
+
+            </section>
+
+        </main>
+
+
+
+        <!-- TAB 3 CONTENT: CapCut Subtitle Studio -->
+
+        <div class="capcut-studio-section d-none" id="panel-subtitles">
+
+            <!-- Header with Live Preview Frame -->
+
+            <div class="card capcut-stage-card">
+
+                <div class="stage-header">
+
+                    <div>
+
+                        <h2 class="section-title"><i class="fa-solid fa-wand-magic-sparkles"></i> Thiết Kế Phụ Đề Chuyên Nghiệp (Phong Cách CapCut)</h2>
+
+                        <p class="section-desc">Tùy biến màu chữ, màu viền, nền hộp phụ đề và kích thước. Màn hình bên dưới cập nhật trực quan theo thời gian thực.</p>
+
+                    </div>
+
+                    <div class="stage-actions">
+
+                        <button type="button" id="btn-reset-sub-styling" class="secondary-btn btn-sm">
+
+                            <i class="fa-solid fa-rotate-left"></i> Đặt lại mặc định
+
+                        </button>
+
+                    </div>
+
+                </div>
+
+
+
+                <!-- Live Subtitle Monitor -->
+
+                <div class="capcut-live-monitor">
+
+                    <div class="monitor-header">
+
+                        <span class="monitor-tag"><i class="fa-solid fa-eye"></i> Màn Hình Xem Trước Thời Gian Thực</span>
+
+                        <span class="monitor-info" id="monitor-style-desc">Mẫu: Trắng Chuẩn (Hot Trend) &bull; Font: Nunito &bull; Cỡ: 30px</span>
+
+                    </div>
+
+                    <div class="monitor-screen">
+
+                        <div class="monitor-sub-wrapper">
+
+                            <div class="capcut-sample-text" id="capcut-live-sample">
+
+                                Anh em, tôi lên trước đây!
+
+                            </div>
+
+                        </div>
+
+                    </div>
+
+                </div>
+
+            </div>
+
+
+
+            <!-- CapCut Presets Library -->
+
+            <div class="card capcut-presets-card">
+
+                <h3 class="card-heading"><i class="fa-solid fa-layer-group"></i> Thư Viện Mẫu Chữ Hot (CapCut Presets)</h3>
+
+                <p class="input-desc">Nhấp chọn các bộ màu xu hướng phổ biến trên TikTok, Reels và YouTube Shorts:</p>
+
+                <div class="presets-grid">
+
+                    <div class="preset-card active" data-preset="viral_white">
+
+                        <div class="preset-preview preview-viral-white">Anh em, lên trước!</div>
+
+                        <div class="preset-meta">
+
+                            <span class="preset-name">⚪ Trắng Viền Đen (Chuẩn Mẫu Hot)</span>
+
+                            <span class="preset-desc">Chữ trắng tinh, viền đen dày bo tròn siêu nét</span>
+
+                        </div>
+
+                    </div>
+
+                    <div class="preset-card" data-preset="tiktok_yellow">
+
+                        <div class="preset-preview preview-tiktok-yellow">Vàng Neon</div>
+
+                        <div class="preset-meta">
+
+                            <span class="preset-name">🟡 Vàng Neon Nổi Bật</span>
+
+                            <span class="preset-desc">Chữ vàng tươi sáng rực, viền đen dày tương phản</span>
+
+                        </div>
+
+                    </div>
+
+                    <div class="preset-card" data-preset="neon_green">
+
+                        <div class="preset-preview preview-neon-green">Xanh Dạ Quang</div>
+
+                        <div class="preset-meta">
+
+                            <span class="preset-name">🟢 Xanh Neon Dạ Quang</span>
+
+                            <span class="preset-desc">Chữ xanh lá neon sáng chói, viền đen gaming</span>
+
+                        </div>
+
+                    </div>
+
+                    <div class="preset-card" data-preset="neon_cyan">
+
+                        <div class="preset-preview preview-neon-cyan">Cyan Sáng Rực</div>
+
+                        <div class="preset-meta">
+
+                            <span class="preset-name">🔵 Cyan Sáng Hiện Đại</span>
+
+                            <span class="preset-desc">Chữ xanh cyan sáng, viền đen dày bắt mắt</span>
+
+                        </div>
+
+                    </div>
+
+                    <div class="preset-card" data-preset="yellow_box">
+
+                        <div class="preset-preview preview-yellow-box"><span>Hộp Vàng</span></div>
+
+                        <div class="preset-meta">
+
+                            <span class="preset-name">🟨 Hộp Vàng Bo Góc</span>
+
+                            <span class="preset-desc">Chữ đen, nền hộp vàng neon bo cong</span>
+
+                        </div>
+
+                    </div>
+
+                    <div class="preset-card" data-preset="black_box">
+
+                        <div class="preset-preview preview-black-box"><span>Hộp Đen</span></div>
+
+                        <div class="preset-meta">
+
+                            <span class="preset-name">⬛ Hộp Đen Kính Mờ</span>
+
+                            <span class="preset-desc">Chữ trắng, nền kính đen mờ trong suốt</span>
+
+                        </div>
+
+                    </div>
+
+                </div>
+
+            </div>
+
+
+
+            <!-- Detailed Customizer 2x2 Grid -->
+
+            <div class="capcut-customizer-grid">
+
+                <!-- 1. Text Color -->
+
+                <div class="card capcut-tool-card">
+
+                    <h4 class="tool-heading"><i class="fa-solid fa-fill-drip"></i> 1. Màu Chữ Chính</h4>
+
+                    <div class="color-palette-row">
+
+                        <button type="button" class="color-swatch-btn active" data-color="#FFFFFF" style="background:#FFFFFF;" title="Trắng tinh"></button>
+
+                        <button type="button" class="color-swatch-btn" data-color="#FFE600" style="background:#FFE600;" title="Vàng Neon"></button>
+
+                        <button type="button" class="color-swatch-btn" data-color="#00FF88" style="background:#00FF88;" title="Xanh Dạ Quang"></button>
+
+                        <button type="button" class="color-swatch-btn" data-color="#00F5FF" style="background:#00F5FF;" title="Cyan Sáng"></button>
+
+                        <button type="button" class="color-swatch-btn" data-color="#FF4757" style="background:#FF4757;" title="Đỏ Cam"></button>
+
+                        <button type="button" class="color-swatch-btn" data-color="#FFA502" style="background:#FFA502;" title="Cam Nổi"></button>
+
+                        <button type="button" class="color-swatch-btn" data-color="#A55EEA" style="background:#A55EEA;" title="Tím Sáng"></button>
+
+                        <button type="button" class="color-swatch-btn" data-color="#000000" style="background:#000000; border-color:#555;" title="Đen"></button>
+
+                    </div>
+
+                    <div class="custom-color-picker-row">
+
+                        <label for="sub-primary-color">Màu tự chọn:</label>
+
+                        <input type="color" id="sub-primary-color" value="#FFFFFF">
+
+                        <span class="color-hex-label" id="sub-primary-hex">#FFFFFF</span>
+
+                    </div>
+
+                </div>
+
+
+
+                <!-- 2. Text Outline / Stroke -->
+
+                <div class="card capcut-tool-card">
+
+                    <h4 class="tool-heading"><i class="fa-solid fa-border-all"></i> 2. Viền Chữ (Stroke)</h4>
+
+                    <div class="form-row-2col">
+
+                        <div class="input-group-sub">
+
+                            <label>Màu viền:</label>
+
+                            <div class="outline-color-picker-row">
+
+                                <input type="color" id="sub-outline-color" value="#000000">
+
+                                <span class="color-hex-label" id="sub-outline-hex">#000000</span>
+
+                            </div>
+
+                        </div>
+
+                        <div class="input-group-sub">
+
+                            <label for="sub-outline-width">Độ dày viền:</label>
+
+                            <select id="sub-outline-width">
+
+                                <option value="0">Không viền (0px)</option>
+
+                                <option value="2.0">Mỏng vừa (2.0px)</option>
+
+                                <option value="3.5" selected>Dày chuẩn nét (3.5px - Như mẫu)</option>
+
+                                <option value="4.5">Rất dày siêu nổi (4.5px)</option>
+
+                            </select>
+
+                        </div>
+
+                    </div>
+
+                </div>
+
+
+
+                <!-- 3. Background Box Style -->
+
+                <div class="card capcut-tool-card">
+
+                    <h4 class="tool-heading"><i class="fa-solid fa-shapes"></i> 3. Nền Hộp Phụ Đề (CapCut Box)</h4>
+
+                    <div class="toggle-container mb-3">
+
+                        <button type="button" class="toggle-option active" id="btn-boxstyle-outline">Không nền (Chữ nổi)</button>
+
+                        <button type="button" class="toggle-option" id="btn-boxstyle-box">Hộp chữ nhật (Box)</button>
+
+                    </div>
+
+                    <div id="box-options-wrapper" class="d-none">
+
+                        <div class="form-row-2col">
+
+                            <div class="input-group-sub">
+
+                                <label>Màu nền hộp:</label>
+
+                                <div class="outline-color-picker-row">
+
+                                    <input type="color" id="sub-box-color" value="#000000">
+
+                                    <span class="color-hex-label" id="sub-box-hex">#000000</span>
+
+                                </div>
+
+                            </div>
+
+                            <div class="input-group-sub">
+
+                                <label>Độ mờ nền: <span id="sub-box-opacity-val">75%</span></label>
+
+                                <input type="range" id="sub-box-opacity" min="0.3" max="1.0" step="0.05" value="0.75">
+
+                            </div>
+
+                        </div>
+
+                    </div>
+
+                </div>
+
+
+
+                <!-- 4. Typography & Font -->
+
+                <div class="card capcut-tool-card">
+
+                    <h4 class="tool-heading"><i class="fa-solid fa-text-height"></i> 4. Phông & Kích Thước</h4>
+
+                    <div class="form-row-2col">
+
+                        <div class="input-group-sub">
+
+                            <label for="sub-font-size">Cỡ chữ:</label>
+
+                            <select id="sub-font-size">
+
+                                <option value="32">Rất nhỏ (32px)</option>
+
+                                <option value="36">Nhỏ gọn (36px)</option>
+
+                                <option value="42">Vừa phải (42px)</option>
+
+                                <option value="48" selected>Chuẩn đẹp (48px - Khuyên dùng)</option>
+
+                                <option value="56">Lớn nổi bật (56px)</option>
+
+                                <option value="68">Khổng lồ / Anime (68px)</option>
+
+                                <option value="80">Cực đại (80px)</option>
+
+                            </select>
+
+                        </div>
+
+                        <div class="input-group-sub">
+
+                            <label for="sub-font-name">Phông chữ:</label>
+
+                            <select id="sub-font-name">
+
+                                <option value="Nunito" selected>Nunito (Bo tròn dễ thương - Giống ảnh mẫu)</option>
+
+                                <option value="Segoe UI">Segoe UI (Chuẩn nét Windows)</option>
+
+                                <option value="Montserrat">Montserrat (Hiện đại, Đậm nét)</option>
+
+                                <option value="Arial">Arial (Cơ bản)</option>
+
+                                <option value="Trebuchet MS">Trebuchet MS</option>
+
+                            </select>
+
+                        </div>
+
+                    </div>
+
+                    <div class="toggle-row mt-3">
+
+                        <label class="switch-container">
+
+                            <input type="checkbox" id="sub-bold" checked>
+
+                            <span class="switch-slider"></span>
+
+                        </label>
+
+                        <span class="toggle-label">In đậm chữ (Bold font)</span>
+
+                    </div>
+
+                </div>
+
+            </div>
+
+        </div>
+
+
+
+        <!-- TAB 4 CONTENT: Modular System Settings -->
+
+        <div class="settings-modular-section d-none" id="panel-settings">
+
+            <!-- Modular Subnav Pills -->
+
+            <div class="settings-subnav-bar">
+
+                <button type="button" class="subnav-pill active" data-subpane="subpane-voice">
+
+                    <i class="fa-solid fa-microphone-lines"></i> <span>Giọng Đọc & Âm Lượng</span>
+
+                </button>
+
+                <button type="button" class="subnav-pill" data-subpane="subpane-cookie">
+
+                    <i class="fa-solid fa-cookie"></i> <span>Cookie Bilibili 1080p</span>
+
+                </button>
+
+                <button type="button" class="subnav-pill" data-subpane="subpane-tts">
+
+                    <i class="fa-solid fa-bullhorn"></i> <span>TTS Studio (Đọc Văn Bản)</span>
+
+                </button>
+
+            </div>
+
+
+
+            <!-- Subpane 1: Voice & Volume -->
+
+            <div class="subpane-content" id="subpane-voice">
+
+                <div class="settings-fullwidth-grid">
+
+                    <div class="card settings-card">
+
+                        <h3 class="card-heading"><i class="fa-solid fa-microphone-lines"></i> Cấu hình Giọng đọc AI (Edge-TTS)</h3>
+
+                        <div class="input-group">
+
+                            <label for="shared-voice-select">Giọng đọc lồng tiếng</label>
+
+                            <div class="voice-input-row">
+
+                                <div class="select-wrapper voice-select-flex">
+
+                                    <i class="fa-solid fa-user input-icon"></i>
+
+                                    <select id="shared-voice-select">
+
+                                        <optgroup label="Giọng TikTok / CapCut (Đặc sắc & Siêu hot)">
+
+                                            <option value="capcut_cogaithoatngon" selected>🔥 Cô Gái Hoạt Ngôn (CapCut Hot TikTok)</option>
+
+                                            <option value="capcut_thanhnientutin">⚡ Thanh Niên Tự Tin (CapCut Recap Phim)</option>
+
+                                            <option value="capcut_nhongotngao">🌸 Nhỏ Ngọt Ngào (CapCut Nữ Dễ Thương)</option>
+
+                                            <option value="capcut_giongbe">👶 Giọng Bé (CapCut Trẻ Em)</option>
+
+                                            <option value="capcut_namtram">🎙️ Giọng Nam Trầm (CapCut Kể Chuyện)</option>
+
+                                            <option value="capcut_reviewphim">🎬 Review Phim (CapCut Nữ Truyền Cảm)</option>
+
+                                        </optgroup>
+
+                                        <optgroup label="Giọng Chuẩn Edge-TTS">
+
+                                            <option value="female_hoaimy">Hoài My (Nữ chuẩn - vi-VN-HoaiMyNeural)</option>
+
+                                            <option value="male_namminh">Nam Minh (Nam chuẩn - vi-VN-NamMinhNeural)</option>
+
+                                        </optgroup>
+
+                                    </select>
+
+                                </div>
+
+                                <button type="button" id="btn-shared-preview-voice" class="preview-btn">
+
+                                    <i class="fa-solid fa-volume-high"></i> <span>Nghe thử</span>
+
+                                </button>
+
+                            </div>
+
+                        </div>
+
+                        <div class="input-group">
+
+                            <label for="shared-voice-rate">Tốc độ đọc mặc định</label>
+
+                            <select id="shared-voice-rate">
+
+                                <option value="-10%">Chậm hơn (-10%)</option>
+
+                                <option value="+0%" selected>Chuẩn (+0%)</option>
+
+                                <option value="+10%">Nhanh hơn (+10%)</option>
+
+                                <option value="+20%">Nhanh (+20%)</option>
+
+                            </select>
+
+                        </div>
+
+                    </div>
+
+
+
+                    <div class="card settings-card">
+
+                        <h3 class="card-heading"><i class="fa-solid fa-volume-high"></i> Cân bằng Âm lượng Video</h3>
+
+                        <div class="volume-slider">
+
+                            <div class="slider-labels">
+
+                                <span>Giọng lồng tiếng Việt (TTS)</span>
+
+                                <span id="shared-tts-vol-val">100%</span>
+
+                            </div>
+
+                            <input type="range" id="shared-tts-vol" min="0" max="1" step="0.05" value="1.0">
+
+                        </div>
+
+                        <div class="volume-slider">
+
+                            <div class="slider-labels">
+
+                                <span>Nhạc nền/Âm thanh gốc (Background)</span>
+
+                                <span id="shared-bg-vol-val">15%</span>
+
+                            </div>
+
+                            <input type="range" id="shared-bg-vol" min="0" max="1" step="0.05" value="0.15">
+
+                        </div>
+
+                    </div>
+
+                </div>
+
+            </div>
+
+
+
+            <!-- Subpane 2: Cookie Bilibili -->
+
+            <div class="subpane-content d-none" id="subpane-cookie">
+
+                <div class="card settings-card">
+
+                    <h3 class="card-heading"><i class="fa-solid fa-cookie"></i> Bilibili SESSDATA Cookie</h3>
+
+                    <div class="input-group">
+
+                        <label for="shared-bilibili-cookie">Chuỗi Cookie xác thực trình duyệt</label>
+
+                        <div class="textarea-wrapper">
+
+                            <textarea id="shared-bilibili-cookie" placeholder="SESSDATA=xxxxxx; hoặc dán toàn bộ chuỗi Cookie từ trình duyệt..."></textarea>
+
+                        </div>
+
+                    </div>
+
+                    <p class="input-desc">Nhập giá trị này để vượt qua lỗi chặn HTTP 412 của Bilibili và tải video chất lượng cao 1080p.</p>
+
+                </div>
+
+            </div>
+
+
+
+            <!-- Subpane 3: TTS Studio -->
+
+            <div class="subpane-content d-none" id="subpane-tts">
+
+                <div class="card settings-card tts-studio-card">
+
+                    <h3 class="card-heading"><i class="fa-solid fa-bullhorn"></i> Tiện ích Đọc Văn Bản Tự Do (TTS Studio)</h3>
+
+                    <p class="input-desc">Gõ hoặc dán bất kỳ đoạn văn bản tiếng Việt nào để AI đọc trực tiếp và tải file âm thanh MP3 về máy.</p>
+
+                    <div class="textarea-wrapper">
+
+                        <textarea id="tts-studio-text" rows="3" placeholder="Nhập văn bản bạn muốn đọc thử ở đây..."></textarea>
+
+                    </div>
+
+                    <div class="action-buttons mt-3">
+
+                        <button type="button" id="btn-studio-play" class="primary-btn"><i class="fa-solid fa-play"></i> <span>Đọc Trực Tiếp</span></button>
+
+                        <button type="button" id="btn-studio-download" class="secondary-btn"><i class="fa-solid fa-download"></i> <span>Tải File MP3</span></button>
+
+                    </div>
+
+                </div>
+
+            </div>
+
+        </div>
+
+
+
+        <footer>
+
+            <p id="i18n-footer">Made with <i class="fa-solid fa-heart"></i> &middot; Chạy hoàn toàn trên máy local của bạn</p>
+
+        </footer>
+
+    </div>
+
+
+
+    <!-- MODAL: QUẢN LÝ DỰ ÁN (PROJECT MANAGER) -->
+
+    <div class="studio-modal-backdrop d-none" id="modal-projects">
+
+        <div class="studio-modal-dialog">
+
+            <div class="studio-modal-header">
+
+                <div class="modal-title-group">
+
+                    <i class="fa-solid fa-folder-tree icon-purple"></i>
+
+                    <h3>Quản Lý Dự Án</h3>
+
+                </div>
+
+                <button type="button" class="modal-close-btn" id="btn-close-project-modal" title="Đóng">
+
+                    <i class="fa-solid fa-xmark"></i>
+
+                </button>
+
+            </div>
+
+            <div class="studio-modal-body">
+
+                <div class="project-modal-toolbar">
+
+                    <div class="project-search-wrapper">
+
+                        <i class="fa-solid fa-magnifying-glass"></i>
+
+                        <input type="text" id="project-search-input" placeholder="Tìm kiếm theo tên dự án hoặc link...">
+
+                    </div>
+
+                    <button type="button" class="primary-btn btn-sm" id="btn-modal-create-new">
+
+                        <i class="fa-solid fa-plus"></i> Tạo Dự Án Mới
+
+                    </button>
+
+                </div>
+
+                
+
+                <div class="project-list-container" id="project-list-container">
+
+                    <!-- Dynamic project cards inserted via JS -->
+
+                </div>
+
+                
+
+                <div class="project-list-empty d-none" id="project-list-empty">
+
+                    <i class="fa-solid fa-folder-open empty-icon"></i>
+
+                    <p>Chưa có dự án nào được lưu.</p>
+
+                    <span>Hãy tạo dự án mới hoặc bắt đầu dịch video để hệ thống tự động lưu trữ!</span>
+
+                </div>
+
+            </div>
+
+        </div>
+
+    </div>
+
+
+
+    <!-- MODAL: HỘP THOẠI XÁC NHẬN (CONFIRM DIALOG) -->
+
+    <div class="studio-modal-backdrop d-none" id="modal-confirm">
+
+        <div class="studio-modal-dialog modal-dialog-sm">
+
+            <div class="studio-modal-header">
+
+                <div class="modal-title-group">
+
+                    <i class="fa-solid fa-triangle-exclamation icon-yellow" id="confirm-modal-icon"></i>
+
+                    <h3 id="confirm-modal-title">Xác Nhận Thao Tác</h3>
+
+                </div>
+
+                <button type="button" class="modal-close-btn" id="btn-confirm-cancel-x" title="Đóng">
+
+                    <i class="fa-solid fa-xmark"></i>
+
+                </button>
+
+            </div>
+
+            <div class="studio-modal-body">
+
+                <p id="confirm-modal-message" class="confirm-message-text">Bạn có chắc chắn muốn thực hiện thao tác này?</p>
+
+            </div>
+
+            <div class="studio-modal-footer">
+
+                <button type="button" class="secondary-btn" id="btn-confirm-cancel">Hủy Bỏ</button>
+
+                <button type="button" class="primary-btn btn-accent" id="btn-confirm-ok">Đồng Ý</button>
+
+            </div>
+
+        </div>
+
+    </div>
+
+
+
+    <!-- Main JS -->
+
+    <!-- MODAL: XUẤT / NHẬP FILE SRT TIẾNG TRUNG - TIẾNG VIỆT -->
+
+    <div class="studio-modal-backdrop d-none" id="modal-srt-import">
+
+        <div class="studio-modal-dialog" style="max-width: 680px;">
+
+            <div class="studio-modal-header">
+
+                <div class="modal-title-group">
+
+                    <i class="fa-solid fa-language icon-purple"></i>
+
+                    <h3>Xuất SRT Tiếng Trung &amp; Gắn SRT Tiếng Việt</h3>
+
+                </div>
+
+                <button type="button" class="modal-close-btn" id="btn-close-srt-modal" title="Đóng">
+
+                    <i class="fa-solid fa-xmark"></i>
+
+                </button>
+
+            </div>
+
+            <div class="studio-modal-body" style="display: flex; flex-direction: column; gap: 1rem;">
+
+                <div style="background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.1); border-radius: 8px; padding: 0.85rem 1rem; display: flex; align-items: center; justify-content: space-between; gap: 0.75rem; flex-wrap: wrap;">
+
+                    <div style="font-size: 0.88rem; color: #cbd5e1;">
+
+                        <strong>Bước A:</strong> Lấy phụ đề gốc Tiếng Trung (tải file <code>.srt</code> hoặc copy nhanh):
+
+                    </div>
+
+                    <div style="display: flex; gap: 0.5rem;">
+
+                        <button type="button" class="secondary-btn btn-sm" id="btn-modal-copy-zh-srt">
+
+                            <i class="fa-solid fa-copy"></i> Copy SRT Trung
+
+                        </button>
+
+                        <button type="button" class="secondary-btn btn-sm" id="btn-modal-download-zh-srt">
+
+                            <i class="fa-solid fa-download"></i> Tải File SRT Trung
+
+                        </button>
+
+                    </div>
+
+                </div>
+
+
+
+                <div style="display: flex; align-items: center; justify-content: space-between; gap: 0.75rem; flex-wrap: wrap;">
+
+                    <label for="textarea-import-srt" style="font-weight: 600; font-size: 0.92rem; color: #f8fafc;">
+
+                        Bước B: Chọn file <code>.srt</code> Tiếng Việt hoặc dán trực tiếp nội dung vào đây:
+
+                    </label>
+
+                    <div>
+
+                        <input type="file" id="input-file-srt-vi" accept=".srt,.txt" class="d-none">
+
+                        <button type="button" class="primary-btn btn-sm" id="btn-choose-srt-file" style="background: rgba(56, 189, 248, 0.2); border: 1px solid #38bdf8; color: #38bdf8;">
+
+                            <i class="fa-solid fa-folder-open"></i> Chọn File .SRT Từ Máy...
+
+                        </button>
+
+                    </div>
+
+                </div>
+
+
+
+                <div class="textarea-wrapper">
+
+                    <textarea id="textarea-import-srt" rows="10" style="font-family: monospace; font-size: 0.85rem; line-height: 1.45;" placeholder="Dán nội dung file .SRT tiếng Việt vào đây (hoặc nhấn 'Chọn File .SRT Từ Máy...')"></textarea>
+
+                </div>
+
+                <p style="font-size: 0.8rem; color: #94a3b8; margin: 0;">
+
+                    <i class="fa-solid fa-circle-info"></i> Hỗ trợ cả định dạng chuẩn <code>.srt</code> (có mốc thời gian) lẫn danh sách câu dịch theo từng dòng. Hệ thống sẽ tự động khớp vào từng khung thời gian và tạo lại giọng đọc AI mới.
+
+                </p>
+
+            </div>
+
+            <div class="studio-modal-footer">
+
+                <button type="button" class="secondary-btn" id="btn-cancel-srt-modal">Đóng</button>
+
+                <button type="button" class="primary-btn btn-accent" id="btn-apply-srt-import">
+
+                    <i class="fa-solid fa-check"></i> Gắn Bản Dịch Vào Dự Án
+
+                </button>
+
+            </div>
+
+        </div>
+
+    </div>
+
+
+
+    <script src="app.js?v=50"></script>
+
+</body>
+
+</html>
+

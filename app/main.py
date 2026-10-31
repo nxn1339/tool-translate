@@ -4,7 +4,7 @@ import shutil
 import logging
 import json
 from typing import Optional, Dict, Any, List
-from fastapi import FastAPI, BackgroundTasks, HTTPException
+from fastapi import FastAPI, BackgroundTasks, HTTPException, UploadFile, File
 from fastapi.responses import FileResponse, Response
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
@@ -132,6 +132,17 @@ def load_project_meta(project_id: str) -> Dict[str, Any]:
         "rvc_pitch": 0,
         "bg_volume": 0.15,
         "tts_volume": 1.0,
+        "logo_box": {
+            "enabled": False,
+            "x": 80.0,
+            "y": 5.0,
+            "w": 15.0,
+            "h": 10.0,
+            "opacity": 1.0,
+            "keep_aspect": True,
+            "filename": None,
+            "image_path": None
+        },
         "status": "draft"
     }
 
@@ -193,6 +204,7 @@ class ProjectUpdateRequest(BaseModel):
     bg_volume: Optional[float] = None
     tts_volume: Optional[float] = None
     auto_extend_video: Optional[bool] = None
+    logo_box: Optional[Dict[str, Any]] = None
     status: Optional[str] = None
 
 
@@ -229,6 +241,7 @@ class ProjectRenderRequest(BaseModel):
     burn_subtitles: bool = True
     segments: Optional[List[Dict[str, Any]]] = None
     auto_extend_video: bool = False
+    logo_box: Optional[Dict[str, Any]] = None
 
 
 class TTSFreeRequest(BaseModel):
@@ -441,7 +454,8 @@ def process_project_render_worker(
     segments: Optional[List[Dict[str, Any]]] = None,
     auto_extend_video: bool = False,
     rvc_model: str = "none",
-    rvc_pitch: int = 0
+    rvc_pitch: int = 0,
+    logo_box: Optional[Dict[str, Any]] = None
 ):
     project_dir = get_project_dir(project_id)
     input_video_path = os.path.join(project_dir, "input_video.mp4")
@@ -484,11 +498,32 @@ def process_project_render_worker(
         except Exception:
             pass
 
-        logger.info(f"[{project_id}] Step 4: Merging audio, sub and video (auto_extend={auto_extend_video})...")
+        # Resolve logo_box image_path if enabled
+        resolved_logo_box = None
+        if logo_box and logo_box.get("enabled"):
+            resolved_logo_box = dict(logo_box)
+            img_p = resolved_logo_box.get("image_path")
+            if not img_p or not os.path.exists(img_p):
+                meta = get_project_meta(project_id)
+                meta_logo = meta.get("logo_box", {})
+                img_p = meta_logo.get("image_path")
+                if not img_p or not os.path.exists(img_p):
+                    for ext in (".png", ".jpg", ".jpeg", ".webp", ".svg", ".bmp"):
+                        cand = os.path.join(project_dir, f"logo{ext}")
+                        if os.path.exists(cand):
+                            img_p = cand
+                            break
+            if img_p and os.path.exists(img_p):
+                resolved_logo_box["image_path"] = img_p
+            else:
+                logger.warning(f"[{project_id}] Logo enabled but image file not found. Skipping logo overlay.")
+                resolved_logo_box = None
+
+        logger.info(f"[{project_id}] Step 4: Merging audio, sub, logo and video (auto_extend={auto_extend_video}, has_logo={bool(resolved_logo_box)})...")
         projects_db[project_id] = {
             "status": "rendering",
             "progress": 65,
-            "message": "Đang ghép lồng tiếng và xử lý phụ đề video..."
+            "message": "Đang ghép lồng tiếng, logo và xử lý phụ đề video..."
         }
         merge_audio_segments_to_video(
             original_video_path=input_video_path,
@@ -500,7 +535,8 @@ def process_project_render_worker(
             sub_box=sub_box,
             burn_subtitles=burn_subtitles,
             sub_styling=sub_styling,
-            auto_extend_video=auto_extend_video
+            auto_extend_video=auto_extend_video,
+            logo_box=resolved_logo_box
         )
 
         save_project_meta(project_id, {
@@ -514,6 +550,7 @@ def process_project_render_worker(
             "sub_box": sub_box,
             "sub_styling": sub_styling,
             "burn_subtitles": burn_subtitles,
+            "logo_box": logo_box or (resolved_logo_box if resolved_logo_box else None),
             "auto_extend_video": auto_extend_video,
             "current_step": 4,
             "completed_steps": [1, 2, 3, 4]
@@ -722,6 +759,17 @@ def create_project(request: Optional[ProjectCreateRequest] = None):
         "rvc_pitch": 0,
         "bg_volume": 0.15,
         "tts_volume": 1.0,
+        "logo_box": {
+            "enabled": False,
+            "x": 80.0,
+            "y": 5.0,
+            "w": 15.0,
+            "h": 10.0,
+            "opacity": 1.0,
+            "keep_aspect": True,
+            "filename": None,
+            "image_path": None
+        },
         "status": "draft"
     }
     save_project_meta(project_id, meta)
@@ -1043,7 +1091,8 @@ def project_start_render(project_id: str, request: ProjectRenderRequest, backgro
         segments=request.segments,
         auto_extend_video=request.auto_extend_video,
         rvc_model=request.rvc_model or "none",
-        rvc_pitch=request.rvc_pitch or 0
+        rvc_pitch=request.rvc_pitch or 0,
+        logo_box=request.logo_box
     )
     return {"project_id": project_id, "status": "rendering"}
 
@@ -1196,6 +1245,86 @@ def project_download_audio_dubbed(project_id: str):
         media_type="audio/mpeg",
         filename=f"audio_dich_tieng_viet_{project_id[:8]}.mp3"
     )
+
+
+@app.post("/api/project/{project_id}/logo")
+async def project_upload_logo(project_id: str, file: UploadFile = File(...)):
+    """
+    Uploads a watermark / logo image (PNG, JPG, WEBP, SVG) for the project.
+    """
+    project_dir = get_project_dir(project_id)
+    orig_name = file.filename or "logo.png"
+    ext = os.path.splitext(orig_name)[1].lower()
+    if ext not in (".png", ".jpg", ".jpeg", ".webp", ".svg", ".bmp"):
+        raise HTTPException(
+            status_code=400,
+            detail="Định dạng ảnh không được hỗ trợ. Vui lòng tải lên PNG, JPG, WEBP hoặc SVG."
+        )
+
+    dest_path = os.path.join(project_dir, f"logo{ext}")
+    with open(dest_path, "wb") as buffer:
+        content = await file.read()
+        buffer.write(content)
+
+    meta = load_project_meta(project_id)
+    logo_box = meta.get("logo_box") or {
+        "x": 80.0,
+        "y": 5.0,
+        "w": 15.0,
+        "h": 10.0,
+        "opacity": 1.0,
+        "keep_aspect": True
+    }
+    logo_box.update({
+        "enabled": True,
+        "image_path": dest_path,
+        "filename": orig_name,
+        "logo_url": f"/api/project/{project_id}/logo"
+    })
+    save_project_meta(project_id, {"logo_box": logo_box})
+
+    return {
+        "status": "ok",
+        "logo_url": f"/api/project/{project_id}/logo",
+        "filename": orig_name,
+        "logo_box": logo_box
+    }
+
+
+@app.get("/api/project/{project_id}/logo")
+def project_get_logo(project_id: str):
+    """
+    Streams the project's uploaded logo image.
+    """
+    project_dir = get_project_dir(project_id, create=False)
+    if not os.path.exists(project_dir):
+        raise HTTPException(status_code=404, detail="Dự án không tồn tại.")
+
+    meta = load_project_meta(project_id)
+    logo_box = meta.get("logo_box", {})
+    image_path = logo_box.get("image_path")
+
+    if not image_path or not os.path.exists(image_path):
+        for ext in (".png", ".jpg", ".jpeg", ".webp", ".svg", ".bmp"):
+            cand = os.path.join(project_dir, f"logo{ext}")
+            if os.path.exists(cand):
+                image_path = cand
+                break
+
+    if not image_path or not os.path.exists(image_path):
+        raise HTTPException(status_code=404, detail="Chưa có logo được tải lên cho dự án này.")
+
+    ext = os.path.splitext(image_path)[1].lower()
+    mime_types = {
+        ".png": "image/png",
+        ".jpg": "image/jpeg",
+        ".jpeg": "image/jpeg",
+        ".webp": "image/webp",
+        ".svg": "image/svg+xml",
+        ".bmp": "image/bmp"
+    }
+    media_type = mime_types.get(ext, "image/png")
+    return FileResponse(path=image_path, media_type=media_type)
 
 
 # Serve the static UI files

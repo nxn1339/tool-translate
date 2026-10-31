@@ -10,6 +10,7 @@ document.addEventListener("DOMContentLoaded", () => {
     // Default Bounding Box Coordinates (Percentages)
     let maskBoxCoords = { x: 10, y: 78, w: 80, h: 14 };
     let subBoxCoords = { x: 10, y: 78, w: 80, h: 14 };
+    let logoBoxCoords = { x: 78, y: 5, w: 18, h: 12, opacity: 1.0, enabled: false, filename: null, image_path: null, keep_aspect: true };
 
     // DOM Elements - Tabs
     const tabBtns = document.querySelectorAll(".tab-btn");
@@ -81,6 +82,43 @@ document.addEventListener("DOMContentLoaded", () => {
     const bboxSub = document.getElementById("bbox-sub");
     const videoContainer = document.getElementById("video-container-relative");
     const previewVideoElement = document.getElementById("preview-video-element");
+    const bboxLogo = document.getElementById("bbox-logo");
+    const bboxLogoImg = document.getElementById("bbox-logo-img");
+    const bboxLogoPlaceholder = document.getElementById("bbox-logo-placeholder");
+    const logoEnabled = document.getElementById("logo-enabled");
+    const logoStatusLabel = document.getElementById("logo-status-label");
+    const logoControlsBody = document.getElementById("logo-controls-body");
+    const logoFileInput = document.getElementById("logo-file-input");
+    const btnUploadLogo = document.getElementById("btn-upload-logo");
+    const btnToggleLogoBoxPreview = document.getElementById("btn-toggle-logo-box-preview");
+    const logoFilenameDisplay = document.getElementById("logo-filename-display");
+    const logoSliderW = document.getElementById("logo-slider-w");
+    const logoWVal = document.getElementById("logo-w-val");
+    const logoSliderOpacity = document.getElementById("logo-slider-opacity");
+    const logoOpacityVal = document.getElementById("logo-opacity-val");
+    const logoSliderX = document.getElementById("logo-slider-x");
+    const logoXVal = document.getElementById("logo-x-val");
+    const logoSliderY = document.getElementById("logo-slider-y");
+    const logoYVal = document.getElementById("logo-y-val");
+    const summaryLogoStatus = document.getElementById("summary-logo-status");
+    const logoPosBtns = document.querySelectorAll(".logo-pos-btn");
+    const step3LogoToolbar = document.getElementById("step3-logo-toolbar");
+    const step3LogoEnabled = document.getElementById("step3-logo-enabled");
+    const step3LogoStatusLabel = document.getElementById("step3-logo-status-label");
+    const step3LogoOptions = document.getElementById("step3-logo-options");
+    const step3LogoFileInput = document.getElementById("step3-logo-file-input");
+    const step3BtnUploadLogo = document.getElementById("step3-btn-upload-logo");
+    const step3BtnToggleLogoBox = document.getElementById("step3-btn-toggle-logo-box");
+    const step3LogoFilenameDisplay = document.getElementById("step3-logo-filename-display");
+    const step3LogoSliderW = document.getElementById("step3-logo-slider-w");
+    const step3LogoWVal = document.getElementById("step3-logo-w-val");
+    const step3LogoSliderOpacity = document.getElementById("step3-logo-slider-opacity");
+    const step3LogoOpacityVal = document.getElementById("step3-logo-opacity-val");
+    const step3LogoSliderX = document.getElementById("step3-logo-slider-x");
+    const step3LogoXVal = document.getElementById("step3-logo-x-val");
+    const step3LogoSliderY = document.getElementById("step3-logo-slider-y");
+    const step3LogoYVal = document.getElementById("step3-logo-y-val");
+    const btnQuickCanvasLogo = document.getElementById("btn-quick-canvas-logo");
 
     // DOM Elements - Output / Progress / Results
     const stateIdle = document.getElementById("state-idle");
@@ -617,6 +655,15 @@ document.addEventListener("DOMContentLoaded", () => {
             bboxSub.style.width = subBoxCoords.w + "%";
             bboxSub.style.height = subBoxCoords.h + "%";
         }
+        if (bboxLogo) {
+            bboxLogo.style.left = logoBoxCoords.x + "%";
+            bboxLogo.style.top = logoBoxCoords.y + "%";
+            bboxLogo.style.width = logoBoxCoords.w + "%";
+            bboxLogo.style.height = logoBoxCoords.h + "%";
+            if (bboxLogoImg) {
+                bboxLogoImg.style.opacity = logoBoxCoords.opacity;
+            }
+        }
     }
 
     applyBoxStyles();
@@ -718,6 +765,22 @@ document.addEventListener("DOMContentLoaded", () => {
         (newCoords) => { subBoxCoords = newCoords; },
         null
     );
+
+    // Setup Blue/Amber Box (Logo) Drag & Resize
+    if (bboxLogo) {
+        setupDragAndResize(
+            bboxLogo,
+            () => logoBoxCoords,
+            (newCoords) => {
+                logoBoxCoords.x = Math.round(newCoords.x);
+                logoBoxCoords.y = Math.round(newCoords.y);
+                logoBoxCoords.w = Math.round(newCoords.w);
+                logoBoxCoords.h = Math.round(newCoords.h);
+                syncLogoSlidersFromCoords();
+            },
+            null
+        );
+    }
 
     // Lock Toggle Button
     if (btnToggleLock) {
@@ -1192,6 +1255,8 @@ document.addEventListener("DOMContentLoaded", () => {
             if (tab1) tab1.classList.remove("done");
             switchStep(1);
 
+            logoBoxCoords = { x: 78, y: 5, w: 18, h: 12, opacity: 1.0, enabled: false, filename: null, image_path: null, keep_aspect: true };
+            updateLogoUIFromState();
             updateProjectBarUI();
             setSaveStatus("saved", "Đã khởi tạo dự án mới");
 
@@ -1289,6 +1354,25 @@ document.addEventListener("DOMContentLoaded", () => {
                     subStylingState.outline_width = 4.0;
                 }
                 applySubStylingToUI();
+            }
+
+            // Populate logo_box
+            if (meta.logo_box) {
+                logoBoxCoords = {
+                    x: meta.logo_box.x ?? 78,
+                    y: meta.logo_box.y ?? 5,
+                    w: meta.logo_box.w ?? 18,
+                    h: meta.logo_box.h ?? 12,
+                    opacity: meta.logo_box.opacity ?? 1.0,
+                    enabled: Boolean(meta.logo_box.enabled),
+                    filename: meta.logo_box.filename || null,
+                    image_path: meta.logo_box.image_path || null,
+                    keep_aspect: meta.logo_box.keep_aspect ?? true
+                };
+                updateLogoUIFromState();
+            } else {
+                logoBoxCoords.enabled = false;
+                updateLogoUIFromState();
             }
 
             // Populate Auto-Extend toggle
@@ -1579,6 +1663,13 @@ document.addEventListener("DOMContentLoaded", () => {
                 bboxMask.classList.add("d-none");
             } else {
                 bboxMask.classList.remove("d-none");
+            }
+        }
+        if (bboxLogo) {
+            if (currentStudioStep === 1 || !logoBoxCoords.enabled) {
+                bboxLogo.classList.add("d-none");
+            } else {
+                bboxLogo.classList.remove("d-none");
             }
         }
         applyMaskVisualPreview();
@@ -3360,6 +3451,15 @@ document.addEventListener("DOMContentLoaded", () => {
                 },
                 burn_subtitles: true,
                 auto_extend_video: Boolean(document.getElementById("chk-auto-extend-video")?.checked ?? false),
+                logo_box: {
+                    enabled: Boolean(logoBoxCoords.enabled),
+                    x: Number(logoBoxCoords.x),
+                    y: Number(logoBoxCoords.y),
+                    w: Number(logoBoxCoords.w),
+                    h: Number(logoBoxCoords.h),
+                    opacity: Number(logoBoxCoords.opacity),
+                    keep_aspect: true
+                },
                 segments: segments
             };
 
@@ -3577,6 +3677,15 @@ document.addEventListener("DOMContentLoaded", () => {
                         },
                         burn_subtitles: true,
                         auto_extend_video: Boolean(document.getElementById("chk-auto-extend-video")?.checked ?? false),
+                        logo_box: {
+                            enabled: Boolean(logoBoxCoords.enabled),
+                            x: Number(logoBoxCoords.x),
+                            y: Number(logoBoxCoords.y),
+                            w: Number(logoBoxCoords.w),
+                            h: Number(logoBoxCoords.h),
+                            opacity: Number(logoBoxCoords.opacity),
+                            keep_aspect: true
+                        },
                         segments: segments
                     })
                 });
@@ -3923,5 +4032,248 @@ document.addEventListener("DOMContentLoaded", () => {
 
     // Load RVC models on startup
     loadRvcModels();
+
+
+    // ==========================================
+    // LOGO / WATERMARK OVERLAY ENGINE (TWO-WAY SYNC)
+    // ==========================================
+    function updateLogoUIFromState() {
+        const isEn = Boolean(logoBoxCoords.enabled);
+        
+        // 1. Sync Step 4 controls
+        if (logoEnabled) logoEnabled.checked = isEn;
+        if (logoStatusLabel) logoStatusLabel.textContent = isEn ? "Bật" : "Tắt";
+        if (logoControlsBody) logoControlsBody.classList.toggle("d-none", !isEn);
+        if (summaryLogoStatus) {
+            summaryLogoStatus.textContent = isEn ? "Đang bật" : "Chưa bật";
+            summaryLogoStatus.className = "summary-val " + (isEn ? "text-success" : "");
+        }
+        
+        // 2. Sync Step 3 controls
+        if (step3LogoEnabled) step3LogoEnabled.checked = isEn;
+        if (step3LogoStatusLabel) step3LogoStatusLabel.textContent = isEn ? "Bật" : "Tắt";
+        if (step3LogoOptions) step3LogoOptions.classList.toggle("d-none", !isEn);
+        
+        // 3. Sync Quick Canvas Pill & Buttons
+        if (btnQuickCanvasLogo) {
+            btnQuickCanvasLogo.classList.toggle("active", isEn);
+            btnQuickCanvasLogo.innerHTML = isEn 
+                ? '<i class="fa-solid fa-stamp"></i> Logo: Bật' 
+                : '<i class="fa-solid fa-stamp"></i> Ghép Logo';
+        }
+        if (step3BtnToggleLogoBox) {
+            step3BtnToggleLogoBox.classList.toggle("active", isEn);
+        }
+        if (btnToggleLogoBoxPreview) {
+            btnToggleLogoBoxPreview.classList.toggle("active", isEn);
+        }
+
+        // 4. Sync Bounding Box on Video Canvas
+        if (bboxLogo) {
+            const shouldShow = isEn && (currentStudioStep >= 2 || (previewVideoElement && previewVideoElement.src));
+            bboxLogo.classList.toggle("d-none", !shouldShow);
+        }
+        
+        syncLogoSlidersFromCoords();
+
+        // 5. Sync Images & Placeholders
+        const fname = logoBoxCoords.filename || (logoBoxCoords.image_path ? "logo.png" : "");
+        if (logoFilenameDisplay) logoFilenameDisplay.textContent = fname || "Chưa chọn ảnh";
+        if (step3LogoFilenameDisplay) step3LogoFilenameDisplay.textContent = fname || "Chưa chọn ảnh";
+
+        if (fname || logoBoxCoords.image_path) {
+            if (bboxLogoImg) {
+                if (!bboxLogoImg.src || bboxLogoImg.src.indexOf("blob:") === -1) {
+                    bboxLogoImg.src = (currentProjectId ? `/api/project/${currentProjectId}/logo?t=` : "") + Date.now();
+                }
+                bboxLogoImg.classList.remove("d-none");
+            }
+            if (bboxLogoPlaceholder) bboxLogoPlaceholder.classList.add("d-none");
+        } else {
+            if (bboxLogoImg && bboxLogoImg.src.indexOf("blob:") === -1) {
+                bboxLogoImg.classList.add("d-none");
+            }
+            if (bboxLogoPlaceholder) bboxLogoPlaceholder.classList.remove("d-none");
+        }
+        
+        applyBoxStyles();
+    }
+
+    function syncLogoSlidersFromCoords() {
+        // Step 4 Sliders
+        if (logoSliderW) logoSliderW.value = logoBoxCoords.w;
+        if (logoWVal) logoWVal.textContent = `${logoBoxCoords.w}%`;
+        if (logoSliderOpacity) logoSliderOpacity.value = Math.round(logoBoxCoords.opacity * 100);
+        if (logoOpacityVal) logoOpacityVal.textContent = `${Math.round(logoBoxCoords.opacity * 100)}%`;
+        if (logoSliderX) logoSliderX.value = logoBoxCoords.x;
+        if (logoXVal) logoXVal.textContent = `${logoBoxCoords.x}%`;
+        if (logoSliderY) logoSliderY.value = logoBoxCoords.y;
+        if (logoYVal) logoYVal.textContent = `${logoBoxCoords.y}%`;
+
+        // Step 3 Sliders
+        if (step3LogoSliderW) step3LogoSliderW.value = logoBoxCoords.w;
+        if (step3LogoWVal) step3LogoWVal.textContent = `${logoBoxCoords.w}%`;
+        if (step3LogoSliderOpacity) step3LogoSliderOpacity.value = Math.round(logoBoxCoords.opacity * 100);
+        if (step3LogoOpacityVal) step3LogoOpacityVal.textContent = `${Math.round(logoBoxCoords.opacity * 100)}%`;
+        if (step3LogoSliderX) step3LogoSliderX.value = logoBoxCoords.x;
+        if (step3LogoXVal) step3LogoXVal.textContent = `${logoBoxCoords.x}%`;
+        if (step3LogoSliderY) step3LogoSliderY.value = logoBoxCoords.y;
+        if (step3LogoYVal) step3LogoYVal.textContent = `${logoBoxCoords.y}%`;
+    }
+
+    function handleLogoFileUpload(file) {
+        if (!file) return;
+
+        const blobUrl = URL.createObjectURL(file);
+        if (bboxLogoImg) {
+            bboxLogoImg.src = blobUrl;
+            bboxLogoImg.classList.remove("d-none");
+        }
+        if (bboxLogoPlaceholder) bboxLogoPlaceholder.classList.add("d-none");
+        if (logoFilenameDisplay) logoFilenameDisplay.textContent = file.name;
+        if (step3LogoFilenameDisplay) step3LogoFilenameDisplay.textContent = file.name;
+
+        logoBoxCoords.enabled = true;
+        logoBoxCoords.filename = file.name;
+        
+        updateLogoUIFromState();
+
+        if (currentProjectId) {
+            const fd = new FormData();
+            fd.append("file", file);
+            fetch(`/api/project/${currentProjectId}/logo`, {
+                method: "POST",
+                body: fd
+            }).then(res => {
+                if (res.ok) return res.json();
+            }).then(data => {
+                if (data && data.logo_box) {
+                    logoBoxCoords.image_path = data.logo_box.image_path;
+                }
+            }).catch(err => {
+                console.error("Lỗi khi tải logo lên server:", err);
+            });
+        }
+    }
+
+    function applyLogoPreset(pos) {
+        const w = logoBoxCoords.w || 18;
+        const h = logoBoxCoords.h || 12;
+        if (pos === "top-left") {
+            logoBoxCoords.x = 4;
+            logoBoxCoords.y = 4;
+        } else if (pos === "top-right") {
+            logoBoxCoords.x = Math.max(0, 100 - w - 4);
+            logoBoxCoords.y = 4;
+        } else if (pos === "bottom-left") {
+            logoBoxCoords.x = 4;
+            logoBoxCoords.y = Math.max(0, 100 - h - 5);
+        } else if (pos === "bottom-right") {
+            logoBoxCoords.x = Math.max(0, 100 - w - 4);
+            logoBoxCoords.y = Math.max(0, 100 - h - 5);
+        } else if (pos === "center") {
+            logoBoxCoords.x = Math.max(0, Math.round((100 - w) / 2));
+            logoBoxCoords.y = Math.max(0, Math.round((100 - h) / 2));
+        }
+        document.querySelectorAll(".logo-pos-btn").forEach(btn => {
+            btn.classList.toggle("active", btn.getAttribute("data-pos") === pos);
+        });
+        syncLogoSlidersFromCoords();
+        applyBoxStyles();
+    }
+
+    // Connect File Uploaders (Step 3 & Step 4)
+    if (btnUploadLogo && logoFileInput) {
+        btnUploadLogo.addEventListener("click", () => logoFileInput.click());
+        logoFileInput.addEventListener("change", (e) => handleLogoFileUpload(e.target.files && e.target.files[0]));
+    }
+    if (step3BtnUploadLogo && step3LogoFileInput) {
+        step3BtnUploadLogo.addEventListener("click", () => step3LogoFileInput.click());
+        step3LogoFileInput.addEventListener("change", (e) => handleLogoFileUpload(e.target.files && e.target.files[0]));
+    }
+
+    // Connect Switches (Step 3 & Step 4)
+    if (logoEnabled) {
+        logoEnabled.addEventListener("change", () => {
+            logoBoxCoords.enabled = logoEnabled.checked;
+            updateLogoUIFromState();
+        });
+    }
+    if (step3LogoEnabled) {
+        step3LogoEnabled.addEventListener("change", () => {
+            logoBoxCoords.enabled = step3LogoEnabled.checked;
+            updateLogoUIFromState();
+        });
+    }
+
+    // Connect Toggle Box Visibility Buttons
+    const toggleBoxAction = () => {
+        if (!bboxLogo) return;
+        const isHidden = bboxLogo.classList.contains("d-none");
+        bboxLogo.classList.toggle("d-none", !isHidden);
+        const labelText = isHidden ? '<i class="fa-solid fa-eye-slash"></i> Ẩn khung Logo' : '<i class="fa-solid fa-vector-square"></i> Hiện khung Logo';
+        if (btnToggleLogoBoxPreview) btnToggleLogoBoxPreview.innerHTML = labelText;
+        if (step3BtnToggleLogoBox) step3BtnToggleLogoBox.innerHTML = labelText;
+    };
+    if (btnToggleLogoBoxPreview) btnToggleLogoBoxPreview.addEventListener("click", toggleBoxAction);
+    if (step3BtnToggleLogoBox) step3BtnToggleLogoBox.addEventListener("click", toggleBoxAction);
+
+    // Connect Quick Canvas Logo Button (below video)
+    if (btnQuickCanvasLogo) {
+        btnQuickCanvasLogo.addEventListener("click", () => {
+            if (!logoBoxCoords.enabled) {
+                logoBoxCoords.enabled = true;
+                updateLogoUIFromState();
+                if (!logoBoxCoords.filename && !logoBoxCoords.image_path) {
+                    if (step3LogoFileInput) step3LogoFileInput.click();
+                    else if (logoFileInput) logoFileInput.click();
+                }
+            } else {
+                toggleBoxAction();
+            }
+        });
+    }
+
+    // Connect Step 4 Sliders
+    [
+        { el: logoSliderW, field: "w", isInt: true },
+        { el: logoSliderOpacity, field: "opacity", isOpacity: true },
+        { el: logoSliderX, field: "x", isInt: true },
+        { el: logoSliderY, field: "y", isInt: true }
+    ].forEach(({ el, field, isInt, isOpacity }) => {
+        if (el) {
+            el.addEventListener("input", () => {
+                if (isOpacity) logoBoxCoords.opacity = parseInt(el.value) / 100.0;
+                else logoBoxCoords[field] = parseInt(el.value);
+                syncLogoSlidersFromCoords();
+                applyBoxStyles();
+            });
+        }
+    });
+
+    // Connect Step 3 Sliders
+    [
+        { el: step3LogoSliderW, field: "w", isInt: true },
+        { el: step3LogoSliderOpacity, field: "opacity", isOpacity: true },
+        { el: step3LogoSliderX, field: "x", isInt: true },
+        { el: step3LogoSliderY, field: "y", isInt: true }
+    ].forEach(({ el, field, isInt, isOpacity }) => {
+        if (el) {
+            el.addEventListener("input", () => {
+                if (isOpacity) logoBoxCoords.opacity = parseInt(el.value) / 100.0;
+                else logoBoxCoords[field] = parseInt(el.value);
+                syncLogoSlidersFromCoords();
+                applyBoxStyles();
+            });
+        }
+    });
+
+    // Connect all Preset buttons across the page
+    document.querySelectorAll(".logo-pos-btn").forEach(btn => {
+        btn.addEventListener("click", () => applyLogoPreset(btn.getAttribute("data-pos")));
+    });
+
+    // Initialize logo UI on load
+    updateLogoUIFromState();
 
 });

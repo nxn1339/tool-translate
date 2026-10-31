@@ -1,15 +1,16 @@
 # Requirements Template & Index
 
 Owner: BA  
-Status: Template / Index
+Status: Active / Master Index
 
 ## Mục đích
-File này định nghĩa quy chuẩn mẫu cho tài liệu yêu cầu. Chi tiết yêu cầu thực tế của từng slice được lưu tại:
-- `docs/02.product/02.requirement/VS-001.md` (Core Media Pipeline)
-- `docs/02.product/02.requirement/VS-002.md` (Web Interface & Monitoring)
-- `docs/02.product/02.requirement/VS-003.md` (Cookie & Authentication)
-- `docs/02.product/02.requirement/VS-004.md` (Voice Settings & Audio Mixing)
-- `docs/02.product/02.requirement/VS-005.md` (Subtitle OCR, Masking & Multi-Tab Workspace)
+File này định nghĩa quy chuẩn mẫu cho tài liệu yêu cầu và chỉ mục các lát cắt tính năng (Vertical Slices) của hệ thống AI Video Dubber Studio:
+- `docs/02.product/02.requirement/VS-001.md` (Core Media Pipeline: Bilibili download, Whisper STT, Google Translate, Edge-TTS, FFmpeg)
+- `docs/02.product/02.requirement/VS-002.md` (Web Interface, Task Progress Polling & Video Download)
+- `docs/02.product/02.requirement/VS-003.md` (Bilibili Cookie & Buvid3/4 Anti-412 Authentication)
+- `docs/02.product/02.requirement/VS-004.md` (Voice Settings, CapCut Neural TTS & RVC Voice Conversion)
+- `docs/02.product/02.requirement/VS-005.md` (Subtitle OCR, Masking Box, Sub Box & Multi-Step Studio Workspace)
+- `docs/02.product/02.requirement/VS-006.md` (Video Logo & Watermark Overlay, Canvas Drag-Resize & FFmpeg Filter)
 
 
 ## Mẫu cấu trúc lát cắt (Slice Template)
