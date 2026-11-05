@@ -41,3 +41,5 @@ app/projects/*
 # External cloned backend repositories
 capcut_backend/
 rvc_backend/
+
+app/data/settings.json

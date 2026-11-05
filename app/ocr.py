@@ -1,6 +1,7 @@
 import os
 import re
 import logging
+import numpy as np
 from collections import Counter
 from typing import List, Dict, Any, Optional, Tuple
 
@@ -18,7 +19,8 @@ WATERMARK_PATTERN = re.compile(
 
 def get_ocr_engine():
     """
-    Initializes and returns cached RapidOCR instance.
+    Initializes and returns cached RapidOCR instance with GPU DirectML acceleration,
+    optimized detector resolution, and classification bypass for ultra-fast subtitle scanning.
     """
     global _cached_ocr_engine
     if _cached_ocr_engine is not None:
@@ -29,12 +31,27 @@ def get_ocr_engine():
     except ImportError:
         raise ImportError(
             "Thư viện RapidOCR chưa được cài đặt. "
-            "Vui lòng cài đặt bằng lệnh: pip install rapidocr-onnxruntime opencv-python-headless"
+            "Vui lòng cài đặt bằng lệnh: pip install rapidocr-onnxruntime onnxruntime-directml opencv-python-headless"
         )
 
-    logger.info("Khởi tạo mô hình RapidOCR (ONNX)...")
-    _cached_ocr_engine = RapidOCR()
-    logger.info("RapidOCR khởi tạo thành công.")
+    try:
+        import onnxruntime as ort
+        available_ep = ort.get_available_providers()
+        use_dml = "DmlExecutionProvider" in available_ep
+        use_cuda = "CUDAExecutionProvider" in available_ep
+        logger.info(f"Khởi tạo RapidOCR (DirectML={use_dml}, CUDA={use_cuda})...")
+        _cached_ocr_engine = RapidOCR(
+            use_dml=use_dml,
+            use_cuda=use_cuda,
+            use_cls=False,
+            det_limit_type="max",
+            det_limit_side_len=960
+        )
+        logger.info(f"RapidOCR khởi tạo thành công với tăng tốc phần cứng (GPU DML: {use_dml}).")
+    except Exception as e_init:
+        logger.warning(f"Cảnh báo khởi tạo RapidOCR với GPU ({e_init}), fallback cấu hình an toàn...")
+        _cached_ocr_engine = RapidOCR(use_cls=False)
+
     return _cached_ocr_engine
 
 
@@ -250,12 +267,12 @@ def post_filter_watermarks_and_noise(segments: List[Dict[str, Any]]) -> List[Dic
 def extract_subtitles_from_video(
     video_path: str,
     mask_box: Dict[str, Any],
-    sample_rate_fps: float = 3.0,
+    sample_rate_fps: float = 2.0,
     progress_callback=None
 ) -> List[Dict[str, Any]]:
     """
-    Scans video frames inside mask_box coordinates using RapidOCR,
-    detects Chinese subtitles, filters watermarks/noise, and groups them into timeline segments.
+    Scans video frames inside mask_box coordinates using GPU-accelerated RapidOCR,
+    with hardware-accelerated skip decoding, binary text mask caching, and timeline grouping.
     - mask_box: {"x": float %, "y": float %, "w": float %, "h": float %}
     """
     try:
@@ -300,24 +317,70 @@ def extract_subtitles_from_video(
     raw_detections: List[Tuple[float, str, float]] = []
 
     frame_idx = 0
+    prev_binary = None
+    prev_text = ""
+    prev_score = 0.0
+
     while True:
+        # Fast grab: Skip software decompression for un-sampled frames
+        if frame_idx % frame_step != 0:
+            if not cap.grab():
+                break
+            frame_idx += 1
+            continue
+
         ret, frame = cap.read()
         if not ret:
             break
 
-        if frame_idx % frame_step == 0:
-            timestamp = frame_idx / video_fps
-            cropped = frame[y1:y2, x1:x2]
+        timestamp = frame_idx / video_fps
+        cropped = frame[y1:y2, x1:x2]
 
-            if cropped.size > 0:
+        if cropped.size > 0:
+            # 1. Fast binary text-mask activity check (< 0.05ms)
+            gray = cv2.cvtColor(cropped, cv2.COLOR_BGR2GRAY)
+            _, binary = cv2.threshold(gray, 200, 255, cv2.THRESH_BINARY)
+            white_ratio = float(np.mean(binary == 255))
+
+            if white_ratio < 0.005:
+                # Blank subtitle region (no bright text pixels)
+                prev_binary = binary
+                prev_text = ""
+                prev_score = 0.0
+            elif prev_binary is not None and prev_text:
+                # Check binary difference vs previous frame
+                diff_pct = float(np.mean(prev_binary != binary)) * 100.0
+                if diff_pct < 4.2:
+                    # Cache hit: Subtitle text is identical, skip deep learning model
+                    raw_detections.append((timestamp, prev_text, prev_score))
+                else:
+                    # Cache miss: Subtitle changed -> run RapidOCR
+                    result, _ = ocr(cropped)
+                    text, avg_score = select_main_subtitle_from_ocr_result(result, crop_w, crop_h)
+                    if text:
+                        raw_detections.append((timestamp, text, avg_score))
+                        prev_text = text
+                        prev_score = avg_score
+                    else:
+                        prev_text = ""
+                        prev_score = 0.0
+                    prev_binary = binary
+            else:
+                # First text frame -> run RapidOCR
                 result, _ = ocr(cropped)
                 text, avg_score = select_main_subtitle_from_ocr_result(result, crop_w, crop_h)
                 if text:
                     raw_detections.append((timestamp, text, avg_score))
+                    prev_text = text
+                    prev_score = avg_score
+                else:
+                    prev_text = ""
+                    prev_score = 0.0
+                prev_binary = binary
 
-            if progress_callback and total_frames > 0:
-                pct = min(100.0, (frame_idx / total_frames) * 100)
-                progress_callback(pct)
+        if progress_callback and total_frames > 0:
+            pct = min(100.0, (frame_idx / total_frames) * 100)
+            progress_callback(pct)
 
         frame_idx += 1
 

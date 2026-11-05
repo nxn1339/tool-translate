@@ -85,6 +85,14 @@ def setup_ffmpeg():
                 pass
 
 def install_dependencies():
+    try:
+        import fastapi, uvicorn, yt_dlp, edge_tts, deep_translator, whisper, torch, rapidocr_onnxruntime, cv2
+        import onnxruntime as ort
+        if "DmlExecutionProvider" in ort.get_available_providers():
+            print("[Setup] Core dependencies already satisfied and GPU DirectML is active.")
+            return
+    except Exception:
+        pass
     """
     Checks and installs requirements.txt dependencies automatically.
     """
