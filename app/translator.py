@@ -59,6 +59,9 @@ def load_zh_vi_glossary() -> Dict[str, Any]:
 # ==============================================================================
 
 OCR_ZH_TYPO_FIXES: List[Tuple[str, str]] = [
+    ("盖涩", "羞涩"),
+    ("彼止", "彼此"),
+    ("白清晨", "白清臣"),
     ("暖味", "暧昧"),
     ("入费豪门", "入赘豪门"),
     ("入费", "入赘"),
@@ -86,11 +89,16 @@ STUDIO_WATERMARK_RE = re.compile(
 )
 
 
-def preprocess_chinese_segments(texts: List[str]) -> Tuple[List[str], List[str]]:
+def preprocess_chinese_segments(
+    texts: List[str],
+    inline_hanviet: bool = False
+) -> Tuple[List[str], List[str]]:
     """
-    Cleans OCR noise, fixes homograph typos, resolves pronoun gender ('他' -> '她')
-    across consecutive lines, replaces proper nouns/character names with Sino-Vietnamese,
-    and prepares disambiguated Chinese strings for translation.
+    Cleans OCR noise, fixes homograph typos, normalizes 1-char OCR character name variants across the script,
+    and resolves pronoun gender ('他' -> '她') across consecutive lines.
+    If inline_hanviet=True (used only for basic Google GTX word-by-word fallback), replaces proper nouns inline.
+    For AI engines (Groq/Gemini), inline_hanviet=False preserves 100% pure Chinese sentences so LLMs never suffer
+    from mixed-language context corruption.
     Returns (cleaned_display_zh, translator_ready_zh).
     """
     glossary = load_zh_vi_glossary()
@@ -114,6 +122,13 @@ def preprocess_chinese_segments(texts: List[str]) -> Tuple[List[str], List[str]]
             t = "一跃" + t[1:]
         cleaned_zh_list.append(t)
 
+    # Auto-normalize 1-char OCR homograph variants of recurring 3-char character names across the whole script
+    try:
+        from app.hanviet import normalize_ocr_character_names
+        cleaned_zh_list, _ = normalize_ocr_character_names(cleaned_zh_list)
+    except Exception as e_norm:
+        logger.warning(f"normalize_ocr_character_names warning: {e_norm}")
+
     translator_zh_list: List[str] = []
     female_context_ttl = 0
 
@@ -134,15 +149,24 @@ def preprocess_chinese_segments(texts: List[str]) -> Tuple[List[str], List[str]]
             if src_pat in work_t:
                 work_t = work_t.replace(src_pat, dst_pat)
 
-        # Replace known Chinese proper nouns / sect names with Sino-Vietnamese directly
-        for zh_name, vi_name in sorted_char_names:
-            if zh_name in work_t:
-                work_t = work_t.replace(zh_name, f" {vi_name} ")
+        if inline_hanviet:
+            # Replace known Chinese proper nouns / sect names with Sino-Vietnamese directly for Google GTX
+            for zh_name, vi_name in sorted_char_names:
+                if zh_name in work_t:
+                    work_t = work_t.replace(zh_name, f" {vi_name} ")
 
         work_t = re.sub(r'连生(\d+)胎', r'连续生下\1个孩子', work_t)
         work_t = re.sub(r'创造第(\d+)胎', r'生第\1个孩子', work_t)
 
         translator_zh_list.append(re.sub(r'\s+', ' ', work_t).strip())
+
+    # Dynamic Sino-Vietnamese entity inline replacement ONLY when inline_hanviet=True (Google GTX fallback)
+    if inline_hanviet:
+        try:
+            from app.hanviet import enhance_chinese_with_hanviet_entities
+            translator_zh_list, _ = enhance_chinese_with_hanviet_entities(translator_zh_list)
+        except Exception as e_hv:
+            logger.warning(f"enhance_chinese_with_hanviet_entities warning: {e_hv}")
 
     return cleaned_zh_list, translator_zh_list
 
@@ -189,6 +213,38 @@ def refine_vietnamese_dub_line(
         return "đứa nào cũng là kỳ tài đương thời"
     if zh_clean == "我刚满周岁":
         return "Vừa tròn một tuổi"
+
+    # Sino-Vietnamese Pinyin replacement (e.g. 'Xue Caiyi' -> 'Tiết Thải Y', 'Bai Qingchen' -> 'Bạch Thanh Trần')
+    try:
+        from app.hanviet import replace_pinyin_with_hanviet
+        vi = replace_pinyin_with_hanviet(zh_clean, vi)
+    except Exception as e_p:
+        logger.warning(f"replace_pinyin_with_hanviet error: {e_p}")
+
+    # Specific ancient / palace / drama adjustments
+    if "皇妃娘娘" in zh_clean:
+        vi = re.sub(r'\bvương phi\b|\bcông chúa\b', 'Hoàng phi nương nương', vi, flags=re.IGNORECASE)
+    elif "皇妃" in zh_clean:
+        vi = re.sub(r'\bcông chúa\b', 'Hoàng phi', vi, flags=re.IGNORECASE)
+    if "彼此的呼吸" in zh_clean or "彼止的呼吸" in zh_clean:
+        vi = "Hơi thở của nhau"
+    if "喷洒在对方的耳畔" in zh_clean:
+        vi = "phả vào bên tai đối phương"
+    if "哪个女人不喜欢" in zh_clean:
+        vi = "người phụ nữ nào mà không mê"
+    if "盖涩地低声娇" in zh_clean or "羞涩地低声娇" in zh_clean:
+        if "Tiết Thải Y" in vi:
+            vi = "Tiết Thải Y e thẹn nũng nịu thì thầm"
+    if "骨头都要融化掉了" in zh_clean:
+        vi = "xương cốt như muốn tan chảy"
+    if "我们薛彩衣的话" in zh_clean:
+        vi = "Lời của Tiết Thải Y chúng ta"
+    if "薛彩衣双臂" in zh_clean:
+        vi = "Hai cánh tay Tiết Thải Y"
+    if "环住白清臣的脖子" in zh_clean:
+        vi = "ôm trọn lấy cổ Bạch Thanh Trần"
+    if "品尝着薛彩衣的香甜" in zh_clean:
+        vi = "nếm trọn vị ngọt ngào của Tiết Thải Y"
 
     # Apply external JSON domain glossary replacements
     for item in vi_domain_glossary:
@@ -303,6 +359,30 @@ def refine_vietnamese_dub_line(
     for pat, repl in compact_rules:
         vi = re.sub(pat, repl, vi, flags=re.IGNORECASE)
 
+    # Cleanup known machine translation / pre-processing artifacts
+    artifact_cleanups = [
+        (r'\bĐó Cá\b', 'Ờ thì'),
+        (r'\bĐó Chẩm,?\s*được rồi\b', 'Thế sao được'),
+        (r'\bĐó Chẩm\b', 'Thế sao'),
+        (r'\bPhòng Tử\b', 'Căn nhà'),
+        (r'\bNhậm Hà Nhân\b', 'bất kỳ ai'),
+        (r'\bNhậm Hà Sai\b', 'sai sót nào'),
+        (r'\bNhậm Hà\b', 'bất kỳ ai'),
+        (r'\bChung Vu\b', 'cuối cùng'),
+        (r'\bNói Minh Thẩm Gia\b', 'Cho thấy Thẩm Gia'),
+        (r'\bMinh Thẩm Gia\b', 'Thẩm Gia'),
+        (r'\bThẩm Bá mẹ\b', 'Bác gái Thẩm'),
+        (r'\bvé Quốc Cơ\b', 'vé máy bay về nước'),
+        (r'\bvề Quốc Cơ\b', 'về nước'),
+        (r'\bQuốc Cơ\b', 'máy bay'),
+        (r'\bsân chim\b', 'trường đua ngựa'),
+    ]
+    for pat, repl in artifact_cleanups:
+        vi = re.sub(pat, repl, vi, flags=re.IGNORECASE)
+
+    if zh_clean in ("三二一", "321", "3, 2, 1", "3、2、1") and re.search(r'bốn,\s*ba,\s*hai,\s*một', vi, re.IGNORECASE):
+        vi = "Ba, hai, một"
+
     for item in vi_concise_rules:
         if isinstance(item, list) and len(item) == 2:
             pat, repl = item
@@ -316,6 +396,15 @@ def refine_vietnamese_dub_line(
     # If purely ancient/xianxia dialogue (and not modern-crossover autobiography), convert 'bạn' -> 'ngươi'
     if is_ancient_context and any(k in zh_clean for k in ("本座", "本尊", "本王", "朕", "陛下", "师尊", "老夫", "道友", "孽障")):
         vi = re.sub(r'\bbạn\b', 'ngươi', vi, flags=re.IGNORECASE)
+
+    # Fallback: if a translated line still contains any Chinese characters (e.g. 'Thẩm毅 chuyển đi' or untranslated terms),
+    # transliterate remaining Hanzi to Sino-Vietnamese so 0% Hanzi remain on screen.
+    if re.search(r'[\u4e00-\u9fff]', vi):
+        try:
+            from app.hanviet import transliterate_remaining_hanzi
+            vi = transliterate_remaining_hanzi(vi)
+        except Exception as e_tr:
+            logger.warning(f"transliterate_remaining_hanzi error: {e_tr}")
 
     vi = re.sub(r'\s+', ' ', vi).strip()
     vi = vi.rstrip('.,;:') if len(vi) < 35 else vi
@@ -406,57 +495,102 @@ def batch_translate_texts(
 
     g_source, g_target = normalize_lang_codes(source_code, target_code)
 
+    from app.gemini_translator import load_settings
+    settings = load_settings()
+    active_engine = settings.get("translation_engine", "groq")
+
     is_chinese = g_source.startswith("zh")
+    use_inline_hv = (active_engine == "google")
     if is_chinese:
-        cleaned_zh, translator_zh = preprocess_chinese_segments(texts)
+        cleaned_zh, translator_zh = preprocess_chinese_segments(texts, inline_hanviet=use_inline_hv)
     else:
         cleaned_zh = [t.strip() for t in texts]
         translator_zh = list(cleaned_zh)
 
     raw_translated: List[str] = []
 
-    for i in range(0, len(translator_zh), batch_size):
-        chunk = translator_zh[i:i + batch_size]
-        numbered_lines = [f"[{idx + 1}] {line}" for idx, line in enumerate(chunk)]
-        joined_text = "\n".join(numbered_lines)
-        chunk_map: Dict[int, str] = {}
-
+    # Priority 1: Groq High-Speed AI Translation Engine (Llama 3.3 70B)
+    if active_engine == "groq" and settings.get("groq_api_key"):
         try:
-            res = _raw_translate_query(joined_text, g_source, g_target)
-            if res:
-                matches = re.findall(r'\[(\d+)\]\s*([^\n\[]+)', res)
-                for m_idx_str, m_text in matches:
-                    m_idx = int(m_idx_str) - 1
-                    if 0 <= m_idx < len(chunk) and m_text.strip():
-                        chunk_map[m_idx] = m_text.strip()
+            from app.groq_translator import groq_batch_translate
+            logger.info("Translating with Groq Cloud AI engine (Llama 3.3 70B)...")
+            groq_res, groq_failed = groq_batch_translate(
+                translator_zh,
+                source_code=g_source,
+                target_code=g_target,
+                durations=durations
+            )
+            raw_translated = groq_res
+            logger.info(f"Groq AI translated {len(raw_translated) - len(groq_failed)}/{len(raw_translated)} lines successfully.")
+        except Exception as e_groq:
+            logger.error(f"Groq translation engine error: {e_groq}")
+            raw_translated = [""] * len(translator_zh)
 
-                if len(chunk_map) < len(chunk):
-                    split_lines = [ln.strip() for ln in res.split("\n") if ln.strip()]
-                    if len(split_lines) == len(chunk):
-                        for idx_ln, ln in enumerate(split_lines):
-                            clean_ln = re.sub(r'^\[\d+\]\s*', '', ln).strip()
-                            if clean_ln:
-                                chunk_map[idx_ln] = clean_ln
-        except Exception as e:
-            logger.warning(f"Indexed batch translation warning on chunk {i // batch_size + 1}: {e}")
+    # Priority 2: Gemini Contextual AI Translation Engine
+    elif active_engine == "gemini" and settings.get("gemini_api_key"):
+        try:
+            from app.gemini_translator import gemini_batch_translate
+            logger.info("Translating with Gemini Contextual AI engine...")
+            gemini_res = gemini_batch_translate(translator_zh, source_code=g_source, target_code=g_target)
+            if gemini_res:
+                raw_translated = gemini_res
+                logger.info(f"Gemini AI translated {len(raw_translated)} lines successfully.")
+            else:
+                logger.warning("Gemini translation returned empty/incomplete results.")
+                raw_translated = [""] * len(translator_zh)
+        except Exception as e_gem:
+            logger.error(f"Gemini translation engine error: {e_gem}")
+            raw_translated = [""] * len(translator_zh)
 
-        for idx_in_chunk, item_text in enumerate(chunk):
-            if idx_in_chunk in chunk_map and chunk_map[idx_in_chunk]:
-                raw_translated.append(chunk_map[idx_in_chunk])
-                continue
+    # Priority 3: Google GTX batch translation (Only if explicitly selected as Google engine)
+    elif active_engine == "google":
+        logger.info("Translating with Google GTX engine...")
+        for i in range(0, len(translator_zh), batch_size):
+            chunk = translator_zh[i:i + batch_size]
+            numbered_lines = [f"[{idx + 1}] {line}" for idx, line in enumerate(chunk)]
+            joined_text = "\n".join(numbered_lines)
+            chunk_map: Dict[int, str] = {}
 
-            if not item_text.strip():
-                raw_translated.append("")
-                continue
+            try:
+                res = _raw_translate_query(joined_text, g_source, g_target)
+                if res:
+                    matches = re.findall(r'\[(\d+)\]\s*([^\n\[]+)', res)
+                    for m_idx_str, m_text in matches:
+                        m_idx = int(m_idx_str) - 1
+                        if 0 <= m_idx < len(chunk) and m_text.strip():
+                            chunk_map[m_idx] = m_text.strip()
 
-            single_res = None
-            for attempt in range(2):
-                single_res = _raw_translate_query(item_text, g_source, g_target)
-                if single_res:
-                    break
-                time.sleep(0.2)
+                    if len(chunk_map) < len(chunk):
+                        split_lines = [ln.strip() for ln in res.split("\n") if ln.strip()]
+                        if len(split_lines) == len(chunk):
+                            for idx_ln, ln in enumerate(split_lines):
+                                clean_ln = re.sub(r'^\[\d+\]\s*', '', ln).strip()
+                                if clean_ln:
+                                    chunk_map[idx_ln] = clean_ln
+            except Exception as e:
+                logger.warning(f"Indexed batch translation warning on chunk {i // batch_size + 1}: {e}")
 
-            raw_translated.append(single_res if single_res else item_text)
+            for idx_in_chunk, item_text in enumerate(chunk):
+                if idx_in_chunk in chunk_map and chunk_map[idx_in_chunk]:
+                    raw_translated.append(chunk_map[idx_in_chunk])
+                    continue
+
+                if not item_text.strip():
+                    raw_translated.append("")
+                    continue
+
+                single_res = None
+                for attempt in range(2):
+                    single_res = _raw_translate_query(item_text, g_source, g_target)
+                    if single_res:
+                        break
+                    time.sleep(0.2)
+
+                raw_translated.append(single_res if single_res else "")
+    else:
+        # No valid configured engine
+        logger.warning(f"No valid API key or unknown engine '{active_engine}'. Subtitles left untranslated.")
+        raw_translated = [""] * len(translator_zh)
 
     first_person_count = sum(1 for t in cleaned_zh if "我" in t)
     is_first_person = first_person_count >= max(1, len(cleaned_zh) // 6)
@@ -469,6 +603,10 @@ def batch_translate_texts(
     final_translations: List[str] = []
     for idx, (orig_zh, raw_vi) in enumerate(zip(cleaned_zh, raw_translated)):
         dur = durations[idx] if (durations and idx < len(durations)) else 2.0
+        if not raw_vi or not raw_vi.strip():
+            final_translations.append("")
+            continue
+
         if is_chinese and g_target == "vi":
             refined = refine_vietnamese_dub_line(
                 orig_zh,
@@ -533,6 +671,20 @@ def export_segments_to_srt_string(segments: List[Dict[str, Any]], lang: str = "z
         blocks.append(f"{idx + 1}\n{start_ts} --> {end_ts}\n{content}\n")
 
     return "\n".join(blocks)
+
+
+def _clear_stale_translation_flags(
+    segments: List[Dict[str, Any]],
+    target_field: str
+) -> List[Dict[str, Any]]:
+    """Removes error flags left over from a previous translation run after importing new translations."""
+    if target_field != "translation":
+        return segments
+    for seg in segments:
+        seg.pop("translation_error", None)
+        seg.pop("untranslated_warning", None)
+        seg.pop("untranslated_chars", None)
+    return segments
 
 
 def import_srt_to_segments(
@@ -618,7 +770,7 @@ def import_srt_to_segments(
                 if target_field == "translation" and new_val != old_val:
                     new_seg.pop("tts_raw_hash", None)
                 updated_list.append(new_seg)
-            return updated_list
+            return _clear_stale_translation_flags(updated_list, target_field)
 
         # 1b: Different block count -> match each block to closest existing segment by timestamp overlap
         updated_list = []
@@ -649,7 +801,7 @@ def import_srt_to_segments(
                     "translation": blk["content"] if target_field == "translation" else ""
                 }
             updated_list.append(new_seg)
-        return updated_list
+        return _clear_stale_translation_flags(updated_list, target_field)
 
     # Case 2: Plain lines or numbered lines ([1] ..., 1. ...) without timestamps
     plain_lines = [
@@ -668,7 +820,7 @@ def import_srt_to_segments(
                 if target_field == "translation" and new_val != old_val:
                     new_seg.pop("tts_raw_hash", None)
             updated_list.append(new_seg)
-        return updated_list
+        return _clear_stale_translation_flags(updated_list, target_field)
 
     return existing
 

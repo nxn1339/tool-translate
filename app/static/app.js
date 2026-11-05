@@ -425,8 +425,8 @@ document.addEventListener("DOMContentLoaded", () => {
                 el.style.borderRadius = "0";
                 el.style.paintOrder = "stroke fill";
                 if (subStylingState.outline_width > 0) {
-                    const sw = el === capcutLiveSample 
-                        ? subStylingState.outline_width 
+                    const sw = el === capcutLiveSample
+                        ? subStylingState.outline_width
                         : Math.max(1.2, Math.round(subStylingState.outline_width * scaleRatio));
                     el.style.webkitTextStroke = `${sw}px ${subStylingState.outline_color}`;
                     el.style.textShadow = "0 3px 6px rgba(0,0,0,0.95), 0 0 14px rgba(0,0,0,0.7)";
@@ -777,6 +777,7 @@ document.addEventListener("DOMContentLoaded", () => {
                 logoBoxCoords.w = Math.round(newCoords.w);
                 logoBoxCoords.h = Math.round(newCoords.h);
                 syncLogoSlidersFromCoords();
+                triggerDebouncedAutoSave(1000);
             },
             null
         );
@@ -961,6 +962,183 @@ document.addEventListener("DOMContentLoaded", () => {
     const step1ProgressMsg = document.getElementById("step1-progress-msg");
     const step1ProgressPct = document.getElementById("step1-progress-pct");
 
+    // Terminal Elements - Step 1
+    const step1TerminalBox = document.getElementById("step1-terminal-box");
+    const step1TerminalLogs = document.getElementById("step1-terminal-logs");
+    const step1TerminalBody = document.getElementById("step1-terminal-body");
+    const step1TerminalStatusTag = document.getElementById("step1-terminal-status-tag");
+    const btnStep1TerminalToggle = document.getElementById("btn-step1-terminal-toggle");
+    const step1TerminalToggleIcon = document.getElementById("step1-terminal-toggle-icon");
+    const step1TerminalToggleText = document.getElementById("step1-terminal-toggle-text");
+    const btnStep1TerminalCopy = document.getElementById("btn-step1-terminal-copy");
+    const btnStep1TerminalClear = document.getElementById("btn-step1-terminal-clear");
+    let lastRenderedLogsCount = 0;
+    let autoScrollTerminal = true;
+
+    if (step1TerminalBody) {
+        step1TerminalBody.addEventListener("scroll", () => {
+            const isNearBottom = (step1TerminalBody.scrollHeight - step1TerminalBody.scrollTop - step1TerminalBody.clientHeight) < 30;
+            autoScrollTerminal = isNearBottom;
+        });
+    }
+
+    function parseLogLine(rawLine) {
+        const m = rawLine.match(/^\[(\d{2}:\d{2}:\d{2})\]\s*(?:\[(INFO|WARN|ERROR|SUCCESS|Cảnh báo|Lỗi)\])?\s*(.*)$/i);
+        if (m) {
+            const time = m[1];
+            let lvl = (m[2] || "INFO").toUpperCase();
+            if (lvl === "CẢNH BÁO") lvl = "WARN";
+            if (lvl === "LỖI") lvl = "ERROR";
+            const text = m[3];
+            return { time, level: lvl, text };
+        }
+        return { time: "", level: "INFO", text: rawLine };
+    }
+
+    function appendTerminalLog(rawLine) {
+        if (!step1TerminalLogs) return;
+        const { time, level, text } = parseLogLine(rawLine);
+        const lineEl = document.createElement("div");
+        lineEl.className = `terminal-line term-type-${level.toLowerCase()}`;
+
+        let badgeClass = "term-badge-info";
+        let badgeLabel = level;
+        if (level === "WARN") { badgeClass = "term-badge-warn"; badgeLabel = "CẢNH BÁO"; }
+        else if (level === "ERROR") { badgeClass = "term-badge-error"; badgeLabel = "LỖI"; }
+        else if (level === "SUCCESS") { badgeClass = "term-badge-success"; badgeLabel = "XONG"; }
+
+        lineEl.innerHTML = `
+            ${time ? `<span class="term-time">[${time}]</span>` : ''}
+            <span class="term-badge ${badgeClass}">[${badgeLabel}]</span>
+            <span class="term-text">${escapeHtml(text)}</span>
+        `;
+        step1TerminalLogs.appendChild(lineEl);
+
+        if (autoScrollTerminal && step1TerminalBody) {
+            step1TerminalBody.scrollTop = step1TerminalBody.scrollHeight;
+        }
+    }
+
+    let lastRenderedLogsList = [];
+
+    function clearTerminalUI() {
+        if (step1TerminalLogs) step1TerminalLogs.innerHTML = "";
+        lastRenderedLogsList = [];
+        lastRenderedLogsCount = 0;
+    }
+
+    function updateTerminalLogs(logs) {
+        if (!Array.isArray(logs) || !step1TerminalLogs) return;
+        if (logs.length === 0) return;
+
+        // If nothing is rendered yet, render all
+        if (lastRenderedLogsList.length === 0) {
+            step1TerminalLogs.innerHTML = "";
+            for (const line of logs) {
+                appendTerminalLog(line);
+            }
+            lastRenderedLogsList = [...logs];
+            lastRenderedLogsCount = logs.length;
+            return;
+        }
+
+        const lastOld = lastRenderedLogsList[lastRenderedLogsList.length - 1];
+        const lastNew = logs[logs.length - 1];
+        if (lastOld === lastNew && lastRenderedLogsList.length === logs.length) {
+            return;
+        }
+
+        // Find match of lastOld in logs
+        let lastMatchedIndex = -1;
+        for (let i = logs.length - 1; i >= 0; i--) {
+            if (logs[i] === lastOld) {
+                lastMatchedIndex = i;
+                break;
+            }
+        }
+
+        if (lastMatchedIndex !== -1) {
+            for (let i = lastMatchedIndex + 1; i < logs.length; i++) {
+                appendTerminalLog(logs[i]);
+            }
+            lastRenderedLogsList = [...logs];
+            lastRenderedLogsCount = logs.length;
+        } else {
+            // Either sliding window passed or project switched
+            if (logs[0] !== lastRenderedLogsList[0]) {
+                step1TerminalLogs.innerHTML = "";
+                for (const line of logs) {
+                    appendTerminalLog(line);
+                }
+            } else {
+                const renderedSet = new Set(lastRenderedLogsList);
+                for (const line of logs) {
+                    if (!renderedSet.has(line)) {
+                        appendTerminalLog(line);
+                    }
+                }
+            }
+            lastRenderedLogsList = [...logs];
+            lastRenderedLogsCount = logs.length;
+        }
+    }
+
+    const btnToggleTerminalGlobal = document.getElementById("btn-toggle-terminal-global");
+    const lblToggleTerminalGlobal = document.getElementById("lbl-toggle-terminal-global");
+
+    function setTerminalVisible(visible) {
+        if (!step1TerminalBox) return;
+        if (visible) {
+            step1TerminalBox.classList.remove("d-none");
+            if (lblToggleTerminalGlobal) lblToggleTerminalGlobal.textContent = "Ẩn Terminal";
+        } else {
+            step1TerminalBox.classList.add("d-none");
+            if (lblToggleTerminalGlobal) lblToggleTerminalGlobal.textContent = "Mở Terminal";
+        }
+    }
+
+    if (btnToggleTerminalGlobal) {
+        btnToggleTerminalGlobal.addEventListener("click", () => {
+            if (!step1TerminalBox) return;
+            const isCurrentlyHidden = step1TerminalBox.classList.contains("d-none");
+            setTerminalVisible(isCurrentlyHidden);
+            if (isCurrentlyHidden && step1TerminalBody) {
+                step1TerminalBody.scrollTop = step1TerminalBody.scrollHeight;
+            }
+        });
+    }
+
+    if (btnStep1TerminalToggle) {
+        btnStep1TerminalToggle.addEventListener("click", () => {
+            if (!step1TerminalBox) return;
+            const isCollapsed = step1TerminalBox.classList.toggle("collapsed");
+            if (step1TerminalToggleIcon) {
+                step1TerminalToggleIcon.className = isCollapsed ? "fa-solid fa-chevron-down" : "fa-solid fa-chevron-up";
+            }
+            if (step1TerminalToggleText) {
+                step1TerminalToggleText.textContent = isCollapsed ? "Mở rộng" : "Thu gọn";
+            }
+        });
+    }
+
+    if (btnStep1TerminalClear) {
+        btnStep1TerminalClear.addEventListener("click", () => {
+            clearTerminalUI();
+        });
+    }
+
+    if (btnStep1TerminalCopy) {
+        btnStep1TerminalCopy.addEventListener("click", () => {
+            if (!step1TerminalLogs) return;
+            const text = step1TerminalLogs.innerText;
+            navigator.clipboard.writeText(text).then(() => {
+                const origHtml = btnStep1TerminalCopy.innerHTML;
+                btnStep1TerminalCopy.innerHTML = '<i class="fa-solid fa-check"></i> <span>Đã chép</span>';
+                setTimeout(() => { btnStep1TerminalCopy.innerHTML = origHtml; }, 1500);
+            });
+        });
+    }
+
     // Elements - Wizard Step 2
     const btnModeOcr = document.getElementById("btn-mode-ocr");
     const btnModeWhisper = document.getElementById("btn-mode-whisper");
@@ -989,12 +1167,6 @@ document.addEventListener("DOMContentLoaded", () => {
     const bgVolLabel = document.getElementById("bg-vol-label");
     const ttsVolumeSlider = document.getElementById("tts-volume-slider");
     const ttsVolLabel = document.getElementById("tts-vol-label");
-    const rvcModelSelectStep3 = document.getElementById("rvc-model-select-step3");
-    const btnRefreshRvc = document.getElementById("btn-refresh-rvc");
-    const rvcStatusHint = document.getElementById("rvc-status-hint");
-    const rvcPitchRow = document.getElementById("rvc-pitch-row");
-    const rvcPitchSlider = document.getElementById("rvc-pitch-slider");
-    const rvcPitchVal = document.getElementById("rvc-pitch-val");
     const btnGotoSubstudio = document.getElementById("btn-goto-substudio");
     const btnStep3Next = document.getElementById("btn-step3-next");
     const btnStep3RenderDownload = document.getElementById("btn-step3-render-download");
@@ -1055,9 +1227,11 @@ document.addEventListener("DOMContentLoaded", () => {
 
     const STEP_NAMES = {
         1: "Bước 1: Tải Video",
-        2: "Bước 2: Quét OCR",
-        3: "Bước 3: Dịch & Sub",
-        4: "Bước 4: Xuất Video"
+        2: "Bước 2: Quét Chữ Gốc",
+        3: "Bước 3: Dịch Phụ Đề",
+        4: "Bước 4: Tạo Giọng Đọc",
+        5: "Bước 5: Chèn Logo",
+        6: "Bước 6: Xuất Video"
     };
 
     function escapeHtml(text) {
@@ -1170,11 +1344,20 @@ document.addEventListener("DOMContentLoaded", () => {
                     bold: Boolean(subStylingState.bold)
                 },
                 voice: voiceSelectStep3 ? voiceSelectStep3.value : "female_hoaimy",
-                rvc_model: rvcModelSelectStep3 ? rvcModelSelectStep3.value : "none",
-                rvc_pitch: rvcPitchSlider ? parseInt(rvcPitchSlider.value) : 0,
                 bg_volume: bgVolumeSlider ? parseFloat(bgVolumeSlider.value) : 0.15,
                 tts_volume: ttsVolumeSlider ? parseFloat(ttsVolumeSlider.value) : 1.0,
                 auto_extend_video: document.getElementById("chk-auto-extend-video") ? document.getElementById("chk-auto-extend-video").checked : false,
+                logo_box: {
+                    enabled: Boolean(logoBoxCoords.enabled),
+                    x: Number(logoBoxCoords.x ?? 78),
+                    y: Number(logoBoxCoords.y ?? 5),
+                    w: Number(logoBoxCoords.w ?? 18),
+                    h: Number(logoBoxCoords.h ?? 12),
+                    opacity: Number(logoBoxCoords.opacity ?? 1.0),
+                    keep_aspect: Boolean(logoBoxCoords.keep_aspect ?? true),
+                    filename: logoBoxCoords.filename || null,
+                    image_path: logoBoxCoords.image_path || null
+                },
                 ...extraUpdates
             };
 
@@ -1328,14 +1511,6 @@ document.addEventListener("DOMContentLoaded", () => {
 
             // Populate voice & sliders
             if (meta.voice && voiceSelectStep3) voiceSelectStep3.value = meta.voice;
-            if (meta.rvc_model && rvcModelSelectStep3) {
-                rvcModelSelectStep3.value = meta.rvc_model;
-                if (typeof updateRvcPitchVisibility === "function") updateRvcPitchVisibility();
-            }
-            if (meta.rvc_pitch !== undefined && rvcPitchSlider) {
-                rvcPitchSlider.value = meta.rvc_pitch;
-                if (rvcPitchVal) rvcPitchVal.textContent = meta.rvc_pitch > 0 ? `+${meta.rvc_pitch}` : meta.rvc_pitch;
-            }
             if (meta.bg_volume !== undefined && bgVolumeSlider) {
                 bgVolumeSlider.value = meta.bg_volume;
                 if (bgVolLabel) bgVolLabel.textContent = `${Math.round(meta.bg_volume * 100)}%`;
@@ -1408,7 +1583,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
             // Unlock completed steps
             const completed = meta.completed_steps || [];
-            [1, 2, 3, 4].forEach(s => {
+            [1, 2, 3, 4, 5].forEach(s => {
                 const tab = document.getElementById(`tab-step-${s}`);
                 if (tab) {
                     if (completed.includes(s)) {
@@ -1424,7 +1599,7 @@ document.addEventListener("DOMContentLoaded", () => {
             });
 
             // Target step navigation
-            const targetStep = meta.current_step || (completed.length > 0 ? Math.min(Math.max(...completed) + 1, 4) : 1);
+            const targetStep = meta.current_step || (completed.length > 0 ? Math.min(Math.max(...completed) + 1, 6) : 1);
             unlockStep(targetStep);
             switchStep(targetStep);
 
@@ -1443,6 +1618,20 @@ document.addEventListener("DOMContentLoaded", () => {
 
             updateProjectBarUI();
             setSaveStatus("saved", "Đã mở dự án thành công");
+
+            // Sync status logs to live terminal
+            try {
+                const statusRes = await fetch(`/api/project/${meta.id}/status`);
+                if (statusRes.ok) {
+                    const statusData = await statusRes.json();
+                    if (statusData.logs && statusData.logs.length > 0) {
+                        updateTerminalLogs(statusData.logs);
+                        setTerminalVisible(true);
+                    }
+                }
+            } catch (e) {
+                console.warn("Could not sync terminal logs on project open", e);
+            }
 
             if (modalProjects) modalProjects.classList.add("d-none");
         } catch (e) {
@@ -1644,32 +1833,48 @@ document.addEventListener("DOMContentLoaded", () => {
         if (!bboxMask || !bboxSub) return;
 
         if (currentStudioStep === 1) {
-            // Bước 1: Ẩn cả 2 khung
+            // Bước 1: Ẩn tất cả khung
             bboxMask.classList.add("d-none");
             bboxSub.classList.add("d-none");
+            if (bboxLogo) bboxLogo.classList.add("d-none");
         } else if (currentStudioStep === 2) {
-            // Bước 2: Chỉ hiện khung OCR tiếng Trung (nếu chọn mode OCR), KHÔNG hiện khung Sub Việt
+            // Bước 2: Chỉ hiện khung OCR tiếng Trung (nếu chọn mode OCR)
             bboxSub.classList.add("d-none");
+            if (bboxLogo) {
+                if (logoBoxCoords.enabled) bboxLogo.classList.remove("d-none");
+                else bboxLogo.classList.add("d-none");
+            }
             if (currentTranscribeMode === "ocr") {
                 bboxMask.classList.remove("d-none");
             } else {
                 bboxMask.classList.add("d-none");
             }
         } else if (currentStudioStep === 3 || currentStudioStep === 4) {
-            // Bước 3 & 4: Hiện khung Sub Việt để căn vị trí & hiển thị hiệu ứng che mờ
+            // Bước 3 & 4: Hiện khung Sub Việt và khung Logo (nếu đang bật)
             bboxSub.classList.remove("d-none");
-            // Khung đỏ OCR cũ mặc định ẩn, trừ khi người dùng bật nút "Hiện khung đỏ"
-            if (!btnToggleMaskBoxPreview || !btnToggleMaskBoxPreview.classList.contains("active")) {
-                bboxMask.classList.add("d-none");
-            } else {
-                bboxMask.classList.remove("d-none");
+            bboxMask.classList.add("d-none");
+            if (bboxLogo) {
+                if (logoBoxCoords.enabled) bboxLogo.classList.remove("d-none");
+                else bboxLogo.classList.add("d-none");
             }
-        }
-        if (bboxLogo) {
-            if (currentStudioStep === 1 || !logoBoxCoords.enabled) {
-                bboxLogo.classList.add("d-none");
-            } else {
-                bboxLogo.classList.remove("d-none");
+        } else if (currentStudioStep === 5) {
+            // Bước 5: Chèn Logo -> Luôn hiện khung Logo (hoặc nếu enabled) và Sub Việt để dễ căn chỉnh
+            bboxSub.classList.remove("d-none");
+            bboxMask.classList.add("d-none");
+            if (bboxLogo) {
+                if (logoBoxCoords.enabled || logoBoxCoords.filename || logoBoxCoords.image_path) {
+                    bboxLogo.classList.remove("d-none");
+                } else {
+                    bboxLogo.classList.remove("d-none");
+                }
+            }
+        } else if (currentStudioStep === 6) {
+            // Bước 6: Xuất video hoàn chỉnh
+            bboxSub.classList.remove("d-none");
+            bboxMask.classList.add("d-none");
+            if (bboxLogo) {
+                if (logoBoxCoords.enabled) bboxLogo.classList.remove("d-none");
+                else bboxLogo.classList.add("d-none");
             }
         }
         applyMaskVisualPreview();
@@ -1694,19 +1899,19 @@ document.addEventListener("DOMContentLoaded", () => {
         // Đồng bộ hiển thị Bounding Box
         updateBBoxVisibility();
 
-        // Hiển thị / ẩn bảng phụ đề bên dưới player
+        // Hiển thị / ẩn bảng phụ đề bên dưới player (Hiện ở Bước 2, 3, 4, 5 nếu đã có sub)
         if (subtitleEditorCard) {
-            if ((stepNum === 3 || stepNum === 4) && segmentsData && segmentsData.length > 0) {
+            if ((stepNum >= 2 && stepNum <= 5) && segmentsData && segmentsData.length > 0) {
                 subtitleEditorCard.classList.remove("d-none");
-            } else if (stepNum < 3) {
+            } else if (stepNum === 1 || stepNum === 6) {
                 subtitleEditorCard.classList.add("d-none");
             }
         }
 
-        // Cập nhật tóm tắt khi sang Bước 4
-        if (stepNum === 4) {
+        // Cập nhật tóm tắt khi sang Bước 6
+        if (stepNum === 6) {
             updateStep4Summary();
-        } else if (stepNum === 3) {
+        } else if (stepNum === 4) {
             syncPreviewVideoVolume();
             loadPreviewDubbedAudio(false);
         }
@@ -1819,6 +2024,20 @@ document.addEventListener("DOMContentLoaded", () => {
             if (step1ProgressPct) step1ProgressPct.textContent = "5%";
             if (step1ProgressMsg) step1ProgressMsg.textContent = "Đang kết nối...";
 
+            if (step1TerminalBox) {
+                step1TerminalBox.classList.remove("d-none");
+                step1TerminalBox.classList.remove("collapsed");
+            }
+            if (step1TerminalStatusTag) {
+                step1TerminalStatusTag.className = "terminal-status-tag";
+                step1TerminalStatusTag.textContent = "Đang tải";
+            }
+            if (step1TerminalLogs) {
+                step1TerminalLogs.innerHTML = `<div class="terminal-line"><span class="term-time">[${new Date().toTimeString().slice(0, 8)}]</span><span class="term-badge term-badge-info">[Bắt đầu]</span><span class="term-text">Khởi tạo kết nối tải video từ: ${escapeHtml(url)}...</span></div>`;
+            }
+            lastRenderedLogsCount = 1;
+            autoScrollTerminal = true;
+
             try {
                 const res = await fetch("/api/project/download", {
                     method: "POST",
@@ -1845,16 +2064,27 @@ document.addEventListener("DOMContentLoaded", () => {
                         const statusRes = await fetch(`/api/project/${currentProjectId}/status`);
                         if (!statusRes.ok) return;
                         const statusData = await statusRes.json();
-                        
-                        if (step1ProgressBar) step1ProgressBar.style.width = `${statusData.progress || 0}%`;
-                        if (step1ProgressPct) step1ProgressPct.textContent = `${statusData.progress || 0}%`;
-                        if (step1ProgressMsg) step1ProgressMsg.textContent = statusData.message || "Đang tải...";
+
+                        const curPct = Math.min(100, Math.max(0, parseInt(statusData.progress) || 0));
+                        if (step1ProgressBar) step1ProgressBar.style.width = `${curPct}%`;
+                        if (step1ProgressPct) step1ProgressPct.textContent = `${curPct}%`;
+                        if (step1ProgressMsg) step1ProgressMsg.textContent = statusData.message || `Đang tải... (${curPct}%)`;
+
+                        if (statusData.logs && Array.isArray(statusData.logs)) {
+                            updateTerminalLogs(statusData.logs);
+                        }
 
                         if (statusData.status === "downloaded") {
                             clearInterval(pollingInterval);
                             btnStep1Download.disabled = false;
-                            if (step1ProgressBox) step1ProgressBox.classList.add("d-none");
-                            
+                            if (step1ProgressBar) step1ProgressBar.style.width = "100%";
+                            if (step1ProgressPct) step1ProgressPct.textContent = "100%";
+                            if (step1ProgressMsg) step1ProgressMsg.textContent = "Tải video hoàn tất!";
+                            if (step1TerminalStatusTag) {
+                                step1TerminalStatusTag.className = "terminal-status-tag status-done";
+                                step1TerminalStatusTag.textContent = "Hoàn tất";
+                            }
+
                             // Load video thật vào player xem trước
                             if (previewVideoElement) {
                                 previewVideoElement.src = `/api/project/${currentProjectId}/video-raw`;
@@ -1873,7 +2103,10 @@ document.addEventListener("DOMContentLoaded", () => {
                         } else if (statusData.status === "download_failed") {
                             clearInterval(pollingInterval);
                             btnStep1Download.disabled = false;
-                            if (step1ProgressBox) step1ProgressBox.classList.add("d-none");
+                            if (step1TerminalStatusTag) {
+                                step1TerminalStatusTag.className = "terminal-status-tag status-error";
+                                step1TerminalStatusTag.textContent = "Thất bại";
+                            }
                             if (cookiePanel && (statusData.error || "").includes("Cookie")) {
                                 cookiePanel.classList.remove("d-none");
                                 if (bilibiliCookieInput) bilibiliCookieInput.focus();
@@ -1886,7 +2119,10 @@ document.addEventListener("DOMContentLoaded", () => {
                 }, 800);
             } catch (err) {
                 btnStep1Download.disabled = false;
-                if (step1ProgressBox) step1ProgressBox.classList.add("d-none");
+                if (step1TerminalStatusTag) {
+                    step1TerminalStatusTag.className = "terminal-status-tag status-error";
+                    step1TerminalStatusTag.textContent = "Lỗi";
+                }
                 alert(err.message);
             }
         });
@@ -1937,13 +2173,113 @@ document.addEventListener("DOMContentLoaded", () => {
         const words = trimmed.split(/\s+/).filter(Boolean).length;
         const dur = Math.max(0.1, duration);
         const pace = words / dur;
-        
+
         if (pace <= 3.8) {
             return `<span class="badge-pace badge-good" title="Tốc độ tự nhiên, rõ từng chữ"><i class="fa-solid fa-circle-check"></i> ${words} từ / ${dur.toFixed(1)}s • Chuẩn tự nhiên 1.0x</span>`;
         } else if (pace <= 4.8) {
-            return `<span class="badge-pace badge-warn" title="Hơi nhiều từ, sẽ đọc nhanh hơn một chút"><i class="fa-solid fa-triangle-exclamation"></i> ${words} từ / ${dur.toFixed(1)}s • Đọc nhanh ~${(pace/3.4).toFixed(1)}x</span>`;
+            return `<span class="badge-pace badge-warn" title="Hơi nhiều từ, sẽ đọc nhanh hơn một chút"><i class="fa-solid fa-triangle-exclamation"></i> ${words} từ / ${dur.toFixed(1)}s • Đọc nhanh ~${(pace / 3.4).toFixed(1)}x</span>`;
         } else {
-            return `<span class="badge-pace badge-danger" title="Quá nhiều từ so với số giây video! Nên gọt bớt chữ để giọng đọc rõ nét"><i class="fa-solid fa-bolt"></i> ${words} từ / ${dur.toFixed(1)}s • Quá dài (~${(pace/3.4).toFixed(1)}x)! Nên rút gọn</span>`;
+            return `<span class="badge-pace badge-danger" title="Quá nhiều từ so với số giây video! Nên gọt bớt chữ để giọng đọc rõ nét"><i class="fa-solid fa-bolt"></i> ${words} từ / ${dur.toFixed(1)}s • Quá dài (~${(pace / 3.4).toFixed(1)}x)! Nên rút gọn</span>`;
+        }
+    }
+
+    function updateFailedTtsUI(failedCount) {
+        const btnRetryFailedTTS = document.getElementById("btn-retry-failed-tts");
+        const failedTtsCount = document.getElementById("failed-tts-count");
+        if (btnRetryFailedTTS) {
+            if (failedCount > 0) {
+                btnRetryFailedTTS.classList.remove("d-none");
+                if (failedTtsCount) failedTtsCount.textContent = failedCount;
+            } else {
+                btnRetryFailedTTS.classList.add("d-none");
+            }
+        }
+    }
+
+    let filterOnlyChineseWarn = false;
+    const FOREIGN_SCRIPT_REGEX = /[\u3040-\u30ff\u3400-\u4dbf\u4e00-\u9fff\uf900-\ufaff\uac00-\ud7af\u0400-\u04ff]+/g;
+
+    function extractForeignChars(text) {
+        if (!text) return "";
+        const matches = String(text).match(FOREIGN_SCRIPT_REGEX);
+        return matches ? matches.join("") : "";
+    }
+
+    function getForeignWarningBadgeHTML(text) {
+        const chars = extractForeignChars(text);
+        if (!chars) return "";
+        const displayChars = chars.length > 8 ? chars.slice(0, 8) + "..." : chars;
+        return `<span class="badge-chinese-warn" style="display:inline-flex;align-items:center;gap:4px;background:rgba(249,115,22,0.22);color:#fdba74;border:1px solid rgba(249,115,22,0.55);border-radius:4px;padding:1px 6px;font-size:0.72rem;margin-left:6px;font-weight:700;" title="Cảnh báo: Câu dịch vẫn còn ký tự tiếng Trung / ngoại ngữ chưa dịch hết (${chars})"><i class="fa-solid fa-language"></i> Sót chữ Hán: ${displayChars}</span>`;
+    }
+
+    function applyChineseFilterToTable() {
+        if (!subtitleTableBody) return;
+        const rows = subtitleTableBody.querySelectorAll("tr");
+        rows.forEach(tr => {
+            if (!filterOnlyChineseWarn) {
+                tr.style.display = "";
+            } else {
+                const isFlagged = tr.dataset.hasForeign === "1" || tr.dataset.hasTransErr === "1";
+                tr.style.display = isFlagged ? "" : "none";
+            }
+        });
+    }
+
+    function updateChineseWarnUI(chineseWarnCount) {
+        const btnFilterChinese = document.getElementById("btn-filter-chinese");
+        const countSpan = document.getElementById("count-chinese-warn");
+        if (!btnFilterChinese) return;
+
+        if (chineseWarnCount > 0) {
+            btnFilterChinese.classList.remove("d-none");
+            if (filterOnlyChineseWarn) {
+                btnFilterChinese.style.background = "rgba(249, 115, 22, 0.35)";
+                btnFilterChinese.style.borderColor = "#fb923c";
+                btnFilterChinese.innerHTML = `<i class="fa-solid fa-filter-circle-xmark"></i> Đang lọc câu sót (<span id="count-chinese-warn">${chineseWarnCount}</span>) - Hiện tất cả`;
+            } else {
+                btnFilterChinese.style.background = "rgba(249, 115, 22, 0.15)";
+                btnFilterChinese.style.borderColor = "#f97316";
+                btnFilterChinese.innerHTML = `<i class="fa-solid fa-language"></i> Sót tiếng Trung (<span id="count-chinese-warn">${chineseWarnCount}</span>)`;
+            }
+        } else {
+            filterOnlyChineseWarn = false;
+            btnFilterChinese.classList.add("d-none");
+            if (countSpan) countSpan.textContent = "0";
+            applyChineseFilterToTable();
+        }
+    }
+
+    const btnFilterChineseEl = document.getElementById("btn-filter-chinese");
+    if (btnFilterChineseEl) {
+        btnFilterChineseEl.addEventListener("click", () => {
+            filterOnlyChineseWarn = !filterOnlyChineseWarn;
+            const currentWarnCount = (segmentsData || []).filter(s => Boolean(extractForeignChars(s.translation))).length;
+            updateChineseWarnUI(currentWarnCount);
+            applyChineseFilterToTable();
+        });
+    }
+
+    function updateFailedTransUI(failedCount) {
+        const btnStep3Retry = document.getElementById("btn-step3-retry-failed-translate");
+        const step3FailedCount = document.getElementById("step3-failed-trans-count");
+        const btnTableRetry = document.getElementById("btn-retry-failed-translate");
+        const tableFailedCount = document.getElementById("table-failed-trans-count");
+
+        if (btnStep3Retry) {
+            if (failedCount > 0) {
+                btnStep3Retry.classList.remove("d-none");
+                if (step3FailedCount) step3FailedCount.textContent = failedCount;
+            } else {
+                btnStep3Retry.classList.add("d-none");
+            }
+        }
+        if (btnTableRetry) {
+            if (failedCount > 0) {
+                btnTableRetry.classList.remove("d-none");
+                if (tableFailedCount) tableFailedCount.textContent = failedCount;
+            } else {
+                btnTableRetry.classList.add("d-none");
+            }
         }
     }
 
@@ -1953,12 +2289,45 @@ document.addEventListener("DOMContentLoaded", () => {
         subtitleTableBody.innerHTML = "";
         if (segmentsCount) segmentsCount.textContent = segments.length;
 
+        let failedCount = 0;
+        let failedTransCount = 0;
+        let chineseWarnCount = 0;
+
         segments.forEach((seg, index) => {
             const tr = document.createElement("tr");
             const startVal = seg.start != null ? Number(seg.start).toFixed(1) : "0.0";
             const endVal = seg.end != null ? Number(seg.end).toFixed(1) : "0.0";
             const dur = Math.max(0.1, Number(endVal) - Number(startVal));
             const curSpeed = seg.speed != null ? Number(seg.speed) : 1.0;
+
+            const hasSourceText = Boolean(seg.text && seg.text.trim());
+            const hasTranslation = Boolean(seg.translation && seg.translation.trim());
+            const foreignChars = extractForeignChars(seg.translation);
+            const hasForeignText = Boolean(foreignChars);
+            const hasTransError = hasSourceText && (Boolean(seg.translation_error) || !hasTranslation);
+
+            tr.dataset.hasForeign = hasForeignText ? "1" : "0";
+            tr.dataset.hasTransErr = hasTransError ? "1" : "0";
+
+            if (hasForeignText) {
+                chineseWarnCount++;
+            }
+
+            if (hasTransError || hasForeignText) {
+                failedTransCount++;
+                tr.style.backgroundColor = hasTransError ? "rgba(239, 68, 68, 0.08)" : "rgba(249, 115, 22, 0.09)";
+            }
+
+            const hasError = hasTranslation && (Boolean(seg.tts_error) || !seg.audio_path || Number(seg.actual_duration) <= 0.05);
+            if (hasError) {
+                failedCount++;
+                if (!hasTransError && !hasForeignText) tr.style.backgroundColor = "rgba(245, 158, 11, 0.08)";
+            }
+
+            const errorBadge = hasError ? `<span class="badge-tts-error" style="display:inline-flex;align-items:center;gap:3px;background:rgba(245,158,11,0.2);color:#fbbf24;border:1px solid rgba(245,158,11,0.45);border-radius:4px;padding:1px 6px;font-size:0.72rem;margin-left:6px;font-weight:700;" title="Chưa tạo được giọng đọc câu này"><i class="fa-solid fa-circle-exclamation"></i> Lỗi giọng</span>` : '';
+            const transErrorBadge = hasTransError ? `<span class="badge-tts-error" style="display:inline-flex;align-items:center;gap:3px;background:rgba(239,68,68,0.2);color:#fca5a5;border:1px solid rgba(239,68,68,0.45);border-radius:4px;padding:1px 6px;font-size:0.72rem;margin-left:6px;font-weight:700;" title="Câu này chưa có bản dịch tiếng Việt"><i class="fa-solid fa-triangle-exclamation"></i> Chưa dịch</span>` : '';
+            const foreignWarnBadge = getForeignWarningBadgeHTML(seg.translation);
+            const inputWarnStyle = hasForeignText ? 'border-color: #f97316; background: rgba(249, 115, 22, 0.08);' : '';
 
             tr.innerHTML = `
                 <td><strong>${index + 1}</strong></td>
@@ -1988,17 +2357,22 @@ document.addEventListener("DOMContentLoaded", () => {
                 <td style="color: #cbd5e1; font-size: 0.86rem;">${seg.text || ""}</td>
                 <td>
                     <div class="sub-input-container">
-                        <input type="text" class="sub-edit-input" data-index="${index}" value="${seg.translation ? seg.translation.replace(/"/g, '&quot;') : ''}" placeholder="Nhập bản dịch tiếng Việt (để trống = không đọc)...">
-                        <div class="sub-duration-badge" id="sub-badge-${index}">${getDurationBadgeHTML(seg.translation, dur)}</div>
+                        <input type="text" class="sub-edit-input ${hasForeignText ? 'has-chinese-warn' : ''}" style="${inputWarnStyle}" data-index="${index}" value="${seg.translation ? seg.translation.replace(/"/g, '&quot;') : ''}" placeholder="Nhập bản dịch tiếng Việt (để trống = không đọc)...">
+                        <div class="sub-duration-badge" id="sub-badge-${index}">${getDurationBadgeHTML(seg.translation, dur)}${transErrorBadge}${foreignWarnBadge}${errorBadge}</div>
                     </div>
                 </td>
                 <td style="text-align: center;">
-                    <button type="button" class="btn-table-action btn-tts" data-index="${index}" title="Nghe thử TTS câu này"><i class="fa-solid fa-volume-high"></i></button>
+                    <button type="button" class="btn-table-action btn-tts ${hasError ? 'btn-tts-err' : ''}" data-index="${index}" style="${hasError ? 'color: #f87171;' : ''}" title="${hasError ? 'Câu này chưa có âm thanh. Nhấn để tạo thử' : 'Nghe thử TTS câu này'}"><i class="fa-solid ${hasError ? 'fa-triangle-exclamation' : 'fa-volume-high'}"></i></button>
                     <button type="button" class="btn-table-action btn-del" data-index="${index}" title="Xóa dòng này"><i class="fa-solid fa-trash-can"></i></button>
                 </td>
             `;
             subtitleTableBody.appendChild(tr);
         });
+
+        updateFailedTtsUI(failedCount);
+        updateFailedTransUI(failedTransCount);
+        updateChineseWarnUI(chineseWarnCount);
+        applyChineseFilterToTable();
 
         // Time Nudge Play Button
         subtitleTableBody.querySelectorAll(".btn-nudge-play").forEach(btn => {
@@ -2109,7 +2483,7 @@ document.addEventListener("DOMContentLoaded", () => {
                 const input = subtitleTableBody.querySelector(`.sub-edit-input[data-index="${idx}"]`);
                 const text = input ? input.value.trim() : (segmentsData[idx]?.translation || "");
                 if (!text) return;
-                
+
                 const voice = voiceSelectStep3 ? voiceSelectStep3.value : "female_hoaimy";
                 btn.innerHTML = `<i class="fa-solid fa-spinner fa-spin"></i>`;
                 try {
@@ -2148,11 +2522,28 @@ document.addEventListener("DOMContentLoaded", () => {
                 const idx = parseInt(input.dataset.index);
                 if (segmentsData[idx]) {
                     segmentsData[idx].translation = input.value;
+                    const hasForeignNow = Boolean(extractForeignChars(input.value));
+                    const tr = input.closest("tr");
+                    if (tr) {
+                        tr.dataset.hasForeign = hasForeignNow ? "1" : "0";
+                        const isEmptyNow = !input.value.trim();
+                        tr.dataset.hasTransErr = isEmptyNow ? "1" : "0";
+                        tr.style.backgroundColor = isEmptyNow ? "rgba(239, 68, 68, 0.08)" : (hasForeignNow ? "rgba(249, 115, 22, 0.09)" : "");
+                    }
+                    input.style.borderColor = hasForeignNow ? "#f97316" : "";
+                    input.style.background = hasForeignNow ? "rgba(249, 115, 22, 0.08)" : "";
+
                     const badge = document.getElementById(`sub-badge-${idx}`);
                     if (badge) {
                         const dur = Math.max(0.1, (segmentsData[idx].end || 0) - (segmentsData[idx].start || 0));
-                        badge.innerHTML = getDurationBadgeHTML(input.value, dur);
+                        const foreignWarnBadge = getForeignWarningBadgeHTML(input.value);
+                        badge.innerHTML = `${getDurationBadgeHTML(input.value, dur)}${foreignWarnBadge}`;
                     }
+
+                    const newWarnCount = segmentsData.filter(s => Boolean(extractForeignChars(s.translation))).length;
+                    const newFailedTransCount = segmentsData.filter(s => (s.text && s.text.trim()) && (Boolean(s.translation_error) || !(s.translation && s.translation.trim()) || Boolean(extractForeignChars(s.translation)))).length;
+                    updateChineseWarnUI(newWarnCount);
+                    updateFailedTransUI(newFailedTransCount);
                 }
                 updatePreviewSubtitle();
                 triggerDebouncedAutoSave(1500);
@@ -2286,14 +2677,19 @@ document.addEventListener("DOMContentLoaded", () => {
         if (btnRef) btnRef.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i>';
         try {
             const voice = voiceSelectStep3 ? voiceSelectStep3.value : "female_hoaimy";
-            const rvc_model = rvcModelSelectStep3 ? rvcModelSelectStep3.value : "none";
-            const rvc_pitch = rvcPitchSlider ? parseInt(rvcPitchSlider.value) : 0;
             const res = await fetch(`/api/project/${currentProjectId}/preview-audio`, {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ voice, rvc_model, rvc_pitch })
+                body: JSON.stringify({ voice })
             });
             if (res.ok) {
+                try {
+                    const stRes = await fetch(`/api/project/${currentProjectId}/status`);
+                    if (stRes.ok) {
+                        const stData = await stRes.json();
+                        if (stData.logs) updateTerminalLogs(stData.logs);
+                    }
+                } catch (_) { }
                 loadPreviewDubbedAudio(true);
                 setSaveStatus("saved", "Đã cập nhật giọng lồng tiếng xem trước!");
             }
@@ -2366,7 +2762,7 @@ document.addEventListener("DOMContentLoaded", () => {
             }
             dubbingAudio.currentTime = previewVideoElement.currentTime;
             if (!previewVideoElement.paused && isDubbingEnabled) {
-                dubbingAudio.play().catch(e => {});
+                dubbingAudio.play().catch(e => { });
             }
         }
     }
@@ -2670,6 +3066,7 @@ document.addEventListener("DOMContentLoaded", () => {
                 end: newEnd,
                 text: "",
                 translation: "Đoạn mới",
+                translation: "",
                 speed: 1.0
             };
             segmentsData.push(newSeg);
@@ -3068,6 +3465,13 @@ document.addEventListener("DOMContentLoaded", () => {
             if (step2ProgressPct) step2ProgressPct.textContent = "5%";
             if (step2ProgressMsg) step2ProgressMsg.textContent = "Đang khởi tạo...";
 
+            setTerminalVisible(true);
+            if (step1TerminalStatusTag) {
+                step1TerminalStatusTag.className = "terminal-status-tag";
+                step1TerminalStatusTag.textContent = "Đang quét OCR";
+            }
+            appendTerminalLog(`[${new Date().toTimeString().slice(0, 8)}] [INFO] Bắt đầu quét phụ đề (${currentTranscribeMode.toUpperCase()})...`);
+
             try {
                 const res = await fetch(`/api/project/${currentProjectId}/transcribe`, {
                     method: "POST",
@@ -3099,16 +3503,29 @@ document.addEventListener("DOMContentLoaded", () => {
                         if (step2ProgressPct) step2ProgressPct.textContent = `${statusData.progress || 0}%`;
                         if (step2ProgressMsg) step2ProgressMsg.textContent = statusData.message || "Đang quét...";
 
+                        if (statusData.logs && Array.isArray(statusData.logs)) {
+                            updateTerminalLogs(statusData.logs);
+                        }
+
                         if (statusData.status === "transcribed") {
                             clearInterval(pollingInterval);
                             btnStep2Transcribe.disabled = false;
                             if (step2ProgressBox) step2ProgressBox.classList.add("d-none");
 
+                            if (step1TerminalStatusTag) {
+                                step1TerminalStatusTag.className = "terminal-status-tag status-done";
+                                step1TerminalStatusTag.textContent = "Hoàn tất";
+                            }
                             renderSegmentsTable(statusData.segments || []);
 
+                            // Hiển thị hộp kết quả quét và số câu
+                            const step2ResultBox = document.getElementById("step2-result-box");
+                            const step2ScannedCount = document.getElementById("step2-scanned-count");
+                            if (step2ResultBox) step2ResultBox.classList.remove("d-none");
+                            if (step2ScannedCount) step2ScannedCount.textContent = (statusData.segments || []).length;
+
                             currentProjectMeta = statusData.project || currentProjectMeta;
-                            setSaveStatus("saved", "Đã quét phụ đề & tự động lưu");
-                            // Đánh dấu xong bước 2, mở khóa và chuyển sang bước 3 (mới bắt đầu hiện phụ đề tiếng Việt)
+                            setSaveStatus("saved", "Đã quét phụ đề gốc thành công");
                             markStepDone(2);
                             unlockStep(3);
                             switchStep(3);
@@ -3131,8 +3548,8 @@ document.addEventListener("DOMContentLoaded", () => {
 
     // 4. Bước 3: Giọng Đọc, Masking Che Chữ Cũ & Kiểu Sub
     function applyMaskVisualPreview() {
-        const isEnabled = step3MaskEnabled 
-            ? step3MaskEnabled.checked 
+        const isEnabled = step3MaskEnabled
+            ? step3MaskEnabled.checked
             : (maskEnabledCheck ? maskEnabledCheck.checked : true);
         const style = maskStyleSelect ? maskStyleSelect.value : "blur";
 
@@ -3201,8 +3618,8 @@ document.addEventListener("DOMContentLoaded", () => {
     if (btnToggleMaskBoxPreview) {
         btnToggleMaskBoxPreview.addEventListener("click", () => {
             const isActive = btnToggleMaskBoxPreview.classList.toggle("active");
-            btnToggleMaskBoxPreview.innerHTML = isActive 
-                ? `<i class="fa-solid fa-eye-slash"></i> Ẩn khung đỏ` 
+            btnToggleMaskBoxPreview.innerHTML = isActive
+                ? `<i class="fa-solid fa-eye-slash"></i> Ẩn khung đỏ`
                 : `<i class="fa-solid fa-vector-square"></i> Hiện khung đỏ`;
             if (bboxMask) {
                 bboxMask.classList.toggle("d-none", !isActive);
@@ -3228,14 +3645,14 @@ document.addEventListener("DOMContentLoaded", () => {
             return;
         }
 
-        // Khi bật lồng tiếng, video gốc đóng vai trò nhạc nền (Background)
-        let vol = 0.15;
+        // Khi bật lồng tiếng, video gốc đóng vai trò nhạc nền nhẹ (mặc định 10% theo yêu cầu người dùng)
+        let vol = 0.10;
         if (bgVolumeSlider) {
             vol = parseFloat(bgVolumeSlider.value);
         } else if (sharedBgVol) {
             vol = parseFloat(sharedBgVol.value);
         }
-        if (isNaN(vol)) vol = 0.15;
+        if (isNaN(vol)) vol = 0.10;
         vol = Math.max(0, Math.min(1, vol));
         previewVideoElement.volume = vol;
     }
@@ -3396,7 +3813,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
             if (btnHeaderQuickExport) {
                 btnHeaderQuickExport.disabled = exporting;
-                btnHeaderQuickExport.innerHTML = exporting 
+                btnHeaderQuickExport.innerHTML = exporting
                     ? `<i class="fa-solid fa-spinner fa-spin"></i> <span>${pct > 0 ? `${pct}%` : 'Đang xuất...'}</span>`
                     : `<i class="fa-solid fa-download"></i> <span>Tải Video MP4</span>`;
             }
@@ -3419,8 +3836,6 @@ document.addEventListener("DOMContentLoaded", () => {
             // 2. Gửi lệnh render
             const payload = {
                 voice: voiceSelectStep3 ? voiceSelectStep3.value : "female_hoaimy",
-                rvc_model: rvcModelSelectStep3 ? rvcModelSelectStep3.value : "none",
-                rvc_pitch: rvcPitchSlider ? parseInt(rvcPitchSlider.value) : 0,
                 bg_volume: bgVolumeSlider ? parseFloat(bgVolumeSlider.value) : 0.15,
                 tts_volume: ttsVolumeSlider ? parseFloat(ttsVolumeSlider.value) : 1.0,
                 mask_box: {
@@ -3458,7 +3873,9 @@ document.addEventListener("DOMContentLoaded", () => {
                     w: Number(logoBoxCoords.w),
                     h: Number(logoBoxCoords.h),
                     opacity: Number(logoBoxCoords.opacity),
-                    keep_aspect: true
+                    keep_aspect: true,
+                    filename: logoBoxCoords.filename || null,
+                    image_path: logoBoxCoords.image_path || null
                 },
                 segments: segments
             };
@@ -3480,6 +3897,7 @@ document.addEventListener("DOMContentLoaded", () => {
                     if (!statusRes.ok) return;
                     const statusData = await statusRes.json();
 
+                    if (statusData.logs) updateTerminalLogs(statusData.logs);
                     const progress = statusData.progress || 0;
                     const msg = statusData.message || "Đang ghép âm thanh & phụ đề...";
 
@@ -3639,6 +4057,13 @@ document.addEventListener("DOMContentLoaded", () => {
             if (step4ProgressPct) step4ProgressPct.textContent = "5%";
             if (step4ProgressMsg) step4ProgressMsg.textContent = "Đang bắt đầu ghép...";
 
+            setTerminalVisible(true);
+            if (step1TerminalStatusTag) {
+                step1TerminalStatusTag.className = "terminal-status-tag";
+                step1TerminalStatusTag.textContent = "Đang xuất video";
+            }
+            appendTerminalLog(`[${new Date().toTimeString().slice(0, 8)}] [INFO] Bắt đầu kết xuất video (TTS & Hardsub)...`);
+
             showState("processing");
 
             try {
@@ -3684,7 +4109,9 @@ document.addEventListener("DOMContentLoaded", () => {
                             w: Number(logoBoxCoords.w),
                             h: Number(logoBoxCoords.h),
                             opacity: Number(logoBoxCoords.opacity),
-                            keep_aspect: true
+                            keep_aspect: true,
+                            filename: logoBoxCoords.filename || null,
+                            image_path: logoBoxCoords.image_path || null
                         },
                         segments: segments
                     })
@@ -3702,6 +4129,7 @@ document.addEventListener("DOMContentLoaded", () => {
                         if (!statusRes.ok) return;
                         const statusData = await statusRes.json();
 
+                        if (statusData.logs) updateTerminalLogs(statusData.logs);
                         if (step4ProgressBar) step4ProgressBar.style.width = `${statusData.progress || 0}%`;
                         if (step4ProgressPct) step4ProgressPct.textContent = `${statusData.progress || 0}%`;
                         if (step4ProgressMsg) step4ProgressMsg.textContent = statusData.message || "Đang render...";
@@ -3714,17 +4142,38 @@ document.addEventListener("DOMContentLoaded", () => {
                             clearInterval(pollingInterval);
                             btnStep4Render.disabled = false;
                             if (step4ProgressBox) step4ProgressBox.classList.add("d-none");
-                            markStepDone(4);
+                            markStepDone(5);
 
                             currentProjectMeta = statusData.project || currentProjectMeta;
-                            setSaveStatus("saved", "Đã hoàn thành & tự động lưu");
+                            setSaveStatus("saved", "Đã xuất video hoàn tất!");
                             showState("success");
+
+                            // Hiển thị hộp tải video hoàn thiện ở Bước 5
+                            const step3SuccessBox = document.getElementById("step3-success-box");
+                            if (step3SuccessBox) {
+                                step3SuccessBox.classList.remove("d-none");
+                            }
+                            const btnStep3RenderDownload = document.getElementById("btn-step3-render-download");
+                            if (btnStep3RenderDownload) {
+                                btnStep3RenderDownload.href = statusData.download_url || `/api/project/${currentProjectId}/download`;
+                            }
+                            const btnStep3DownloadAudio = document.getElementById("btn-step3-download-audio");
+                            if (btnStep3DownloadAudio) {
+                                btnStep3DownloadAudio.href = `/api/project/${currentProjectId}/download-audio`;
+                            }
+
                             if (videoPreview) {
-                                videoPreview.src = statusData.video_url || `/api/project/${currentProjectId}/video-dubbed`;
+                                const rawUrl = statusData.video_url || `/api/project/${currentProjectId}/video-dubbed`;
+                                videoPreview.src = rawUrl + (rawUrl.includes("?") ? "&" : "?") + `t=${Date.now()}`;
                                 videoPreview.load();
                             }
                             if (downloadBtn) downloadBtn.href = statusData.download_url || `/api/project/${currentProjectId}/download`;
                             if (downloadSrtBtn) downloadSrtBtn.href = statusData.subtitles_url || `/api/project/${currentProjectId}/subtitles`;
+
+                            if (step1TerminalStatusTag) {
+                                step1TerminalStatusTag.className = "terminal-status-tag tag-success";
+                                step1TerminalStatusTag.textContent = "Hoàn tất";
+                            }
 
                             // Tự động tải file MP4
                             const dlUrl = `/api/project/${currentProjectId}/download?t=${Date.now()}`;
@@ -3738,7 +4187,15 @@ document.addEventListener("DOMContentLoaded", () => {
                             clearInterval(pollingInterval);
                             btnStep4Render.disabled = false;
                             showState("error");
-                            if (errorMessage) errorMessage.textContent = statusData.error || statusData.message;
+                            const errMsg = statusData.error || statusData.message || "Xuất video thất bại.";
+                            if (errorMessage) errorMessage.textContent = errMsg;
+                            if (step4ProgressMsg) {
+                                step4ProgressMsg.innerHTML = `<i class="fa-solid fa-triangle-exclamation" style="color: #ef4444;"></i> ${escapeHtml(errMsg)}`;
+                            }
+                            if (step1TerminalStatusTag) {
+                                step1TerminalStatusTag.className = "terminal-status-tag tag-error";
+                                step1TerminalStatusTag.textContent = "Lỗi xuất video";
+                            }
                         }
                     } catch (e) {
                         console.error(e);
@@ -3919,8 +4376,13 @@ document.addEventListener("DOMContentLoaded", () => {
                 if (modalSrtImport) {
                     modalSrtImport.classList.add("d-none");
                 }
-                setSaveStatus("saved", `Đã gắn ${data.count || 0} câu từ SRT!`);
-                refreshPreviewDubbedAudio();
+                setSaveStatus("saved", `Đã gắn ${data.count || 0} câu từ SRT! Hãy bấm "Tạo giọng đọc" để tạo lại âm thanh.`);
+                // Old voice files were deleted server-side; drop the cached preview track in the browser too
+                pauseDubbingAudio();
+                dubbingAudio.removeAttribute("src");
+                dubbingAudio.load();
+                isDubbingAudioLoaded = false;
+                isDubbingAudioLoading = false;
             } catch (err) {
                 alert("Lỗi khi gắn SRT: " + err.message);
             } finally {
@@ -3967,98 +4429,32 @@ document.addEventListener("DOMContentLoaded", () => {
 
     initStudioSession();
 
-    // ==========================================
-    // RVC MODEL LOADER & VISIBILITY LOGIC
-    // ==========================================
-    function updateRvcPitchVisibility() {
-        if (!rvcPitchRow || !rvcModelSelectStep3) return;
-        const isRvcActive = rvcModelSelectStep3.value && rvcModelSelectStep3.value !== "none";
-        rvcPitchRow.style.display = isRvcActive ? "grid" : "none";
-    }
-
-    async function loadRvcModels(selectedModel = null) {
-        if (!rvcModelSelectStep3) return;
-        try {
-            const res = await fetch("/api/rvc-models");
-            if (res.ok) {
-                const data = await res.json();
-                const models = data.models || [];
-                const currentVal = selectedModel || rvcModelSelectStep3.value || "none";
-                rvcModelSelectStep3.innerHTML = '<option value="none">Không dùng (Chỉ giữ Edge-TTS gốc)</option>';
-                if (models.length > 0) {
-                    models.forEach(m => {
-                        const opt = document.createElement("option");
-                        opt.value = m.id;
-                        opt.textContent = `${m.name} (${m.size_mb} MB${m.has_index ? " + index" : ""})`;
-                        rvcModelSelectStep3.appendChild(opt);
-                    });
-                    if (rvcStatusHint) {
-                        rvcStatusHint.textContent = `Đã tìm thấy ${models.length} model RVC trong app/models/rvc/`;
-                        rvcStatusHint.style.color = "var(--success, #10b981)";
-                    }
-                } else {
-                    if (rvcStatusHint) {
-                        rvcStatusHint.innerHTML = 'Thả file <code>.pth</code> & <code>.index</code> vào <code>app/models/rvc/</code> để tự động nhận diện.';
-                        rvcStatusHint.style.color = "var(--text-muted, #94a3b8)";
-                    }
-                }
-                if (currentVal && (currentVal === "none" || models.some(m => m.id === currentVal))) {
-                    rvcModelSelectStep3.value = currentVal;
-                }
-                updateRvcPitchVisibility();
-            }
-        } catch (e) {
-            console.error("Lỗi khi quét RVC models:", e);
-        }
-    }
-
-    if (rvcModelSelectStep3) {
-        rvcModelSelectStep3.addEventListener("change", updateRvcPitchVisibility);
-    }
-    if (btnRefreshRvc) {
-        btnRefreshRvc.addEventListener("click", () => {
-            btnRefreshRvc.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i>';
-            loadRvcModels(rvcModelSelectStep3 ? rvcModelSelectStep3.value : null).finally(() => {
-                btnRefreshRvc.innerHTML = '<i class="fa-solid fa-rotate-right"></i> Quét lại';
-            });
-        });
-    }
-    if (rvcPitchSlider && rvcPitchVal) {
-        rvcPitchSlider.addEventListener("input", () => {
-            const val = parseInt(rvcPitchSlider.value);
-            rvcPitchVal.textContent = val > 0 ? `+${val}` : val;
-        });
-    }
-
-    // Load RVC models on startup
-    loadRvcModels();
-
 
     // ==========================================
     // LOGO / WATERMARK OVERLAY ENGINE (TWO-WAY SYNC)
     // ==========================================
     function updateLogoUIFromState() {
         const isEn = Boolean(logoBoxCoords.enabled);
-        
-        // 1. Sync Step 4 controls
+
+        // 1. Sync Step 5 controls (always keep logoControlsBody visible so user can click upload button anytime)
         if (logoEnabled) logoEnabled.checked = isEn;
         if (logoStatusLabel) logoStatusLabel.textContent = isEn ? "Bật" : "Tắt";
-        if (logoControlsBody) logoControlsBody.classList.toggle("d-none", !isEn);
+        if (logoControlsBody) logoControlsBody.classList.remove("d-none");
         if (summaryLogoStatus) {
-            summaryLogoStatus.textContent = isEn ? "Đang bật" : "Chưa bật";
+            summaryLogoStatus.textContent = isEn ? (logoBoxCoords.filename ? `Đang bật (${logoBoxCoords.filename})` : "Đang bật") : "Chưa bật";
             summaryLogoStatus.className = "summary-val " + (isEn ? "text-success" : "");
         }
-        
+
         // 2. Sync Step 3 controls
         if (step3LogoEnabled) step3LogoEnabled.checked = isEn;
         if (step3LogoStatusLabel) step3LogoStatusLabel.textContent = isEn ? "Bật" : "Tắt";
         if (step3LogoOptions) step3LogoOptions.classList.toggle("d-none", !isEn);
-        
+
         // 3. Sync Quick Canvas Pill & Buttons
         if (btnQuickCanvasLogo) {
             btnQuickCanvasLogo.classList.toggle("active", isEn);
-            btnQuickCanvasLogo.innerHTML = isEn 
-                ? '<i class="fa-solid fa-stamp"></i> Logo: Bật' 
+            btnQuickCanvasLogo.innerHTML = isEn
+                ? '<i class="fa-solid fa-stamp"></i> Logo: Bật'
                 : '<i class="fa-solid fa-stamp"></i> Ghép Logo';
         }
         if (step3BtnToggleLogoBox) {
@@ -4070,10 +4466,10 @@ document.addEventListener("DOMContentLoaded", () => {
 
         // 4. Sync Bounding Box on Video Canvas
         if (bboxLogo) {
-            const shouldShow = isEn && (currentStudioStep >= 2 || (previewVideoElement && previewVideoElement.src));
+            const shouldShow = (isEn && (currentStudioStep >= 2 || (previewVideoElement && previewVideoElement.src))) || currentStudioStep === 5;
             bboxLogo.classList.toggle("d-none", !shouldShow);
         }
-        
+
         syncLogoSlidersFromCoords();
 
         // 5. Sync Images & Placeholders
@@ -4084,7 +4480,9 @@ document.addEventListener("DOMContentLoaded", () => {
         if (fname || logoBoxCoords.image_path) {
             if (bboxLogoImg) {
                 if (!bboxLogoImg.src || bboxLogoImg.src.indexOf("blob:") === -1) {
-                    bboxLogoImg.src = (currentProjectId ? `/api/project/${currentProjectId}/logo?t=` : "") + Date.now();
+                    if (currentProjectId) {
+                        bboxLogoImg.src = `/api/project/${currentProjectId}/logo?t=${Date.now()}`;
+                    }
                 }
                 bboxLogoImg.classList.remove("d-none");
             }
@@ -4095,7 +4493,7 @@ document.addEventListener("DOMContentLoaded", () => {
             }
             if (bboxLogoPlaceholder) bboxLogoPlaceholder.classList.remove("d-none");
         }
-        
+
         applyBoxStyles();
     }
 
@@ -4121,7 +4519,7 @@ document.addEventListener("DOMContentLoaded", () => {
         if (step3LogoYVal) step3LogoYVal.textContent = `${logoBoxCoords.y}%`;
     }
 
-    function handleLogoFileUpload(file) {
+    async function handleLogoFileUpload(file) {
         if (!file) return;
 
         const blobUrl = URL.createObjectURL(file);
@@ -4135,24 +4533,38 @@ document.addEventListener("DOMContentLoaded", () => {
 
         logoBoxCoords.enabled = true;
         logoBoxCoords.filename = file.name;
-        
+
         updateLogoUIFromState();
+
+        if (!currentProjectId) {
+            await createNewProject(false);
+        }
 
         if (currentProjectId) {
             const fd = new FormData();
             fd.append("file", file);
-            fetch(`/api/project/${currentProjectId}/logo`, {
-                method: "POST",
-                body: fd
-            }).then(res => {
-                if (res.ok) return res.json();
-            }).then(data => {
+            try {
+                const res = await fetch(`/api/project/${currentProjectId}/logo`, {
+                    method: "POST",
+                    body: fd
+                });
+                if (!res.ok) {
+                    const errData = await res.json().catch(() => ({}));
+                    throw new Error(errData.detail || "Không thể tải ảnh logo lên server.");
+                }
+                const data = await res.json();
                 if (data && data.logo_box) {
                     logoBoxCoords.image_path = data.logo_box.image_path;
+                    logoBoxCoords.filename = data.logo_box.filename || file.name;
+                    logoBoxCoords.enabled = true;
                 }
-            }).catch(err => {
+                updateLogoUIFromState();
+                await autoSaveProjectState();
+                setSaveStatus("saved", `Đã gắn logo: ${file.name}`);
+            } catch (err) {
                 console.error("Lỗi khi tải logo lên server:", err);
-            });
+                alert("Lỗi tải ảnh logo: " + err.message);
+            }
         }
     }
 
@@ -4180,29 +4592,51 @@ document.addEventListener("DOMContentLoaded", () => {
         });
         syncLogoSlidersFromCoords();
         applyBoxStyles();
+        triggerDebouncedAutoSave(1000);
     }
 
-    // Connect File Uploaders (Step 3 & Step 4)
+    // Connect File Uploaders (Step 3 & Step 5)
     if (btnUploadLogo && logoFileInput) {
-        btnUploadLogo.addEventListener("click", () => logoFileInput.click());
+        btnUploadLogo.addEventListener("click", () => {
+            logoFileInput.value = "";
+            logoFileInput.click();
+        });
         logoFileInput.addEventListener("change", (e) => handleLogoFileUpload(e.target.files && e.target.files[0]));
     }
     if (step3BtnUploadLogo && step3LogoFileInput) {
-        step3BtnUploadLogo.addEventListener("click", () => step3LogoFileInput.click());
+        step3BtnUploadLogo.addEventListener("click", () => {
+            step3LogoFileInput.value = "";
+            step3LogoFileInput.click();
+        });
         step3LogoFileInput.addEventListener("change", (e) => handleLogoFileUpload(e.target.files && e.target.files[0]));
     }
+    if (bboxLogoPlaceholder && logoFileInput) {
+        bboxLogoPlaceholder.style.cursor = "pointer";
+        bboxLogoPlaceholder.title = "Nhấp để chọn ảnh Logo";
+        bboxLogoPlaceholder.addEventListener("click", (e) => {
+            e.stopPropagation();
+            logoFileInput.value = "";
+            logoFileInput.click();
+        });
+    }
 
-    // Connect Switches (Step 3 & Step 4)
+    // Connect Switches (Step 3 & Step 5)
     if (logoEnabled) {
         logoEnabled.addEventListener("change", () => {
             logoBoxCoords.enabled = logoEnabled.checked;
             updateLogoUIFromState();
+            triggerDebouncedAutoSave(1000);
+            if (logoBoxCoords.enabled && !logoBoxCoords.filename && !logoBoxCoords.image_path && logoFileInput) {
+                logoFileInput.value = "";
+                logoFileInput.click();
+            }
         });
     }
     if (step3LogoEnabled) {
         step3LogoEnabled.addEventListener("change", () => {
             logoBoxCoords.enabled = step3LogoEnabled.checked;
             updateLogoUIFromState();
+            triggerDebouncedAutoSave(1000);
         });
     }
 
@@ -4234,7 +4668,7 @@ document.addEventListener("DOMContentLoaded", () => {
         });
     }
 
-    // Connect Step 4 Sliders
+    // Connect Step 5 Sliders
     [
         { el: logoSliderW, field: "w", isInt: true },
         { el: logoSliderOpacity, field: "opacity", isOpacity: true },
@@ -4247,6 +4681,7 @@ document.addEventListener("DOMContentLoaded", () => {
                 else logoBoxCoords[field] = parseInt(el.value);
                 syncLogoSlidersFromCoords();
                 applyBoxStyles();
+                triggerDebouncedAutoSave(1000);
             });
         }
     });
@@ -4264,6 +4699,7 @@ document.addEventListener("DOMContentLoaded", () => {
                 else logoBoxCoords[field] = parseInt(el.value);
                 syncLogoSlidersFromCoords();
                 applyBoxStyles();
+                triggerDebouncedAutoSave(1000);
             });
         }
     });
@@ -4275,5 +4711,654 @@ document.addEventListener("DOMContentLoaded", () => {
 
     // Initialize logo UI on load
     updateLogoUIFromState();
+
+    // ==========================================
+    // STEP 3: EXPLICIT GENERATE TTS BUTTON LOGIC
+    // ==========================================
+    const btnStep3GenerateTTS = document.getElementById("btn-step3-generate-tts");
+    const btnRetryFailedTTS = document.getElementById("btn-retry-failed-tts");
+    let ttsGenPollingInterval = null;
+
+    async function startTtsGeneration(failedOnly = false) {
+        if (!currentProjectId) {
+            alert("Chưa có dự án.");
+            return;
+        }
+
+        const voice = voiceSelectStep3 ? voiceSelectStep3.value : "female_hoaimy";
+
+        if (failedOnly) {
+            if (btnRetryFailedTTS) {
+                btnRetryFailedTTS.disabled = true;
+                btnRetryFailedTTS.innerHTML = `<i class="fa-solid fa-spinner fa-spin"></i> Đang tạo lại câu lỗi...`;
+            }
+        } else {
+            if (btnStep3GenerateTTS) {
+                btnStep3GenerateTTS.disabled = true;
+                btnStep3GenerateTTS.innerHTML = `<i class="fa-solid fa-spinner fa-spin"></i> Đang tạo giọng đọc...`;
+            }
+        }
+
+        if (step3ProgressBox) step3ProgressBox.classList.remove("d-none");
+        if (step3ProgressBar) step3ProgressBar.style.width = "0%";
+        if (step3ProgressPct) step3ProgressPct.textContent = "0%";
+        if (step3ProgressMsg) step3ProgressMsg.innerHTML = `<i class="fa-solid fa-spinner fa-spin"></i> ${failedOnly ? "Đang tạo lại các câu thoại bị lỗi..." : "Đang khởi động tạo giọng đọc AI..."}`;
+
+        setTerminalVisible(true);
+        if (step1TerminalStatusTag) {
+            step1TerminalStatusTag.className = "terminal-status-tag";
+            step1TerminalStatusTag.textContent = failedOnly ? "Đang tạo lại câu lỗi" : "Đang tạo giọng đọc";
+        }
+        appendTerminalLog(`[${new Date().toTimeString().slice(0, 8)}] [INFO] Bắt đầu ${failedOnly ? "tạo lại các câu thoại bị lỗi" : "sinh giọng đọc AI"} (${voice})...`);
+
+        try {
+            const res = await fetch(`/api/project/${currentProjectId}/generate-tts`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ voice, failed_only: failedOnly, use_original: false })
+            });
+
+            if (!res.ok) {
+                const err = await res.json();
+                throw new Error(err.detail || "Không thể khởi động tạo giọng đọc.");
+            }
+
+            if (ttsGenPollingInterval) clearInterval(ttsGenPollingInterval);
+            ttsGenPollingInterval = setInterval(async () => {
+                try {
+                    const statusRes = await fetch(`/api/project/${currentProjectId}/status`);
+                    if (!statusRes.ok) return;
+                    const statusData = await statusRes.json();
+
+                    if (statusData.logs) updateTerminalLogs(statusData.logs);
+
+                    const progress = statusData.progress || 0;
+                    const msg = statusData.message || "Đang tạo giọng đọc...";
+
+                    if (step3ProgressBar) step3ProgressBar.style.width = `${progress}%`;
+                    if (step3ProgressPct) step3ProgressPct.textContent = `${progress}%`;
+                    if (step3ProgressMsg) step3ProgressMsg.innerHTML = `<i class="fa-solid fa-spinner fa-spin"></i> ${msg}`;
+
+                    if (statusData.status === "tts_ready" || progress === 100) {
+                        clearInterval(ttsGenPollingInterval);
+                        if (btnStep3GenerateTTS) {
+                            btnStep3GenerateTTS.disabled = false;
+                            btnStep3GenerateTTS.innerHTML = `<i class="fa-solid fa-circle-check"></i> Đã Tạo Xong! Nhấn Để Tạo Lại`;
+                        }
+                        if (btnRetryFailedTTS) {
+                            btnRetryFailedTTS.disabled = false;
+                            btnRetryFailedTTS.innerHTML = `<i class="fa-solid fa-rotate-right"></i> Tạo lại câu lỗi (<span id="failed-tts-count">0</span>)`;
+                        }
+
+                        // Reload updated segments from backend to refresh status and errors in table
+                        try {
+                            const segsRes = await fetch(`/api/project/${currentProjectId}/segments`);
+                            if (segsRes.ok) {
+                                segmentsData = await segsRes.json();
+                                renderSegmentsTable(segmentsData);
+                                renderTimeline();
+                            }
+                        } catch (e) {
+                            console.warn("Could not reload segments:", e);
+                        }
+
+                        const remainingFailed = statusData.failed_count || 0;
+                        if (remainingFailed > 0) {
+                            if (step3ProgressMsg) {
+                                step3ProgressMsg.innerHTML = `<i class="fa-solid fa-triangle-exclamation" style="color: #fbbf24;"></i> Đã xử lý xong. Còn <strong>${remainingFailed}</strong> câu chưa tạo được tiếng. Hãy bấm <em>'Tạo lại câu lỗi'</em> ở Bảng Phụ Đề để thử lại.`;
+                            }
+                        } else {
+                            if (step3ProgressMsg) {
+                                step3ProgressMsg.innerHTML = `<i class="fa-solid fa-circle-check" style="color: #4ade80;"></i> Toàn bộ câu thoại đã được tạo giọng đọc thành công! Bấm nút Phát để nghe thử.`;
+                            }
+                        }
+
+                        loadPreviewDubbedAudio(true);
+                        unlockStep(4);
+                        unlockStep(5);
+                        markStepDone(3);
+                        setSaveStatus("saved", "Đã cập nhật giọng đọc thành công!");
+                    } else if (statusData.status === "error") {
+                        clearInterval(ttsGenPollingInterval);
+                        if (btnStep3GenerateTTS) {
+                            btnStep3GenerateTTS.disabled = false;
+                            btnStep3GenerateTTS.innerHTML = `<i class="fa-solid fa-rotate-right"></i> Thử Tạo Lại Giọng Đọc`;
+                        }
+                        if (btnRetryFailedTTS) {
+                            btnRetryFailedTTS.disabled = false;
+                            btnRetryFailedTTS.innerHTML = `<i class="fa-solid fa-rotate-right"></i> Tạo lại câu lỗi`;
+                        }
+                        if (step3ProgressMsg) step3ProgressMsg.innerHTML = `<i class="fa-solid fa-triangle-exclamation" style="color: #ef4444;"></i> ${statusData.message || "Lỗi tạo giọng đọc"}`;
+                    }
+                } catch (e) {
+                    console.error(e);
+                }
+            }, 1200);
+        } catch (err) {
+            console.error("Start generate-tts failed:", err);
+            if (btnStep3GenerateTTS) {
+                btnStep3GenerateTTS.disabled = false;
+                btnStep3GenerateTTS.innerHTML = `<i class="fa-solid fa-microphone-lines"></i> 3. Bắt Đầu Tạo Giọng Đọc Cho Video`;
+            }
+            if (btnRetryFailedTTS) {
+                btnRetryFailedTTS.disabled = false;
+                btnRetryFailedTTS.innerHTML = `<i class="fa-solid fa-rotate-right"></i> Tạo lại câu lỗi`;
+            }
+            alert("Lỗi: " + err.message);
+        }
+    }
+
+    if (btnStep3GenerateTTS) {
+        btnStep3GenerateTTS.addEventListener("click", () => startTtsGeneration(false));
+    }
+    const btnResetToOriginal = document.getElementById("btn-reset-to-original");
+    if (btnResetToOriginal) {
+        btnResetToOriginal.addEventListener("click", async () => {
+            if (!currentProjectId) return;
+            if (!confirm("Bạn có chắc chắn muốn khôi phục lại câu gốc từ Bước 2? Mọi đoạn tự thêm/cắt ở Bước 3 sẽ bị xóa.")) return;
+            try {
+                btnResetToOriginal.disabled = true;
+                btnResetToOriginal.innerHTML = `<i class="fa-solid fa-spinner fa-spin"></i> Đang khôi phục...`;
+                const res = await fetch(`/api/project/${currentProjectId}/reset-to-original`, { method: "POST" });
+                if (!res.ok) {
+                    const err = await res.json();
+                    throw new Error(err.detail || "Không thể khôi phục.");
+                }
+                const data = await res.json();
+                segmentsData = data.segments || [];
+                renderSegmentsTable(segmentsData);
+                renderTimeline();
+                setSaveStatus("saved", "Đã khôi phục câu gốc từ Bước 2 thành công!");
+                alert("Đã khôi phục 100% câu thoại gốc từ Bước 2 thành công!");
+            } catch (e) {
+                alert("Lỗi: " + e.message);
+            } finally {
+                btnResetToOriginal.disabled = false;
+                btnResetToOriginal.innerHTML = `<i class="fa-solid fa-rotate-left"></i> Khôi phục câu gốc từ Bước 2`;
+            }
+        });
+    }
+    if (btnRetryFailedTTS) {
+        btnRetryFailedTTS.addEventListener("click", () => startTtsGeneration(true));
+    }
+
+    // Drop the browser-side preview audio so no stale track keeps playing after a cleanup
+    function resetDubbingAudioElement() {
+        pauseDubbingAudio();
+        dubbingAudio.removeAttribute("src");
+        dubbingAudio.load();
+        isDubbingAudioLoaded = false;
+        isDubbingAudioLoading = false;
+    }
+
+    async function runClearAction(btn, url, confirmMsg, doneMsg) {
+        if (!currentProjectId) return;
+        if (!confirm(confirmMsg)) return;
+        const origHTML = btn.innerHTML;
+        btn.disabled = true;
+        btn.innerHTML = `<i class="fa-solid fa-spinner fa-spin"></i> Đang xóa...`;
+        try {
+            const res = await fetch(`/api/project/${currentProjectId}/${url}`, { method: "POST" });
+            if (!res.ok) {
+                const err = await res.json();
+                throw new Error(err.detail || "Không thể xóa dữ liệu.");
+            }
+            const data = await res.json();
+            segmentsData = data.segments || [];
+            resetDubbingAudioElement();
+            renderSegmentsTable(segmentsData);
+            renderTimeline();
+            setSaveStatus("saved", `${doneMsg} (đã xóa ${data.removed_audio_files || 0} file âm thanh)`);
+        } catch (e) {
+            alert("Lỗi: " + e.message);
+        } finally {
+            btn.disabled = false;
+            btn.innerHTML = origHTML;
+        }
+    }
+
+    const btnClearTranslations = document.getElementById("btn-clear-translations");
+    if (btnClearTranslations) {
+        btnClearTranslations.addEventListener("click", () => runClearAction(
+            btnClearTranslations,
+            "clear-translations",
+            "Xóa TOÀN BỘ bản dịch tiếng Việt và âm thanh đã tạo? Không thể hoàn tác.",
+            "Đã xóa toàn bộ bản dịch"
+        ));
+    }
+    const btnClearAudio = document.getElementById("btn-clear-audio");
+    if (btnClearAudio) {
+        btnClearAudio.addEventListener("click", () => runClearAction(
+            btnClearAudio,
+            "clear-audio",
+            "Xóa TOÀN BỘ âm thanh đã tạo? (Bản dịch được giữ nguyên)",
+            "Đã xóa toàn bộ âm thanh"
+        ));
+    }
+
+    // ==========================================
+    // STEP 2: XUẤT / COPY SRT GỐC
+    // ==========================================
+    const btnStep2CopyZhSrt = document.getElementById("btn-step2-copy-zh-srt");
+    const btnStep2DownloadZhSrt = document.getElementById("btn-step2-download-zh-srt");
+    if (btnStep2CopyZhSrt) {
+        btnStep2CopyZhSrt.addEventListener("click", async () => {
+            const srtText = buildLocalSrtString("zh");
+            if (!srtText) {
+                alert("Chưa có phụ đề gốc nào để copy.");
+                return;
+            }
+            try {
+                await navigator.clipboard.writeText(srtText);
+                const oldText = btnStep2CopyZhSrt.innerHTML;
+                btnStep2CopyZhSrt.innerHTML = `<i class="fa-solid fa-check"></i> Đã Copy SRT Gốc!`;
+                setTimeout(() => { btnStep2CopyZhSrt.innerHTML = oldText; }, 1800);
+            } catch (e) {
+                alert("Không thể copy: " + e.message);
+            }
+        });
+    }
+    if (btnStep2DownloadZhSrt) {
+        btnStep2DownloadZhSrt.addEventListener("click", () => downloadProjectSrt("zh"));
+    }
+
+    // ==========================================
+    // STEP 3: DỊCH PHỤ ĐỀ (AI HOẶC NẠP SRT NGOÀI)
+    // ==========================================
+    const btnTabTranslateAi = document.getElementById("btn-tab-translate-ai");
+    const btnTabTranslateSrt = document.getElementById("btn-tab-translate-srt");
+    const paneTranslateAi = document.getElementById("pane-translate-ai");
+    const paneTranslateSrt = document.getElementById("pane-translate-srt");
+
+    if (btnTabTranslateAi && btnTabTranslateSrt) {
+        btnTabTranslateAi.addEventListener("click", () => {
+            btnTabTranslateAi.classList.add("active");
+            btnTabTranslateSrt.classList.remove("active");
+            if (paneTranslateAi) paneTranslateAi.classList.remove("d-none");
+            if (paneTranslateSrt) paneTranslateSrt.classList.add("d-none");
+        });
+        btnTabTranslateSrt.addEventListener("click", () => {
+            btnTabTranslateSrt.classList.add("active");
+            btnTabTranslateAi.classList.remove("active");
+            if (paneTranslateSrt) paneTranslateSrt.classList.remove("d-none");
+            if (paneTranslateAi) paneTranslateAi.classList.add("d-none");
+        });
+    }
+
+    async function loadAppSettings() {
+        try {
+            const res = await fetch("/api/settings");
+            if (res.ok) {
+                const s = await res.json();
+                const selEngine = document.getElementById("select-translation-engine");
+                const inpGroqKey = document.getElementById("input-groq-key");
+                const inpGemKey = document.getElementById("input-gemini-key");
+                const groqWrap = document.getElementById("groq-key-wrap");
+                const gemWrap = document.getElementById("gemini-key-wrap");
+                const statusTag = document.getElementById("translation-status-tag");
+
+                const engine = s.translation_engine || "groq";
+                if (selEngine) {
+                    selEngine.value = engine;
+                }
+
+                if (groqWrap && gemWrap) {
+                    if (engine === "groq") {
+                        groqWrap.classList.remove("d-none");
+                        gemWrap.classList.add("d-none");
+                    } else if (engine === "gemini") {
+                        gemWrap.classList.remove("d-none");
+                        groqWrap.classList.add("d-none");
+                    } else {
+                        groqWrap.classList.add("d-none");
+                        gemWrap.classList.add("d-none");
+                    }
+                }
+
+                if (inpGroqKey && s.groq_api_key_masked) {
+                    inpGroqKey.value = s.groq_api_key_masked;
+                }
+                if (inpGemKey && s.gemini_api_key_masked) {
+                    inpGemKey.value = s.gemini_api_key_masked;
+                }
+
+                if (statusTag) {
+                    if (engine === "groq") {
+                        if (s.has_groq_key) {
+                            statusTag.className = "status-pill status-ready";
+                            statusTag.innerHTML = `<i class="fa-solid fa-circle-check"></i> Groq Qwen 3.8 27B (Sẵn sàng)`;
+                        } else {
+                            statusTag.className = "status-pill";
+                            statusTag.innerHTML = `<i class="fa-solid fa-circle-exclamation"></i> Groq: Chưa có Key`;
+                        }
+                    } else if (engine === "gemini") {
+                        if (s.has_gemini_key) {
+                            statusTag.className = "status-pill status-ready";
+                            statusTag.innerHTML = `<i class="fa-solid fa-circle-check"></i> ${s.gemini_model || "Gemini 3.5 Flash"} (Sẵn sàng)`;
+                        } else {
+                            statusTag.className = "status-pill";
+                            statusTag.innerHTML = `<i class="fa-solid fa-circle-exclamation"></i> Gemini: Chưa có Key`;
+                        }
+                    } else {
+                        statusTag.className = "status-pill status-ready";
+                        statusTag.innerHTML = `<i class="fa-solid fa-circle-check"></i> Google Dịch (Sẵn sàng)`;
+                    }
+                }
+            }
+        } catch (e) {
+            console.warn("Could not load settings", e);
+        }
+    }
+
+    const btnSaveGroqKey = document.getElementById("btn-save-groq-key");
+    if (btnSaveGroqKey) {
+        btnSaveGroqKey.addEventListener("click", async () => {
+            const inpKey = document.getElementById("input-groq-key");
+            const rawKey = inpKey ? inpKey.value.trim() : "";
+            try {
+                const res = await fetch("/api/settings", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({
+                        translation_engine: "groq",
+                        groq_api_key: rawKey
+                    })
+                });
+                if (res.ok) {
+                    alert("Đã lưu Groq API Key thành công!");
+                    await loadAppSettings();
+                }
+            } catch (e) {
+                alert("Lỗi lưu cấu hình Groq: " + e.message);
+            }
+        });
+    }
+
+    const btnSaveGeminiKey = document.getElementById("btn-save-gemini-key");
+    if (btnSaveGeminiKey) {
+        btnSaveGeminiKey.addEventListener("click", async () => {
+            const inpKey = document.getElementById("input-gemini-key");
+            const rawKey = inpKey ? inpKey.value.trim() : "";
+            try {
+                const res = await fetch("/api/settings", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({
+                        translation_engine: "gemini",
+                        gemini_api_key: rawKey
+                    })
+                });
+                if (res.ok) {
+                    alert("Đã lưu Gemini API Key thành công!");
+                    await loadAppSettings();
+                }
+            } catch (e) {
+                alert("Lỗi lưu cấu hình Gemini: " + e.message);
+            }
+        });
+    }
+
+    const selTranslationEngine = document.getElementById("select-translation-engine");
+    if (selTranslationEngine) {
+        selTranslationEngine.addEventListener("change", async () => {
+            const val = selTranslationEngine.value;
+            const groqWrap = document.getElementById("groq-key-wrap");
+            const gemWrap = document.getElementById("gemini-key-wrap");
+            if (groqWrap && gemWrap) {
+                if (val === "groq") {
+                    groqWrap.classList.remove("d-none");
+                    gemWrap.classList.add("d-none");
+                } else if (val === "gemini") {
+                    gemWrap.classList.remove("d-none");
+                    groqWrap.classList.add("d-none");
+                } else {
+                    groqWrap.classList.add("d-none");
+                    gemWrap.classList.add("d-none");
+                }
+            }
+            try {
+                await fetch("/api/settings", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ translation_engine: val })
+                });
+                await loadAppSettings();
+            } catch (e) {
+                console.warn(e);
+            }
+        });
+    }
+
+    // Step 3: Dịch tự động bằng AI / Dịch lại câu lỗi
+    const btnStep3StartAi = document.getElementById("btn-step3-start-ai");
+    const btnStep3RetryFailedTranslate = document.getElementById("btn-step3-retry-failed-translate");
+    const btnTableRetryFailedTranslate = document.getElementById("btn-retry-failed-translate");
+
+    async function startTranslationProcess(failedOnly = false) {
+        if (!currentProjectId) {
+            alert("Vui lòng tải hoặc mở một dự án trước!");
+            return;
+        }
+        if (!segmentsData || segmentsData.length === 0) {
+            alert("Chưa có phụ đề gốc từ Bước 2 để dịch. Vui lòng quét Bước 2 trước.");
+            return;
+        }
+
+        const selEngine = document.getElementById("select-translation-engine");
+        const engine = selEngine ? selEngine.value : "groq";
+
+        if (btnStep3StartAi) btnStep3StartAi.disabled = true;
+        if (btnStep3RetryFailedTranslate) btnStep3RetryFailedTranslate.disabled = true;
+        if (btnTableRetryFailedTranslate) btnTableRetryFailedTranslate.disabled = true;
+
+        const pBox = document.getElementById("step3-progress-box");
+        const pBar = document.getElementById("step3-progress-bar");
+        const pMsg = document.getElementById("step3-progress-msg");
+        const pPct = document.getElementById("step3-progress-pct");
+        if (pBox) pBox.classList.remove("d-none");
+        if (pBar) pBar.style.width = "10%";
+        if (pMsg) pMsg.textContent = failedOnly ? `Đang dịch lại các câu lỗi bằng ${engine.toUpperCase()}...` : `Đang kết nối dịch bằng ${engine.toUpperCase()}...`;
+
+        setTerminalVisible(true);
+        if (step1TerminalStatusTag) {
+            step1TerminalStatusTag.className = "terminal-status-tag";
+            step1TerminalStatusTag.textContent = failedOnly ? "Đang dịch lại câu lỗi" : "Đang dịch AI";
+        }
+        appendTerminalLog(`[${new Date().toTimeString().slice(0, 8)}] [INFO] ${failedOnly ? "Bắt đầu dịch lại các câu lỗi/sót chữ Hán" : "Bắt đầu dịch tự động"} (${engine.toUpperCase()})...`);
+
+        try {
+            const res = await fetch(`/api/project/${currentProjectId}/translate`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ engine, failed_only: failedOnly })
+            });
+            if (!res.ok) {
+                const err = await res.json();
+                throw new Error(err.detail || "Không thể khởi động dịch.");
+            }
+
+            let pollTranslate = setInterval(async () => {
+                try {
+                    const sRes = await fetch(`/api/project/${currentProjectId}/status`);
+                    if (!sRes.ok) return;
+                    const sData = await sRes.json();
+                    if (sData.logs) updateTerminalLogs(sData.logs);
+                    if (pBar) pBar.style.width = `${sData.progress || 0}%`;
+                    if (pPct) pPct.textContent = `${sData.progress || 0}%`;
+                    if (pMsg) pMsg.textContent = sData.message || "Đang dịch...";
+
+                    if (sData.status === "translated") {
+                        clearInterval(pollTranslate);
+                        if (btnStep3StartAi) btnStep3StartAi.disabled = false;
+                        if (btnStep3RetryFailedTranslate) btnStep3RetryFailedTranslate.disabled = false;
+                        if (btnTableRetryFailedTranslate) btnTableRetryFailedTranslate.disabled = false;
+                        if (pBox) pBox.classList.add("d-none");
+                        if (step1TerminalStatusTag) {
+                            step1TerminalStatusTag.className = "terminal-status-tag status-done";
+                            step1TerminalStatusTag.textContent = "Đã dịch xong";
+                        }
+
+                        renderSegmentsTable(sData.segments || []);
+                        loadPreviewDubbedAudio(false);
+                        markStepDone(3);
+                        unlockStep(4);
+                        if (!failedOnly) {
+                            switchStep(4);
+                        }
+                    } else if (sData.status === "translate_failed") {
+                        clearInterval(pollTranslate);
+                        if (btnStep3StartAi) btnStep3StartAi.disabled = false;
+                        if (btnStep3RetryFailedTranslate) btnStep3RetryFailedTranslate.disabled = false;
+                        if (btnTableRetryFailedTranslate) btnTableRetryFailedTranslate.disabled = false;
+                        if (step1TerminalStatusTag) {
+                            step1TerminalStatusTag.className = "terminal-status-tag tag-error";
+                            step1TerminalStatusTag.textContent = "Lỗi dịch";
+                        }
+                        alert("Dịch thất bại: " + (sData.error || sData.message));
+                    }
+                } catch (pe) {
+                    console.error(pe);
+                }
+            }, 1000);
+        } catch (e) {
+            if (btnStep3StartAi) btnStep3StartAi.disabled = false;
+            if (btnStep3RetryFailedTranslate) btnStep3RetryFailedTranslate.disabled = false;
+            if (btnTableRetryFailedTranslate) btnTableRetryFailedTranslate.disabled = false;
+            if (pBox) pBox.classList.add("d-none");
+            alert(e.message);
+        }
+    }
+
+    if (btnStep3StartAi) {
+        btnStep3StartAi.addEventListener("click", () => startTranslationProcess(false));
+    }
+    if (btnStep3RetryFailedTranslate) {
+        btnStep3RetryFailedTranslate.addEventListener("click", () => startTranslationProcess(true));
+    }
+    if (btnTableRetryFailedTranslate) {
+        btnTableRetryFailedTranslate.addEventListener("click", () => startTranslationProcess(true));
+    }
+
+    // Step 3: Nạp file / dán nội dung SRT tiếng Việt
+    const btnStep3BrowseSrt = document.getElementById("btn-step3-browse-srt");
+    const inputStep3SrtFile = document.getElementById("input-step3-srt-file");
+    const step3SrtFileName = document.getElementById("step3-srt-file-name");
+    const step3SrtPasteArea = document.getElementById("step3-srt-paste-area");
+    const btnStep3ApplyCustomSrt = document.getElementById("btn-step3-apply-custom-srt");
+
+    if (btnStep3BrowseSrt && inputStep3SrtFile) {
+        btnStep3BrowseSrt.addEventListener("click", () => inputStep3SrtFile.click());
+        inputStep3SrtFile.addEventListener("change", (e) => {
+            const file = e.target.files[0];
+            if (file) {
+                if (step3SrtFileName) step3SrtFileName.textContent = file.name;
+                const reader = new FileReader();
+                reader.onload = (evt) => {
+                    if (step3SrtPasteArea) step3SrtPasteArea.value = evt.target.result;
+                };
+                reader.readAsText(file, "UTF-8");
+            }
+        });
+    }
+
+    if (btnStep3ApplyCustomSrt) {
+        btnStep3ApplyCustomSrt.addEventListener("click", async () => {
+            if (!currentProjectId) {
+                alert("Vui lòng tải hoặc mở một dự án trước!");
+                return;
+            }
+            const srtContent = step3SrtPasteArea ? step3SrtPasteArea.value.trim() : "";
+            if (!srtContent) {
+                alert("Vui lòng chọn file .srt hoặc dán nội dung bản dịch vào ô nhập trước khi áp dụng.");
+                return;
+            }
+
+            btnStep3ApplyCustomSrt.disabled = true;
+            const pBox = document.getElementById("step3-progress-box");
+            const pBar = document.getElementById("step3-progress-bar");
+            const pMsg = document.getElementById("step3-progress-msg");
+            if (pBox) pBox.classList.remove("d-none");
+            if (pBar) pBar.style.width = "20%";
+            if (pMsg) pMsg.textContent = "Đang khớp mốc thời gian và áp dụng bản dịch...";
+
+            try {
+                const res = await fetch(`/api/project/${currentProjectId}/translate`, {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ custom_srt: srtContent })
+                });
+                if (!res.ok) {
+                    const err = await res.json();
+                    throw new Error(err.detail || "Không thể áp dụng bản dịch.");
+                }
+
+                let pollCustom = setInterval(async () => {
+                    try {
+                        const sRes = await fetch(`/api/project/${currentProjectId}/status`);
+                        if (!sRes.ok) return;
+                        const sData = await sRes.json();
+                        if (sData.status === "translated") {
+                            clearInterval(pollCustom);
+                            btnStep3ApplyCustomSrt.disabled = false;
+                            if (pBox) pBox.classList.add("d-none");
+                            renderSegmentsTable(sData.segments || []);
+                            loadPreviewDubbedAudio(false);
+                            markStepDone(3);
+                            unlockStep(4);
+                            switchStep(4);
+                        } else if (sData.status === "translate_failed") {
+                            clearInterval(pollCustom);
+                            btnStep3ApplyCustomSrt.disabled = false;
+                            alert("Áp dụng bản dịch thất bại: " + (sData.error || sData.message));
+                        }
+                    } catch (pe) {
+                        console.error(pe);
+                    }
+                }, 1000);
+            } catch (e) {
+                btnStep3ApplyCustomSrt.disabled = false;
+                if (pBox) pBox.classList.add("d-none");
+                alert(e.message);
+            }
+        });
+    }
+
+    loadAppSettings();
+
+    // ==========================================
+    // STEP NAVIGATION BUTTONS (NEXT / PREV)
+    // ==========================================
+    const btnStep1Next = document.getElementById("btn-step1-next");
+    const btnStep2Prev = document.getElementById("btn-step2-prev");
+    const btnStep2Next = document.getElementById("btn-step2-next");
+    const btnStep3Prev = document.getElementById("btn-step3-prev");
+    const btnStep4Prev = document.getElementById("btn-step4-prev");
+    const btnStep4Next = document.getElementById("btn-step4-next");
+    const btnStep5Prev = document.getElementById("btn-step5-prev");
+    const btnStep5Next = document.getElementById("btn-step5-next");
+    const btnStep6Prev = document.getElementById("btn-step6-prev");
+
+    if (btnStep1Next) btnStep1Next.addEventListener("click", () => { unlockStep(2); switchStep(2); });
+    if (btnStep2Prev) btnStep2Prev.addEventListener("click", () => switchStep(1));
+    if (btnStep2Next) btnStep2Next.addEventListener("click", async () => {
+        try { await saveSegmentsToServer(); } catch (e) { console.warn(e); }
+        markStepDone(2);
+        unlockStep(3);
+        switchStep(3);
+    });
+    if (btnStep3Prev) btnStep3Prev.addEventListener("click", () => switchStep(2));
+    if (btnStep4Prev) btnStep4Prev.addEventListener("click", () => switchStep(3));
+    if (btnStep4Next) btnStep4Next.addEventListener("click", () => {
+        markStepDone(4);
+        unlockStep(5);
+        switchStep(5);
+    });
+    if (btnStep5Prev) btnStep5Prev.addEventListener("click", () => switchStep(4));
+    if (btnStep5Next) btnStep5Next.addEventListener("click", () => {
+        markStepDone(5);
+        unlockStep(6);
+        switchStep(6);
+    });
+    if (btnStep6Prev) btnStep6Prev.addEventListener("click", () => switchStep(5));
 
 });
