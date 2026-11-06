@@ -7,7 +7,7 @@
 
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
-    <title>AI Video Dubber - Dịch Thuật & Lồng Tiếng Thông Minh</title>
+    <title>Siêu Tool của NgatCT - Nền Tảng AI Media &amp; Dịch Thuật Thông Minh</title>
 
     <!-- Google Fonts -->
 
@@ -23,7 +23,7 @@
 
     <!-- Custom CSS -->
 
-    <link rel="stylesheet" href="style.css?v=50">
+    <link rel="stylesheet" href="style.css?v=51">
 
 </head>
 
@@ -42,37 +42,223 @@
     <div class="app-container">
 
         <header>
-
             <div class="header-top">
-
-                <div class="logo">
-
+                <div class="logo" id="header-logo" title="Quay về Trang Chủ">
                     <i class="fa-solid fa-wand-magic-sparkles icon-glow"></i>
-
-                    <h1>AI Video <span>Dubber Studio</span></h1>
-
+                    <h1>Siêu Tool của <span>NgatCT</span></h1>
                 </div>
+
+                <nav class="header-nav">
+                    <button type="button" class="nav-tab active" id="btn-nav-home">
+                        <i class="fa-solid fa-house"></i> <span>Trang Chủ</span>
+                    </button>
+                    <button type="button" class="nav-tab" id="btn-nav-dubber">
+                        <i class="fa-solid fa-film"></i> <span>Dịch Phim & Lồng Tiếng</span>
+                    </button>
+                    <button type="button" class="nav-tab" id="btn-nav-settings">
+                        <i class="fa-solid fa-gear"></i> <span>Cài Đặt API</span>
+                    </button>
+                </nav>
 
                 <div class="lang-switch">
-
                     <button type="button" id="btn-lang-vi" class="lang-btn active">VI</button>
-
                     <span class="lang-divider">|</span>
-
                     <button type="button" id="btn-lang-en" class="lang-btn">EN</button>
-
                 </div>
-
             </div>
 
-            <p class="subtitle" id="i18n-subtitle">Dịch thuật, xóa sub cũ, tạo phụ đề CapCut & lồng tiếng thông minh</p>
+            <p class="subtitle" id="i18n-subtitle">Nền tảng công cụ AI Media &amp; Tự động hóa đa năng</p>
         </header>
 
+        <!-- HOME VIEW (HUB QUẢN LÝ CHỨC NĂNG) -->
+        <section class="home-hub-section view-section" id="home-view">
+            <!-- HERO BANNER -->
+            <div class="home-hero-card">
+                <div class="hero-text-content">
+                    <div class="hero-badge">
+                        <i class="fa-solid fa-bolt"></i> <span>AI Media &amp; Creative Suite</span>
+                    </div>
+                    <h2 class="hero-title">Chào mừng đến với <span class="text-gradient">Siêu Tool của NgatCT</span></h2>
+                    <p class="hero-desc">
+                        Không gian tích hợp các công cụ AI chuyên sâu: Dịch phim chuẩn điện ảnh, bóc tách âm thanh, nhận diện phụ đề và lồng tiếng tự động.
+                    </p>
+                    <div class="hero-status-row">
+                        <div class="status-indicator-chip" id="home-status-engine">
+                            <span class="dot-pulse"></span>
+                            <span id="home-engine-label">Đang kiểm tra AI Engine...</span>
+                        </div>
+                        <button type="button" class="hero-settings-link" id="btn-home-quick-settings">
+                            <i class="fa-solid fa-sliders"></i> Cấu hình API Keys
+                        </button>
+                    </div>
+                </div>
+                <div class="hero-visual-icon">
+                    <i class="fa-solid fa-wand-magic-sparkles"></i>
+                </div>
+            </div>
 
+            <!-- FEATURE LAUNCHPAD GRID -->
+            <div class="home-section-header">
+                <div class="section-title-group">
+                    <i class="fa-solid fa-cubes icon-purple"></i>
+                    <h3>Danh Mục Tính Năng &amp; Công Cụ</h3>
+                </div>
+                <span class="section-badge-counter">4 Chức năng</span>
+            </div>
 
-        <!-- Main Workspace -->
+            <div class="feature-grid">
+                <!-- FEATURE 1: DỊCH PHIM (ACTIVE) -->
+                <div class="feature-card feature-active" id="card-feature-dubber">
+                    <div class="card-glow-edge"></div>
+                    <div class="feature-card-header">
+                        <div class="feature-icon-badge active-icon">
+                            <i class="fa-solid fa-film"></i>
+                        </div>
+                        <span class="feature-status-pill pill-active">
+                            <i class="fa-solid fa-circle-check"></i> Sẵn Sàng Sử Dụng
+                        </span>
+                    </div>
+                    <div class="feature-card-body">
+                        <h4 class="feature-name">Dịch Phim &amp; Lồng Tiếng Video</h4>
+                        <p class="feature-summary">
+                            Quy trình trọn gói 6 bước: Tải video Bilibili/YouTube/Local, OCR quét sub cứng gốc, dịch AI ngữ cảnh cao cấp (Groq / Gemini) kết hợp từ điển Hán-Việt, lồng tiếng CapCut/TikTok TTS, che sub cũ, gắn watermark Logo và xuất video hoàn thiện.
+                        </p>
+                        <div class="feature-tags">
+                            <span class="feature-tag">Bilibili / YT</span>
+                            <span class="feature-tag">OCR Whisper</span>
+                            <span class="feature-tag">Groq AI</span>
+                            <span class="feature-tag">CapCut Voice</span>
+                            <span class="feature-tag">Xuất MP4</span>
+                        </div>
+                    </div>
+                    <div class="feature-card-footer">
+                        <button type="button" class="primary-btn btn-accent btn-full" id="btn-home-open-dubber">
+                            <i class="fa-solid fa-arrow-right"></i> Mở Studio Dịch Phim
+                        </button>
+                        <button type="button" class="secondary-btn btn-sm" id="btn-home-new-dubber" title="Khởi tạo dự án mới ngay">
+                            <i class="fa-solid fa-plus"></i> Tạo Dự Án Mới
+                        </button>
+                    </div>
+                </div>
 
-        <main class="studio-workspace" id="workspace-layout">
+                <!-- FEATURE 2: TÁCH NHẠC & VOCAL (COMING SOON) -->
+                <div class="feature-card feature-locked">
+                    <div class="feature-card-header">
+                        <div class="feature-icon-badge disabled-icon">
+                            <i class="fa-solid fa-waveform-lines"></i>
+                        </div>
+                        <span class="feature-status-pill pill-upcoming">
+                            <i class="fa-solid fa-clock"></i> Sắp Ra Mắt
+                        </span>
+                    </div>
+                    <div class="feature-card-body">
+                        <h4 class="feature-name">Tách Âm Thanh (Vocal &amp; BGM)</h4>
+                        <p class="feature-summary">
+                            Bóc tách lời thoại diễn viên và nhạc nền/hiệu ứng âm thanh độc lập bằng mô hình AI Demucs, giúp lồng tiếng sạch không bị đè tạp âm.
+                        </p>
+                        <div class="feature-tags">
+                            <span class="feature-tag">Stem Separation</span>
+                            <span class="feature-tag">Tách Vocal</span>
+                            <span class="feature-tag">Lọc Tạp Âm</span>
+                        </div>
+                    </div>
+                    <div class="feature-card-footer">
+                        <button type="button" class="secondary-btn btn-full" disabled>
+                            <i class="fa-solid fa-lock"></i> Đang Phát Triển
+                        </button>
+                    </div>
+                </div>
+
+                <!-- FEATURE 3: DỊCH PHỤ ĐỀ RỜI (COMING SOON) -->
+                <div class="feature-card feature-locked">
+                    <div class="feature-card-header">
+                        <div class="feature-icon-badge disabled-icon">
+                            <i class="fa-solid fa-closed-captioning"></i>
+                        </div>
+                        <span class="feature-status-pill pill-upcoming">
+                            <i class="fa-solid fa-clock"></i> Sắp Ra Mắt
+                        </span>
+                    </div>
+                    <div class="feature-card-body">
+                        <h4 class="feature-name">Dịch Phụ Đề Nhanh (SRT / VTT)</h4>
+                        <p class="feature-summary">
+                            Tải lên tệp phụ đề rời có sẵn, tự động dịch thuật ngữ Hán-Việt xưng hô phim ảnh mượt mà, xuất lại file phụ đề dịch không cần tải file video nặng.
+                        </p>
+                        <div class="feature-tags">
+                            <span class="feature-tag">File SRT / VTT</span>
+                            <span class="feature-tag">Chuẩn Hán-Việt</span>
+                            <span class="feature-tag">Xử lý Siêu Tốc</span>
+                        </div>
+                    </div>
+                    <div class="feature-card-footer">
+                        <button type="button" class="secondary-btn btn-full" disabled>
+                            <i class="fa-solid fa-lock"></i> Đang Phát Triển
+                        </button>
+                    </div>
+                </div>
+
+                <!-- FEATURE 4: TTS STUDIO ĐỘC LẬP (COMING SOON) -->
+                <div class="feature-card feature-locked">
+                    <div class="feature-card-header">
+                        <div class="feature-icon-badge disabled-icon">
+                            <i class="fa-solid fa-microphone-lines"></i>
+                        </div>
+                        <span class="feature-status-pill pill-upcoming">
+                            <i class="fa-solid fa-clock"></i> Sắp Ra Mắt
+                        </span>
+                    </div>
+                    <div class="feature-card-body">
+                        <h4 class="feature-name">Studio Đọc Kịch Bản (TTS)</h4>
+                        <p class="feature-summary">
+                            Nhập bất kỳ đoạn văn bản hoặc kịch bản review phim, chọn hơn 30+ giọng đọc AI CapCut/Edge-TTS truyền cảm, nghe thử và tải file âm thanh chất lượng cao.
+                        </p>
+                        <div class="feature-tags">
+                            <span class="feature-tag">30+ Giọng Đọc</span>
+                            <span class="feature-tag">Chỉnh Tốc Độ</span>
+                            <span class="feature-tag">Xuất MP3/WAV</span>
+                        </div>
+                    </div>
+                    <div class="feature-card-footer">
+                        <button type="button" class="secondary-btn btn-full" disabled>
+                            <i class="fa-solid fa-lock"></i> Đang Phát Triển
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- RECENT PROJECTS SECTION -->
+            <div class="home-projects-section card">
+                <div class="home-section-header">
+                    <div class="section-title-group">
+                        <i class="fa-solid fa-folder-open icon-purple"></i>
+                        <h3>Dự Án Gần Đây (Dịch Phim)</h3>
+                    </div>
+                    <div class="home-projects-actions">
+                        <button type="button" class="secondary-btn btn-sm" id="btn-home-refresh-projects" title="Làm mới danh sách">
+                            <i class="fa-solid fa-rotate-right"></i> Làm mới
+                        </button>
+                        <button type="button" class="primary-btn btn-sm btn-accent" id="btn-home-create-project">
+                            <i class="fa-solid fa-plus"></i> Dự Án Mới
+                        </button>
+                    </div>
+                </div>
+
+                <div class="home-projects-grid" id="home-recent-projects-list">
+                    <!-- Dynamic project cards injected by JS -->
+                </div>
+
+                <div class="home-projects-empty d-none" id="home-projects-empty">
+                    <i class="fa-solid fa-box-open empty-icon"></i>
+                    <p>Chưa có dự án nào được tạo.</p>
+                    <button type="button" class="primary-btn btn-sm btn-accent" id="btn-home-empty-create">
+                        <i class="fa-solid fa-plus"></i> Bắt Đầu Dự Án Đầu Tiên
+                    </button>
+                </div>
+            </div>
+        </section>
+
+        <!-- Main Workspace (Dịch Phim Studio) -->
+        <main class="studio-workspace view-section d-none" id="workspace-layout">
 
             
 
@@ -123,7 +309,9 @@
                 </div>
 
                 <div class="project-bar-right">
-
+                    <button type="button" class="secondary-btn btn-sm btn-nav-home-back" id="btn-back-to-home" title="Quay về Trang Chủ">
+                        <i class="fa-solid fa-arrow-left"></i> <span>Trang Chủ</span>
+                    </button>
                     <button type="button" class="secondary-btn btn-sm" id="btn-project-open">
 
                         <i class="fa-solid fa-folder-tree"></i> <span>Mở Dự Án...</span>
@@ -2292,9 +2480,51 @@
 
     </div>
 
+    <!-- MODAL: CÀI ĐẶT API HỆ THỐNG -->
+    <div class="studio-modal-backdrop d-none" id="modal-api-settings">
+        <div class="studio-modal-dialog">
+            <div class="studio-modal-header">
+                <div class="modal-title-group">
+                    <i class="fa-solid fa-gear icon-purple"></i>
+                    <h3>Cấu Hình API Hệ Thống</h3>
+                </div>
+                <button type="button" class="modal-close-btn" id="btn-close-api-settings-modal" title="Đóng">
+                    <i class="fa-solid fa-xmark"></i>
+                </button>
+            </div>
+            <div class="studio-modal-body">
+                <div class="input-group">
+                    <label for="modal-select-translation-engine">Công cụ Dịch AI mặc định</label>
+                    <select id="modal-select-translation-engine" class="form-control">
+                        <option value="groq">⚡ Groq AI (Llama 3.3 / Qwen - 14.400 lượt/ngày, dịch phim cực nhanh)</option>
+                        <option value="gemini">✨ Google Gemini Flash AI (Google AI Studio)</option>
+                        <option value="google">🌐 Google Dịch (Dịch máy cơ bản)</option>
+                    </select>
+                </div>
+                <div class="input-group" id="modal-groq-key-wrap">
+                    <label for="modal-input-groq-key">Groq API Key (Miễn phí 14.400 lượt/ngày)</label>
+                    <div style="display: flex; gap: 0.5rem;">
+                        <input type="password" id="modal-input-groq-key" placeholder="gsk_... hoặc dán key mới" style="flex: 1;">
+                        <button type="button" class="primary-btn btn-sm btn-accent" id="btn-modal-save-groq-key"><i class="fa-solid fa-floppy-disk"></i> Lưu</button>
+                    </div>
+                    <small class="helper-text" style="color: #94a3b8; font-size: 0.8rem; margin-top: 0.35rem; display: block;">Lấy API Key miễn phí tại <a href="https://console.groq.com/keys" target="_blank" style="color: #c084fc; text-decoration: underline;">console.groq.com</a></small>
+                </div>
+                <div class="input-group" id="modal-gemini-key-wrap">
+                    <label for="modal-input-gemini-key">Gemini API Key (Google AI Studio)</label>
+                    <div style="display: flex; gap: 0.5rem;">
+                        <input type="password" id="modal-input-gemini-key" placeholder="AIzaSy... hoặc dán key mới" style="flex: 1;">
+                        <button type="button" class="primary-btn btn-sm btn-accent" id="btn-modal-save-gemini-key"><i class="fa-solid fa-floppy-disk"></i> Lưu</button>
+                    </div>
+                    <small class="helper-text" style="color: #94a3b8; font-size: 0.8rem; margin-top: 0.35rem; display: block;">Lấy API Key tại <a href="https://aistudio.google.com/app/apikey" target="_blank" style="color: #c084fc; text-decoration: underline;">aistudio.google.com</a></small>
+                </div>
+            </div>
+            <div class="studio-modal-footer">
+                <button type="button" class="secondary-btn" id="btn-cancel-api-settings-modal">Đóng</button>
+            </div>
+        </div>
+    </div>
 
-
-    <script src="app.js?v=50"></script>
+    <script src="app.js?v=52"></script>
 
 </body>
 

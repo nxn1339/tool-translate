@@ -4393,38 +4393,396 @@ document.addEventListener("DOMContentLoaded", () => {
     }
 
     // ==========================================
+    // SPA ROUTER & HOME HUB CONTROLLER (SIÊU TOOL CỦA NGATCT)
+    // ==========================================
+    const homeView = document.getElementById("home-view");
+    const btnNavHome = document.getElementById("btn-nav-home");
+    const btnNavDubber = document.getElementById("btn-nav-dubber");
+    const btnNavSettings = document.getElementById("btn-nav-settings");
+    const btnBackToHome = document.getElementById("btn-back-to-home");
+    const headerLogo = document.getElementById("header-logo");
+
+    const btnHomeOpenDubber = document.getElementById("btn-home-open-dubber");
+    const btnHomeNewDubber = document.getElementById("btn-home-new-dubber");
+    const btnHomeCreateProject = document.getElementById("btn-home-create-project");
+    const btnHomeEmptyCreate = document.getElementById("btn-home-empty-create");
+    const btnHomeRefreshProjects = document.getElementById("btn-home-refresh-projects");
+    const btnHomeQuickSettings = document.getElementById("btn-home-quick-settings");
+
+    const modalApiSettings = document.getElementById("modal-api-settings");
+    const btnCloseApiSettingsModal = document.getElementById("btn-close-api-settings-modal");
+    const btnCancelApiSettingsModal = document.getElementById("btn-cancel-api-settings-modal");
+    const modalSelectEngine = document.getElementById("modal-select-translation-engine");
+    const modalInputGroqKey = document.getElementById("modal-input-groq-key");
+    const modalInputGeminiKey = document.getElementById("modal-input-gemini-key");
+    const modalGroqWrap = document.getElementById("modal-groq-key-wrap");
+    const modalGeminiWrap = document.getElementById("modal-gemini-key-wrap");
+    const btnModalSaveGroqKey = document.getElementById("btn-modal-save-groq-key");
+    const btnModalSaveGeminiKey = document.getElementById("btn-modal-save-gemini-key");
+
+    function switchView(viewName, updateHash = true) {
+        if (viewName === "dubber") {
+            if (homeView) homeView.classList.add("d-none");
+            if (workspaceLayout) workspaceLayout.classList.remove("d-none");
+            if (btnNavDubber) btnNavDubber.classList.add("active");
+            if (btnNavHome) btnNavHome.classList.remove("active");
+            if (updateHash) {
+                history.pushState(null, "", "#dubber");
+            }
+            window.scrollTo({ top: 0, behavior: "smooth" });
+        } else {
+            // Default to 'home'
+            if (workspaceLayout) workspaceLayout.classList.add("d-none");
+            if (homeView) homeView.classList.remove("d-none");
+            if (btnNavHome) btnNavHome.classList.add("active");
+            if (btnNavDubber) btnNavDubber.classList.remove("active");
+            if (updateHash) {
+                history.pushState(null, "", "#home");
+            }
+            loadHomeRecentProjects();
+            updateHomeEngineStatus();
+            window.scrollTo({ top: 0, behavior: "smooth" });
+        }
+    }
+
+    async function updateHomeEngineStatus() {
+        const homeEngineLabel = document.getElementById("home-engine-label");
+        const statusChip = document.getElementById("home-status-engine");
+        if (!homeEngineLabel) return;
+
+        try {
+            const res = await fetch("/api/settings");
+            if (!res.ok) throw new Error("API settings error");
+            const s = await res.json();
+            const engine = s.translation_engine || "groq";
+
+            const pulseEl = statusChip ? statusChip.querySelector(".dot-pulse") : null;
+
+            if (engine === "groq") {
+                if (s.has_groq_key) {
+                    homeEngineLabel.textContent = `Groq AI (${s.groq_model || 'llama-3.3-70b-versatile'}) • Sẵn sàng`;
+                    if (pulseEl) pulseEl.className = "dot-pulse";
+                } else {
+                    homeEngineLabel.textContent = "Groq AI • Chưa nạp API Key";
+                    if (pulseEl) pulseEl.className = "dot-pulse warn";
+                }
+            } else if (engine === "gemini") {
+                if (s.has_gemini_key) {
+                    homeEngineLabel.textContent = `Gemini AI (${s.gemini_model || 'gemini-3.5-flash'}) • Sẵn sàng`;
+                    if (pulseEl) pulseEl.className = "dot-pulse";
+                } else {
+                    homeEngineLabel.textContent = "Gemini AI • Chưa nạp API Key";
+                    if (pulseEl) pulseEl.className = "dot-pulse warn";
+                }
+            } else {
+                homeEngineLabel.textContent = "Google Dịch • Sẵn sàng (Dịch máy cơ bản)";
+                if (pulseEl) pulseEl.className = "dot-pulse";
+            }
+        } catch (e) {
+            console.warn("Could not update home engine status:", e);
+        }
+    }
+
+    async function loadHomeRecentProjects() {
+        const listContainer = document.getElementById("home-recent-projects-list");
+        const emptyContainer = document.getElementById("home-projects-empty");
+        if (!listContainer) return;
+
+        try {
+            listContainer.innerHTML = `<div style="grid-column: 1/-1; text-align: center; padding: 2rem; color: #94a3b8;"><i class="fa-solid fa-spinner fa-spin"></i> Đang tải danh sách dự án gần đây...</div>`;
+            const res = await fetch("/api/projects");
+            if (!res.ok) throw new Error("Không thể tải danh sách dự án.");
+            const projects = await res.json();
+
+            if (!projects || projects.length === 0) {
+                listContainer.innerHTML = "";
+                if (emptyContainer) emptyContainer.classList.remove("d-none");
+                return;
+            }
+
+            if (emptyContainer) emptyContainer.classList.add("d-none");
+            listContainer.innerHTML = "";
+
+            projects.slice(0, 12).forEach(p => {
+                const card = document.createElement("div");
+                card.className = "home-project-card";
+                card.dataset.id = p.id;
+
+                const stepName = STEP_NAMES[p.current_step] || `Bước ${p.current_step || 1}`;
+                const title = escapeHtml(p.name || "Dự án không tên");
+                const timeStr = p.updated_at ? new Date(p.updated_at).toLocaleString("vi-VN", { hour: '2-digit', minute: '2-digit', day: '2-digit', month: '2-digit' }) : "Mới đây";
+
+                card.innerHTML = `
+                    <div class="home-project-top">
+                        <div class="home-project-icon-title">
+                            <div class="home-project-icon">
+                                <i class="fa-solid fa-film"></i>
+                            </div>
+                            <div style="min-width: 0;">
+                                <div class="home-project-title" title="${title}">${title}</div>
+                                <div class="home-project-meta">
+                                    <span><i class="fa-regular fa-clock"></i> ${timeStr}</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="home-project-bottom">
+                        <span class="home-project-step-pill"><i class="fa-solid fa-list-check"></i> ${stepName}</span>
+                        <div class="home-project-btns">
+                            <button type="button" class="primary-btn btn-sm btn-accent btn-home-open-proj" title="Mở dự án này">
+                                <i class="fa-solid fa-arrow-right"></i> Tiếp Tục
+                            </button>
+                            <button type="button" class="btn-icon-subtle text-danger btn-home-del-proj" title="Xóa dự án">
+                                <i class="fa-solid fa-trash-can"></i>
+                            </button>
+                        </div>
+                    </div>
+                `;
+
+                // Handle click on card or open button
+                const btnOpen = card.querySelector(".btn-home-open-proj");
+                const openHandler = async (e) => {
+                    e.stopPropagation();
+                    await openProject(p.id, false);
+                    switchView("dubber");
+                };
+                card.addEventListener("click", openHandler);
+                if (btnOpen) btnOpen.addEventListener("click", openHandler);
+
+                // Handle delete button
+                const btnDel = card.querySelector(".btn-home-del-proj");
+                if (btnDel) {
+                    btnDel.addEventListener("click", async (e) => {
+                        e.stopPropagation();
+                        const ok = await showConfirmDialog(
+                            "Xóa Dự Án Này?",
+                            `Bạn có chắc chắn muốn xóa vĩnh viễn dự án "${title}" không? Thao tác này không thể hoàn tác.`,
+                            true
+                        );
+                        if (!ok) return;
+
+                        try {
+                            const delRes = await fetch(`/api/projects/${p.id}`, { method: "DELETE" });
+                            if (delRes.ok) {
+                                if (currentProjectId === p.id) {
+                                    await createNewProject(false);
+                                }
+                                await loadHomeRecentProjects();
+                                if (typeof fetchProjectsList === "function") {
+                                    fetchProjectsList("");
+                                }
+                            } else {
+                                alert("Không thể xóa dự án.");
+                            }
+                        } catch (err) {
+                            console.error(err);
+                            alert("Lỗi khi xóa dự án: " + err.message);
+                        }
+                    });
+                }
+
+                listContainer.appendChild(card);
+            });
+        } catch (e) {
+            console.error("Home projects error", e);
+            if (listContainer) {
+                listContainer.innerHTML = `<div style="grid-column: 1/-1; color: #f87171; text-align: center; padding: 1.5rem;">Lỗi nạp danh sách dự án: ${e.message}</div>`;
+            }
+        }
+    }
+
+    // Modal API Settings Handlers
+    function openApiSettingsModal() {
+        if (!modalApiSettings) return;
+        modalApiSettings.classList.remove("d-none");
+        loadModalApiSettings();
+    }
+
+    function closeApiSettingsModal() {
+        if (modalApiSettings) modalApiSettings.classList.add("d-none");
+    }
+
+    async function loadModalApiSettings() {
+        try {
+            const res = await fetch("/api/settings");
+            if (!res.ok) return;
+            const s = await res.json();
+            if (modalSelectEngine) {
+                modalSelectEngine.value = s.translation_engine || "groq";
+                toggleModalKeyFields(modalSelectEngine.value);
+            }
+            if (modalInputGroqKey) modalInputGroqKey.placeholder = s.groq_api_key_masked || "gsk_... hoặc dán key mới";
+            if (modalInputGeminiKey) modalInputGeminiKey.placeholder = s.gemini_api_key_masked || "AIzaSy... hoặc dán key mới";
+        } catch (e) {
+            console.warn(e);
+        }
+    }
+
+    function toggleModalKeyFields(engine) {
+        if (modalGroqWrap) modalGroqWrap.classList.toggle("d-none", engine !== "groq");
+        if (modalGeminiWrap) modalGeminiWrap.classList.toggle("d-none", engine !== "gemini");
+    }
+
+    if (modalSelectEngine) {
+        modalSelectEngine.addEventListener("change", async (e) => {
+            const val = e.target.value;
+            toggleModalKeyFields(val);
+            try {
+                await fetch("/api/settings", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ translation_engine: val })
+                });
+                await loadAppSettings();
+                updateHomeEngineStatus();
+            } catch (err) {
+                console.warn(err);
+            }
+        });
+    }
+
+    if (btnModalSaveGroqKey && modalInputGroqKey) {
+        btnModalSaveGroqKey.addEventListener("click", async () => {
+            const rawKey = modalInputGroqKey.value.trim();
+            if (!rawKey) return;
+            try {
+                const res = await fetch("/api/settings", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({
+                        translation_engine: "groq",
+                        groq_api_key: rawKey
+                    })
+                });
+                if (res.ok) {
+                    alert("Đã lưu Groq API Key thành công!");
+                    modalInputGroqKey.value = "";
+                    await loadAppSettings();
+                    await loadModalApiSettings();
+                    updateHomeEngineStatus();
+                }
+            } catch (err) {
+                alert("Lỗi khi lưu Groq API Key: " + err.message);
+            }
+        });
+    }
+
+    if (btnModalSaveGeminiKey && modalInputGeminiKey) {
+        btnModalSaveGeminiKey.addEventListener("click", async () => {
+            const rawKey = modalInputGeminiKey.value.trim();
+            if (!rawKey) return;
+            try {
+                const res = await fetch("/api/settings", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({
+                        translation_engine: "gemini",
+                        gemini_api_key: rawKey
+                    })
+                });
+                if (res.ok) {
+                    alert("Đã lưu Gemini API Key thành công!");
+                    modalInputGeminiKey.value = "";
+                    await loadAppSettings();
+                    await loadModalApiSettings();
+                    updateHomeEngineStatus();
+                }
+            } catch (err) {
+                alert("Lỗi khi lưu Gemini API Key: " + err.message);
+            }
+        });
+    }
+
+    if (btnNavHome) btnNavHome.addEventListener("click", () => switchView("home"));
+    if (btnNavDubber) btnNavDubber.addEventListener("click", () => switchView("dubber"));
+    if (btnNavSettings) btnNavSettings.addEventListener("click", openApiSettingsModal);
+    if (btnHomeQuickSettings) btnHomeQuickSettings.addEventListener("click", openApiSettingsModal);
+    if (btnCloseApiSettingsModal) btnCloseApiSettingsModal.addEventListener("click", closeApiSettingsModal);
+    if (btnCancelApiSettingsModal) btnCancelApiSettingsModal.addEventListener("click", closeApiSettingsModal);
+    if (modalApiSettings) {
+        modalApiSettings.addEventListener("click", (e) => {
+            if (e.target === modalApiSettings) closeApiSettingsModal();
+        });
+    }
+
+    if (headerLogo) headerLogo.addEventListener("click", () => switchView("home"));
+    if (btnBackToHome) btnBackToHome.addEventListener("click", () => switchView("home"));
+
+    if (btnHomeOpenDubber) btnHomeOpenDubber.addEventListener("click", () => switchView("dubber"));
+    if (btnHomeNewDubber) {
+        btnHomeNewDubber.addEventListener("click", async () => {
+            await createNewProject(true);
+            switchView("dubber");
+        });
+    }
+    if (btnHomeCreateProject) {
+        btnHomeCreateProject.addEventListener("click", async () => {
+            await createNewProject(true);
+            switchView("dubber");
+        });
+    }
+    if (btnHomeEmptyCreate) {
+        btnHomeEmptyCreate.addEventListener("click", async () => {
+            await createNewProject(true);
+            switchView("dubber");
+        });
+    }
+    if (btnHomeRefreshProjects) btnHomeRefreshProjects.addEventListener("click", loadHomeRecentProjects);
+
+    // Browser navigation back/forward support
+    window.addEventListener("popstate", () => {
+        if (window.location.hash === "#dubber") {
+            switchView("dubber", false);
+        } else {
+            switchView("home", false);
+        }
+    });
+
+    // ==========================================
     // INITIALIZATION & PROJECT RESTORE
     // ==========================================
     async function initStudioSession() {
         const savedProjId = localStorage.getItem("current_project_id");
+        let projectLoaded = false;
         if (savedProjId) {
             try {
                 const res = await fetch(`/api/projects/${savedProjId}`);
                 if (res.ok) {
                     await openProject(savedProjId, false);
-                    return;
+                    projectLoaded = true;
                 }
             } catch (e) {
                 console.warn("Could not restore saved project", e);
             }
         }
 
-        // Check if there are any existing projects on server
-        try {
-            const listRes = await fetch("/api/projects");
-            if (listRes.ok) {
-                const list = await listRes.json();
-                if (list && list.length > 0) {
-                    await openProject(list[0].id, false);
-                    return;
+        if (!projectLoaded) {
+            // Check if there are any existing projects on server
+            try {
+                const listRes = await fetch("/api/projects");
+                if (listRes.ok) {
+                    const list = await listRes.json();
+                    if (list && list.length > 0) {
+                        await openProject(list[0].id, false);
+                        projectLoaded = true;
+                    }
                 }
+            } catch (e) {
+                console.warn("Could not check project list", e);
             }
-        } catch (e) {
-            console.warn("Could not check project list", e);
         }
 
         // If no existing project, create a fresh draft project
-        await createNewProject(false);
+        if (!projectLoaded) {
+            await createNewProject(false);
+        }
+
+        // Initial Routing based on URL hash
+        if (window.location.hash === "#dubber") {
+            switchView("dubber", false);
+        } else {
+            switchView("home", false);
+        }
     }
 
     initStudioSession();
