@@ -2784,16 +2784,160 @@ document.addEventListener("DOMContentLoaded", () => {
         }
     }
 
+    // ==========================================
+    // LIGHTWEIGHT VIDEO SCRUBBER BAR CONTROLLER (ZERO LAG)
+    // ==========================================
+    const videoSeekSlider = document.getElementById("video-seek-slider");
+    const scrubberTrackFill = document.getElementById("scrubber-track-fill");
+    const scrubCurrentTime = document.getElementById("scrub-current-time");
+    const scrubTotalTime = document.getElementById("scrub-total-time");
+    const btnScrubPlay = document.getElementById("btn-scrub-play");
+    const iconScrubPlay = document.getElementById("icon-scrub-play");
+    const btnScrubBack5 = document.getElementById("btn-scrub-back5");
+    const btnScrubFwd5 = document.getElementById("btn-scrub-fwd5");
+    const btnScrubPrevSub = document.getElementById("btn-scrub-prev-sub");
+    const btnScrubNextSub = document.getElementById("btn-scrub-next-sub");
+
+    let isScrubbingSlider = false;
+
+    function updateScrubberUI(curTime, totalDur) {
+        if (!totalDur || isNaN(totalDur) || totalDur <= 0) {
+            totalDur = getTimelineTotalDuration();
+        }
+        if (curTime == null || isNaN(curTime)) {
+            curTime = previewVideoElement ? (previewVideoElement.currentTime || 0) : 0;
+        }
+
+        if (scrubCurrentTime) scrubCurrentTime.textContent = formatTime(curTime);
+        if (scrubTotalTime) scrubTotalTime.textContent = formatTime(totalDur);
+
+        const pct = Math.max(0, Math.min(100, (curTime / totalDur) * 100));
+        if (scrubberTrackFill) {
+            scrubberTrackFill.style.width = `${pct}%`;
+        }
+        if (videoSeekSlider && !isScrubbingSlider) {
+            videoSeekSlider.max = String(totalDur);
+            videoSeekSlider.value = String(curTime);
+        }
+
+        if (iconScrubPlay && previewVideoElement) {
+            iconScrubPlay.className = previewVideoElement.paused ? "fa-solid fa-play" : "fa-solid fa-pause";
+        }
+    }
+
+    if (videoSeekSlider) {
+        videoSeekSlider.addEventListener("input", () => {
+            isScrubbingSlider = true;
+            const targetTime = parseFloat(videoSeekSlider.value) || 0;
+            const totalDur = getTimelineTotalDuration();
+            const pct = Math.max(0, Math.min(100, (targetTime / totalDur) * 100));
+            if (scrubberTrackFill) scrubberTrackFill.style.width = `${pct}%`;
+            if (scrubCurrentTime) scrubCurrentTime.textContent = formatTime(targetTime);
+
+            if (previewVideoElement) {
+                previewVideoElement.currentTime = targetTime;
+                updatePreviewSubtitle();
+            }
+        });
+
+        videoSeekSlider.addEventListener("change", () => {
+            const targetTime = parseFloat(videoSeekSlider.value) || 0;
+            if (previewVideoElement) {
+                previewVideoElement.currentTime = targetTime;
+                updatePreviewSubtitle();
+                syncDubbingAudioSeek();
+            }
+            setTimeout(() => {
+                isScrubbingSlider = false;
+            }, 50);
+        });
+
+        videoSeekSlider.addEventListener("pointerdown", () => { isScrubbingSlider = true; });
+        videoSeekSlider.addEventListener("pointerup", () => { isScrubbingSlider = false; });
+    }
+
+    if (btnScrubPlay) {
+        btnScrubPlay.addEventListener("click", () => {
+            if (!previewVideoElement) return;
+            if (previewVideoElement.paused) {
+                previewVideoElement.play();
+            } else {
+                previewVideoElement.pause();
+            }
+        });
+    }
+
+    if (btnScrubBack5) {
+        btnScrubBack5.addEventListener("click", () => {
+            if (!previewVideoElement) return;
+            previewVideoElement.currentTime = Math.max(0, (previewVideoElement.currentTime || 0) - 5);
+            updateScrubberUI(previewVideoElement.currentTime, getTimelineTotalDuration());
+            updatePreviewSubtitle();
+            syncDubbingAudioSeek();
+        });
+    }
+
+    if (btnScrubFwd5) {
+        btnScrubFwd5.addEventListener("click", () => {
+            if (!previewVideoElement) return;
+            const totalDur = getTimelineTotalDuration();
+            previewVideoElement.currentTime = Math.min(totalDur, (previewVideoElement.currentTime || 0) + 5);
+            updateScrubberUI(previewVideoElement.currentTime, totalDur);
+            updatePreviewSubtitle();
+            syncDubbingAudioSeek();
+        });
+    }
+
+    if (btnScrubPrevSub) {
+        btnScrubPrevSub.addEventListener("click", () => {
+            if (!segmentsData || segmentsData.length === 0 || !previewVideoElement) return;
+            const cur = previewVideoElement.currentTime || 0;
+            let prevIdx = -1;
+            for (let i = segmentsData.length - 1; i >= 0; i--) {
+                const s = Number(segmentsData[i].start || 0);
+                if (s < cur - 0.3) {
+                    prevIdx = i;
+                    break;
+                }
+            }
+            if (prevIdx >= 0) {
+                selectClip(prevIdx, true);
+            } else if (segmentsData.length > 0) {
+                selectClip(0, true);
+            }
+        });
+    }
+
+    if (btnScrubNextSub) {
+        btnScrubNextSub.addEventListener("click", () => {
+            if (!segmentsData || segmentsData.length === 0 || !previewVideoElement) return;
+            const cur = previewVideoElement.currentTime || 0;
+            let nextIdx = -1;
+            for (let i = 0; i < segmentsData.length; i++) {
+                const s = Number(segmentsData[i].start || 0);
+                if (s > cur + 0.1) {
+                    nextIdx = i;
+                    break;
+                }
+            }
+            if (nextIdx >= 0) {
+                selectClip(nextIdx, true);
+            }
+        });
+    }
+
     if (previewVideoElement) {
         previewVideoElement.addEventListener("timeupdate", () => {
             updatePreviewSubtitle();
             syncTimelinePlayhead();
             syncDubbingAudioTime();
+            updateScrubberUI();
         });
         previewVideoElement.addEventListener("seeked", () => {
             updatePreviewSubtitle();
             syncTimelinePlayhead();
             syncDubbingAudioSeek();
+            updateScrubberUI();
         });
         previewVideoElement.addEventListener("loadedmetadata", () => {
             syncPreviewVideoVolume();
@@ -2801,20 +2945,24 @@ document.addEventListener("DOMContentLoaded", () => {
             updatePreviewSubtitle();
             renderTimeline();
             loadPreviewDubbedAudio();
+            updateScrubberUI();
         });
         previewVideoElement.addEventListener("play", () => {
             syncPreviewVideoVolume();
             syncTimelinePlayhead();
             playDubbingAudio();
+            updateScrubberUI();
         });
         previewVideoElement.addEventListener("pause", () => {
             syncTimelinePlayhead();
             pauseDubbingAudio();
+            updateScrubberUI();
         });
         previewVideoElement.addEventListener("ended", () => {
             syncTimelinePlayhead();
             pauseDubbingAudio();
             if (dubbingAudio) dubbingAudio.currentTime = 0;
+            updateScrubberUI();
         });
     }
 
@@ -2906,6 +3054,8 @@ document.addEventListener("DOMContentLoaded", () => {
     }
 
     function renderTimeline() {
+        // Đã vô hiệu hóa để giải phóng hơn 10.000 phần tử DOM, triệt tiêu hoàn toàn giật lag
+        return;
         if (!tlLaneSub) return;
         const totalDur = getTimelineTotalDuration();
 
@@ -3378,7 +3528,7 @@ document.addEventListener("DOMContentLoaded", () => {
         if (btnTlPreviewAudio) btnTlPreviewAudio.addEventListener("click", previewVoice);
     }
 
-    // Keyboard Shortcuts (Space: Play/Pause, S/C: Split, Delete: Delete)
+    // Keyboard Shortcuts (Space: Play/Pause, S/C: Split, Delete: Delete, ArrowLeft/Right: Seek 5s)
     document.addEventListener("keydown", (e) => {
         const tag = (e.target && e.target.tagName) ? e.target.tagName.toLowerCase() : "";
         if (tag === "input" || tag === "textarea" || tag === "select") return;
@@ -3388,6 +3538,23 @@ document.addEventListener("DOMContentLoaded", () => {
             if (previewVideoElement) {
                 if (previewVideoElement.paused) previewVideoElement.play();
                 else previewVideoElement.pause();
+            }
+        } else if (e.code === "ArrowLeft") {
+            e.preventDefault();
+            if (previewVideoElement) {
+                previewVideoElement.currentTime = Math.max(0, (previewVideoElement.currentTime || 0) - 5);
+                updateScrubberUI(previewVideoElement.currentTime, getTimelineTotalDuration());
+                updatePreviewSubtitle();
+                syncDubbingAudioSeek();
+            }
+        } else if (e.code === "ArrowRight") {
+            e.preventDefault();
+            if (previewVideoElement) {
+                const totalDur = getTimelineTotalDuration();
+                previewVideoElement.currentTime = Math.min(totalDur, (previewVideoElement.currentTime || 0) + 5);
+                updateScrubberUI(previewVideoElement.currentTime, totalDur);
+                updatePreviewSubtitle();
+                syncDubbingAudioSeek();
             }
         } else if (e.code === "KeyS" || e.code === "KeyC") {
             e.preventDefault();
@@ -4396,14 +4563,18 @@ document.addEventListener("DOMContentLoaded", () => {
     // SPA ROUTER & HOME HUB CONTROLLER (SIÊU TOOL CỦA NGATCT)
     // ==========================================
     const homeView = document.getElementById("home-view");
+    const storyTtsView = document.getElementById("story-tts-view");
     const btnNavHome = document.getElementById("btn-nav-home");
     const btnNavDubber = document.getElementById("btn-nav-dubber");
+    const btnNavStoryTts = document.getElementById("btn-nav-story-tts");
     const btnNavSettings = document.getElementById("btn-nav-settings");
     const btnBackToHome = document.getElementById("btn-back-to-home");
+    const btnStoryBackHome = document.getElementById("btn-story-back-home");
     const headerLogo = document.getElementById("header-logo");
 
     const btnHomeOpenDubber = document.getElementById("btn-home-open-dubber");
     const btnHomeNewDubber = document.getElementById("btn-home-new-dubber");
+    const btnHomeOpenStoryTts = document.getElementById("btn-home-open-story-tts");
     const btnHomeCreateProject = document.getElementById("btn-home-create-project");
     const btnHomeEmptyCreate = document.getElementById("btn-home-empty-create");
     const btnHomeRefreshProjects = document.getElementById("btn-home-refresh-projects");
@@ -4423,19 +4594,34 @@ document.addEventListener("DOMContentLoaded", () => {
     function switchView(viewName, updateHash = true) {
         if (viewName === "dubber") {
             if (homeView) homeView.classList.add("d-none");
+            if (storyTtsView) storyTtsView.classList.add("d-none");
             if (workspaceLayout) workspaceLayout.classList.remove("d-none");
             if (btnNavDubber) btnNavDubber.classList.add("active");
             if (btnNavHome) btnNavHome.classList.remove("active");
+            if (btnNavStoryTts) btnNavStoryTts.classList.remove("active");
             if (updateHash) {
                 history.pushState(null, "", "#dubber");
+            }
+            window.scrollTo({ top: 0, behavior: "smooth" });
+        } else if (viewName === "story-tts") {
+            if (homeView) homeView.classList.add("d-none");
+            if (workspaceLayout) workspaceLayout.classList.add("d-none");
+            if (storyTtsView) storyTtsView.classList.remove("d-none");
+            if (btnNavStoryTts) btnNavStoryTts.classList.add("active");
+            if (btnNavHome) btnNavHome.classList.remove("active");
+            if (btnNavDubber) btnNavDubber.classList.remove("active");
+            if (updateHash) {
+                history.pushState(null, "", "#story-tts");
             }
             window.scrollTo({ top: 0, behavior: "smooth" });
         } else {
             // Default to 'home'
             if (workspaceLayout) workspaceLayout.classList.add("d-none");
+            if (storyTtsView) storyTtsView.classList.add("d-none");
             if (homeView) homeView.classList.remove("d-none");
             if (btnNavHome) btnNavHome.classList.add("active");
             if (btnNavDubber) btnNavDubber.classList.remove("active");
+            if (btnNavStoryTts) btnNavStoryTts.classList.remove("active");
             if (updateHash) {
                 history.pushState(null, "", "#home");
             }
@@ -4707,8 +4893,14 @@ document.addEventListener("DOMContentLoaded", () => {
 
     if (headerLogo) headerLogo.addEventListener("click", () => switchView("home"));
     if (btnBackToHome) btnBackToHome.addEventListener("click", () => switchView("home"));
+    if (btnStoryBackHome) btnStoryBackHome.addEventListener("click", () => switchView("home"));
+
+    if (btnNavHome) btnNavHome.addEventListener("click", () => switchView("home"));
+    if (btnNavDubber) btnNavDubber.addEventListener("click", () => switchView("dubber"));
+    if (btnNavStoryTts) btnNavStoryTts.addEventListener("click", () => switchView("story-tts"));
 
     if (btnHomeOpenDubber) btnHomeOpenDubber.addEventListener("click", () => switchView("dubber"));
+    if (btnHomeOpenStoryTts) btnHomeOpenStoryTts.addEventListener("click", () => switchView("story-tts"));
     if (btnHomeNewDubber) {
         btnHomeNewDubber.addEventListener("click", async () => {
             await createNewProject(true);
@@ -4731,12 +4923,283 @@ document.addEventListener("DOMContentLoaded", () => {
 
     // Browser navigation back/forward support
     window.addEventListener("popstate", () => {
-        if (window.location.hash === "#dubber") {
+        if (window.location.hash === "#story-tts") {
+            switchView("story-tts", false);
+        } else if (window.location.hash === "#dubber") {
             switchView("dubber", false);
         } else {
             switchView("home", false);
         }
     });
+
+    // ==========================================
+    // STORY TTS STUDIO CONTROLLER
+    // ==========================================
+    function initStoryTtsStudio() {
+        const tabSourceText = document.getElementById("tab-source-text");
+        const tabSourceYt = document.getElementById("tab-source-yt");
+        const boxSourceYt = document.getElementById("box-source-yt");
+        const inputYtUrl = document.getElementById("input-yt-url");
+        const btnExtractYt = document.getElementById("btn-extract-yt");
+        const ytExtractStatus = document.getElementById("yt-extract-status");
+        const ytExtractStatusText = document.getElementById("yt-extract-status-text");
+
+        const storyRawText = document.getElementById("story-raw-text");
+        const storyCharCount = document.getElementById("story-char-count");
+        const storyWordCount = document.getElementById("story-word-count");
+        const storyEstDuration = document.getElementById("story-est-duration");
+
+        const storyRewriteStyle = document.getElementById("story-rewrite-style");
+        const storyRewriteInstruction = document.getElementById("story-rewrite-instruction");
+        const btnStoryAiRewrite = document.getElementById("btn-story-ai-rewrite");
+        const storyRewriteStatus = document.getElementById("story-rewrite-status");
+        const storyRewriteStatusText = document.getElementById("story-rewrite-status-text");
+
+        const storyVoiceSelect = document.getElementById("story-voice-select");
+        const btnStoryPreviewVoice = document.getElementById("btn-story-preview-voice");
+        const storyPauseSlider = document.getElementById("story-pause-slider");
+        const storyPauseVal = document.getElementById("story-pause-val");
+
+        const btnStoryGenerateAudio = document.getElementById("btn-story-generate-audio");
+        const storyProgressBox = document.getElementById("story-progress-box");
+        const storyProgressText = document.getElementById("story-progress-text");
+        const storyResultBox = document.getElementById("story-result-box");
+        const resultStatSentences = document.getElementById("result-stat-sentences");
+        const resultStatDuration = document.getElementById("result-stat-duration");
+        const resultStatVoice = document.getElementById("result-stat-voice");
+        const storyAudioPlayer = document.getElementById("story-audio-player");
+        const btnStoryDownloadMp3 = document.getElementById("btn-story-download-mp3");
+        const btnStoryDownloadSrt = document.getElementById("btn-story-download-srt");
+        const btnStoryClearAll = document.getElementById("btn-story-clear-all");
+
+        if (!storyRawText) return;
+
+        // Source Tab Switching
+        if (tabSourceText && tabSourceYt && boxSourceYt) {
+            tabSourceText.addEventListener("click", () => {
+                tabSourceText.classList.add("active");
+                tabSourceYt.classList.remove("active");
+                boxSourceYt.classList.add("d-none");
+            });
+            tabSourceYt.addEventListener("click", () => {
+                tabSourceYt.classList.add("active");
+                tabSourceText.classList.remove("active");
+                boxSourceYt.classList.remove("d-none");
+            });
+        }
+
+        // Stats Counter
+        function updateStoryStats() {
+            const text = storyRawText.value || "";
+            const chars = text.length;
+            const words = text.trim() ? text.trim().split(/\s+/).length : 0;
+            const minutes = Math.ceil(words / 150);
+
+            if (storyCharCount) storyCharCount.textContent = `${chars.toLocaleString()} ký tự`;
+            if (storyWordCount) storyWordCount.textContent = `${words.toLocaleString()} từ`;
+            if (storyEstDuration) storyEstDuration.textContent = `~${minutes} phút đọc`;
+        }
+        storyRawText.addEventListener("input", updateStoryStats);
+
+        // Pause Slider
+        if (storyPauseSlider && storyPauseVal) {
+            storyPauseSlider.addEventListener("input", () => {
+                storyPauseVal.textContent = `${storyPauseSlider.value} ms`;
+            });
+        }
+
+        // YouTube Extraction
+        if (btnExtractYt && inputYtUrl) {
+            btnExtractYt.addEventListener("click", async () => {
+                const url = inputYtUrl.value.trim();
+                if (!url) {
+                    showToast("Vui lòng nhập link video YouTube", "warning");
+                    return;
+                }
+                btnExtractYt.disabled = true;
+                if (ytExtractStatus) {
+                    ytExtractStatus.classList.remove("d-none");
+                    if (ytExtractStatusText) ytExtractStatusText.textContent = "Đang kết nối YouTube & trích xuất phụ đề...";
+                }
+
+                try {
+                    const res = await fetch("/api/story-tts/extract-youtube", {
+                        method: "POST",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify({ url })
+                    });
+                    const data = await res.json();
+                    if (!res.ok || data.status !== "ok") {
+                        throw new Error(data.message || "Lỗi khi trích xuất YouTube.");
+                    }
+
+                    if (data.transcript) {
+                        storyRawText.value = data.transcript;
+                        updateStoryStats();
+                        showToast(`Đã lấy phụ đề từ video: "${data.title}"`, "success");
+                    } else {
+                        showToast(data.message || "Không tìm thấy phụ đề cho video này.", "warning");
+                    }
+                } catch (e) {
+                    showToast(e.message || "Không thể bóc tách từ YouTube.", "error");
+                } finally {
+                    btnExtractYt.disabled = false;
+                    if (ytExtractStatus) ytExtractStatus.classList.add("d-none");
+                }
+            });
+        }
+
+        // AI Rewriter
+        if (btnStoryAiRewrite) {
+            btnStoryAiRewrite.addEventListener("click", async () => {
+                const text = storyRawText.value.trim();
+                if (!text) {
+                    showToast("Vui lòng nhập hoặc dán nội dung kịch bản trước khi xào nấu.", "warning");
+                    return;
+                }
+
+                const style = storyRewriteStyle ? storyRewriteStyle.value : "storytelling";
+                const custom_instruction = storyRewriteInstruction ? storyRewriteInstruction.value.trim() : "";
+
+                btnStoryAiRewrite.disabled = true;
+                if (storyRewriteStatus) {
+                    storyRewriteStatus.classList.remove("d-none");
+                    if (storyRewriteStatusText) storyRewriteStatusText.textContent = "AI đang xào nấu kịch bản, lọc bỏ rác video và viết lại...";
+                }
+
+                try {
+                    const res = await fetch("/api/story-tts/rewrite", {
+                        method: "POST",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify({ text, style, custom_instruction })
+                    });
+                    const data = await res.json();
+                    if (!res.ok || data.status !== "ok") {
+                        throw new Error(data.message || "Lỗi khi xào nấu kịch bản.");
+                    }
+
+                    storyRawText.value = data.rewritten_text;
+                    updateStoryStats();
+                    showToast(`Đã xào nấu kịch bản thành công bằng ${data.engine}!`, "success");
+                } catch (e) {
+                    showToast(e.message || "Không thể xào nấu kịch bản.", "error");
+                } finally {
+                    btnStoryAiRewrite.disabled = false;
+                    if (storyRewriteStatus) storyRewriteStatus.classList.add("d-none");
+                }
+            });
+        }
+
+        // Voice Preview
+        let storyAudioPreviewObj = null;
+        if (btnStoryPreviewVoice && storyVoiceSelect) {
+            btnStoryPreviewVoice.addEventListener("click", async () => {
+                if (storyAudioPreviewObj && !storyAudioPreviewObj.paused) {
+                    storyAudioPreviewObj.pause();
+                    storyAudioPreviewObj = null;
+                    btnStoryPreviewVoice.innerHTML = '<i class="fa-solid fa-volume-high"></i> Nghe Thử';
+                    return;
+                }
+                const voiceKey = storyVoiceSelect.value;
+                const sampleText = "Xin chào, đây là giọng đọc thử nghiệm kịch bản của Siêu Tool.";
+                btnStoryPreviewVoice.disabled = true;
+                btnStoryPreviewVoice.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Đang tải...';
+                try {
+                    const res = await fetch("/api/tts-preview", {
+                        method: "POST",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify({ text: sampleText, voice: voiceKey })
+                    });
+                    if (!res.ok) throw new Error("Không thể tạo giọng mẫu.");
+                    const blob = await res.blob();
+                    const audioUrl = URL.createObjectURL(blob);
+                    storyAudioPreviewObj = new Audio(audioUrl);
+                    storyAudioPreviewObj.onended = () => {
+                        btnStoryPreviewVoice.innerHTML = '<i class="fa-solid fa-volume-high"></i> Nghe Thử';
+                    };
+                    storyAudioPreviewObj.play();
+                    btnStoryPreviewVoice.innerHTML = '<i class="fa-solid fa-stop"></i> Dừng';
+                } catch (e) {
+                    showToast("Lỗi khi nghe thử giọng: " + e.message, "warning");
+                    btnStoryPreviewVoice.innerHTML = '<i class="fa-solid fa-volume-high"></i> Nghe Thử';
+                } finally {
+                    btnStoryPreviewVoice.disabled = false;
+                }
+            });
+        }
+
+        // Synthesize Full Story Audio (MP3 + SRT)
+        if (btnStoryGenerateAudio) {
+            btnStoryGenerateAudio.addEventListener("click", async () => {
+                const text = storyRawText.value.trim();
+                if (!text) {
+                    showToast("Vui lòng nhập nội dung kịch bản để tạo audio.", "warning");
+                    return;
+                }
+
+                const voice = storyVoiceSelect ? storyVoiceSelect.value : "capcut_cogaithoatngon";
+                const pause_ms = storyPauseSlider ? parseInt(storyPauseSlider.value, 10) : 350;
+
+                btnStoryGenerateAudio.disabled = true;
+                if (storyProgressBox) storyProgressBox.classList.remove("d-none");
+                if (storyResultBox) storyResultBox.classList.add("d-none");
+                if (storyProgressText) storyProgressText.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Đang phân tích câu, sinh giọng đọc TikTok và ghép nối...';
+
+                try {
+                    const res = await fetch("/api/story-tts/synthesize", {
+                        method: "POST",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify({ text, voice, pause_ms })
+                    });
+                    const data = await res.json();
+                    if (!res.ok || data.status !== "ok") {
+                        throw new Error(data.message || "Lỗi tạo audio kịch bản.");
+                    }
+
+                    // Render Result
+                    if (storyResultBox) storyResultBox.classList.remove("d-none");
+                    if (resultStatSentences) resultStatSentences.innerHTML = `<i class="fa-solid fa-list-ol"></i> ${data.total_sentences} câu`;
+                    
+                    const totalSec = Math.round(data.total_duration_sec);
+                    const durMins = Math.floor(totalSec / 60);
+                    const durSecs = totalSec % 60;
+                    const durStr = `${durMins}:${durSecs.toString().padStart(2, '0')}`;
+                    if (resultStatDuration) resultStatDuration.innerHTML = `<i class="fa-solid fa-clock"></i> ${durStr}`;
+                    if (resultStatVoice) resultStatVoice.innerHTML = `<i class="fa-brands fa-tiktok"></i> ${data.voice_name || voice}`;
+
+                    const audioDownloadUrl = `/api/story-tts/download/${data.task_id}/audio`;
+                    const srtDownloadUrl = `/api/story-tts/download/${data.task_id}/srt`;
+
+                    if (storyAudioPlayer) {
+                        storyAudioPlayer.src = audioDownloadUrl;
+                        storyAudioPlayer.load();
+                    }
+                    if (btnStoryDownloadMp3) btnStoryDownloadMp3.href = audioDownloadUrl;
+                    if (btnStoryDownloadSrt) btnStoryDownloadSrt.href = srtDownloadUrl;
+
+                    showToast("🎉 Đã tạo hoàn tất bản thu âm và phụ đề SRT!", "success");
+                } catch (e) {
+                    showToast(e.message || "Không thể tạo bản thu âm.", "error");
+                } finally {
+                    btnStoryGenerateAudio.disabled = false;
+                    if (storyProgressBox) storyProgressBox.classList.add("d-none");
+                }
+            });
+        }
+
+        // Clear All
+        if (btnStoryClearAll) {
+            btnStoryClearAll.addEventListener("click", () => {
+                storyRawText.value = "";
+                updateStoryStats();
+                if (storyResultBox) storyResultBox.classList.add("d-none");
+                if (inputYtUrl) inputYtUrl.value = "";
+                showToast("Đã xóa trắng nội dung kịch bản.", "info");
+            });
+        }
+    }
+
+    initStoryTtsStudio();
 
     // ==========================================
     // INITIALIZATION & PROJECT RESTORE
@@ -4778,7 +5241,9 @@ document.addEventListener("DOMContentLoaded", () => {
         }
 
         // Initial Routing based on URL hash
-        if (window.location.hash === "#dubber") {
+        if (window.location.hash === "#story-tts") {
+            switchView("story-tts", false);
+        } else if (window.location.hash === "#dubber") {
             switchView("dubber", false);
         } else {
             switchView("home", false);

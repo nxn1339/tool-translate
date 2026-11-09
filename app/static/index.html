@@ -23,7 +23,7 @@
 
     <!-- Custom CSS -->
 
-    <link rel="stylesheet" href="style.css?v=51">
+    <link rel="stylesheet" href="style.css?v=53">
 
 </head>
 
@@ -54,6 +54,9 @@
                     </button>
                     <button type="button" class="nav-tab" id="btn-nav-dubber">
                         <i class="fa-solid fa-film"></i> <span>Dịch Phim & Lồng Tiếng</span>
+                    </button>
+                    <button type="button" class="nav-tab" id="btn-nav-story-tts">
+                        <i class="fa-solid fa-microphone-lines"></i> <span>Đọc Truyện TTS</span>
                     </button>
                     <button type="button" class="nav-tab" id="btn-nav-settings">
                         <i class="fa-solid fa-gear"></i> <span>Cài Đặt API</span>
@@ -197,30 +200,32 @@
                     </div>
                 </div>
 
-                <!-- FEATURE 4: TTS STUDIO ĐỘC LẬP (COMING SOON) -->
-                <div class="feature-card feature-locked">
+                <!-- FEATURE 4: TTS ĐỌC TRUYỆN (ACTIVE) -->
+                <div class="feature-card feature-active" id="card-feature-story-tts">
+                    <div class="card-glow-edge"></div>
                     <div class="feature-card-header">
-                        <div class="feature-icon-badge disabled-icon">
+                        <div class="feature-icon-badge active-icon">
                             <i class="fa-solid fa-microphone-lines"></i>
                         </div>
-                        <span class="feature-status-pill pill-upcoming">
-                            <i class="fa-solid fa-clock"></i> Sắp Ra Mắt
+                        <span class="feature-status-pill pill-active">
+                            <i class="fa-solid fa-circle-check"></i> Sẵn Sàng Sử Dụng
                         </span>
                     </div>
                     <div class="feature-card-body">
-                        <h4 class="feature-name">Studio Đọc Kịch Bản (TTS)</h4>
+                        <h4 class="feature-name">Studio Đọc Truyện &amp; Kể Chuyện AI</h4>
                         <p class="feature-summary">
-                            Nhập bất kỳ đoạn văn bản hoặc kịch bản review phim, chọn hơn 30+ giọng đọc AI CapCut/Edge-TTS truyền cảm, nghe thử và tải file âm thanh chất lượng cao.
+                            Chuyển văn bản thành audio đọc truyện chuyên nghiệp. Nhập trực tiếp hoặc bóc tách từ link YouTube, tích hợp AI xào nấu kịch bản (Groq/Gemini) chống bản quyền, chọn 15+ giọng TikTok Nữ hot nhất, xuất MP3 và file phụ đề SRT đồng bộ.
                         </p>
                         <div class="feature-tags">
-                            <span class="feature-tag">30+ Giọng Đọc</span>
-                            <span class="feature-tag">Chỉnh Tốc Độ</span>
-                            <span class="feature-tag">Xuất MP3/WAV</span>
+                            <span class="feature-tag">15+ Giọng TikTok Nữ</span>
+                            <span class="feature-tag">Bóc Tách YouTube</span>
+                            <span class="feature-tag">AI Xào Nấu</span>
+                            <span class="feature-tag">Xuất MP3 + SRT</span>
                         </div>
                     </div>
                     <div class="feature-card-footer">
-                        <button type="button" class="secondary-btn btn-full" disabled>
-                            <i class="fa-solid fa-lock"></i> Đang Phát Triển
+                        <button type="button" class="primary-btn btn-accent btn-full" id="btn-home-open-story-tts">
+                            <i class="fa-solid fa-arrow-right"></i> Mở Studio Đọc Truyện
                         </button>
                     </div>
                 </div>
@@ -525,11 +530,45 @@
                             </button>
                         </div>
 
+                        <!-- Dedicated Lightweight Video Scrubber Bar (Tua thời gian siêu mượt, không lag) -->
+                        <div class="video-scrubber-card" id="video-scrubber-card">
+                            <div class="scrubber-controls-row">
+                                <div class="scrubber-btn-group">
+                                    <button type="button" class="btn-scrub-action btn-scrub-play" id="btn-scrub-play" title="Phát / Tạm dừng (Space)">
+                                        <i class="fa-solid fa-play" id="icon-scrub-play"></i>
+                                    </button>
+                                    <button type="button" class="btn-scrub-action" id="btn-scrub-back5" title="Tua lùi 5 giây (←)">
+                                        <i class="fa-solid fa-rotate-left"></i> <span>-5s</span>
+                                    </button>
+                                    <button type="button" class="btn-scrub-action" id="btn-scrub-fwd5" title="Tua tới 5 giây (→)">
+                                        <i class="fa-solid fa-rotate-right"></i> <span>+5s</span>
+                                    </button>
+                                    <div class="scrubber-sub-nav">
+                                        <button type="button" class="btn-scrub-action btn-scrub-sub" id="btn-scrub-prev-sub" title="Nhảy về câu phụ đề trước">
+                                            <i class="fa-solid fa-backward-step"></i> <span>Câu trước</span>
+                                        </button>
+                                        <button type="button" class="btn-scrub-action btn-scrub-sub" id="btn-scrub-next-sub" title="Nhảy đến câu phụ đề sau">
+                                            <span>Câu sau</span> <i class="fa-solid fa-forward-step"></i>
+                                        </button>
+                                    </div>
+                                </div>
 
+                                <div class="scrubber-slider-wrapper">
+                                    <input type="range" id="video-seek-slider" class="video-seek-slider" min="0" max="100" value="0" step="0.05" title="Kéo để tua thời gian">
+                                    <div class="scrubber-track-fill" id="scrubber-track-fill" style="width: 0%;"></div>
+                                </div>
 
-                        <!-- CapCut-style Interactive Visual Timeline Editor Suite -->
+                                <div class="scrubber-timecode-box">
+                                    <span id="scrub-current-time" class="time-current">00:00.0</span>
+                                    <span class="time-sep">/</span>
+                                    <span id="scrub-total-time" class="time-total">00:00.0</span>
+                                </div>
+                            </div>
+                        </div>
 
-                        <div class="timeline-editor-card" id="timeline-editor-card">
+                        <!-- CapCut-style Interactive Visual Timeline Editor Suite (Đã ẩn để tối ưu hiệu năng không bị lag) -->
+
+                        <div class="timeline-editor-card d-none" id="timeline-editor-card">
 
                             <!-- 1. Timeline Action Toolbar -->
 
@@ -1291,17 +1330,33 @@
                                 <label for="voice-select-step3"><i class="fa-solid fa-microphone"></i> Chọn giọng đọc AI (Voice)</label>
                                 <div class="voice-picker-row">
                                     <select id="voice-select-step3">
-                                        <optgroup label="Giọng TikTok / CapCut (Đặc sắc &amp; Cực hot)">
-                                            <option value="capcut_cogaithoatngon" selected>🔥 Cô Gái Hoạt Ngôn (CapCut Hot TikTok)</option>
-                                            <option value="capcut_thanhnientutin">⚡ Thanh Niên Tự Tin (CapCut Recap Phim)</option>
-                                            <option value="capcut_nhongotngao">🌸 Nhỏ Ngọt Ngào (CapCut Nữ Dễ Thương)</option>
-                                            <option value="capcut_giongbe">👶 Giọng Bé (CapCut Trẻ Em)</option>
-                                            <option value="capcut_namtram">🎙️ Giọng Nam Trầm (CapCut Kể Chuyện)</option>
-                                            <option value="capcut_reviewphim">🎬 Review Phim (CapCut Nữ Truyền Cảm)</option>
+                                        <optgroup label="🔥 Giọng Nữ TikTok Triệu View (Đọc Truyện &amp; Lồng Tiếng)">
+                                            <option value="capcut_cogaithoatngon" selected>🔥 Cô Gái Hoạt Ngôn (Hot TikTok)</option>
+                                            <option value="capcut_nhongotngao">🌸 Nhỏ Ngọt Ngào (Nữ Dễ Thương)</option>
+                                            <option value="capcut_banmai">☀️ Ban Mai (Trong Trẻo Ấm Áp)</option>
+                                            <option value="capcut_mai">🌿 Mai (Nhẹ Nhàng Trầm Ấm)</option>
+                                            <option value="capcut_tianmeijieshuo">🎀 Nữ Dịu Dàng (Truyền Cảm)</option>
+                                            <option value="capcut_nu_phothong">👩 Giọng Nữ Phổ Thông (Tự Nhiên)</option>
+                                            <option value="capcut_gaimoilon">👧 Giọng Gái Mới Lớn (Tươi Trẻ)</option>
+                                            <option value="capcut_sunny_idol">✨ Sunny Idol (Hiện Đại)</option>
+                                            <option value="capcut_giongbe">👶 Giọng Bé (Trẻ Em Đáng Yêu)</option>
                                         </optgroup>
-                                        <optgroup label="Giọng Chuẩn Edge-TTS">
-                                            <option value="female_hoaimy">Hoài My (Nữ chuẩn - vi-VN-HoaiMyNeural)</option>
-                                            <option value="male_namminh">Nam Minh (Nam chuẩn - vi-VN-NamMinhNeural)</option>
+                                        <optgroup label="🎬 Giọng Nữ Review Phim / Tiểu Thuyết">
+                                            <option value="capcut_reviewphim">🎬 Review Phim Mới (Nữ Truyền Cảm)</option>
+                                            <option value="capcut_reviewphim2">🎬 Review Phim 2 (Nữ Trôi Chảy)</option>
+                                            <option value="capcut_reviewphim3">🎬 Review Phim 3 (Nữ Trầm Tĩnh)</option>
+                                            <option value="capcut_reviewphim4">🎬 Review Phim 4 (Nữ Sâu Lắng)</option>
+                                            <option value="capcut_bantin_nu">📰 Bản Tin Nữ (Dõng Dạc)</option>
+                                            <option value="capcut_bantin_1">📢 Bản Tin 1 (Chuyên Nghiệp)</option>
+                                        </optgroup>
+                                        <optgroup label="🎙️ Giọng Nam TikTok (Kể Chuyện Đêm &amp; Recap)">
+                                            <option value="capcut_thanhnientutin">⚡ Thanh Niên Tự Tin (Recap Phim)</option>
+                                            <option value="capcut_namtram">🎙️ Giọng Nam Trầm (Kể Chuyện Đêm)</option>
+                                            <option value="capcut_nam_bantin">🎙️ Nam Bản Tin (Thời Sự)</option>
+                                            <option value="capcut_alex">👑 Alex Đại Đế (Mạnh Mẽ)</option>
+                                            <option value="capcut_kenny">😈 Kenny Đại Đế (Kịch Tính)</option>
+                                            <option value="capcut_robot">🤖 Robot VN (Điện Tử)</option>
+                                            <option value="capcut_vietmeo">🌊 Việt Méo (Hiệu Ứng Rung)</option>
                                         </optgroup>
                                     </select>
                                     <button type="button" id="btn-preview-voice-step3" class="secondary-btn btn-icon" title="Nghe thử giọng mẫu"><i class="fa-solid fa-volume-high"></i></button>
@@ -1651,6 +1706,227 @@
             </section>
 
         </main>
+
+        <!-- ========================================================== -->
+        <!-- VIEW: STUDIO ĐỌC TRUYỆN & KỂ CHUYỆN (TIKTOK TTS) -->
+        <!-- ========================================================== -->
+        <section class="story-tts-workspace view-section d-none" id="story-tts-view">
+            <!-- Story Project Control Bar -->
+            <div class="project-control-bar card">
+                <div class="project-bar-left">
+                    <div class="project-bar-icon-badge" style="background: linear-gradient(135deg, #ec4899, #8b5cf6);">
+                        <i class="fa-solid fa-microphone-lines"></i>
+                    </div>
+                    <div class="project-info-group">
+                        <div class="project-title-row">
+                            <span class="project-label">Studio:</span>
+                            <span class="project-active-name" id="story-session-title">Đọc Truyện &amp; Kể Chuyện AI</span>
+                        </div>
+                        <div class="project-meta-line">
+                            <span class="project-step-badge" style="background: rgba(236, 72, 153, 0.2); color: #f472b6; border-color: rgba(236, 72, 153, 0.4);">
+                                <i class="fa-brands fa-tiktok"></i> 100% Giọng TikTok
+                            </span>
+                            <span class="project-meta-dot">•</span>
+                            <span class="text-muted" id="story-status-text">Sẵn sàng nhập liệu</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="project-bar-right">
+                    <button type="button" class="secondary-btn btn-sm btn-nav-home-back" id="btn-story-back-home" title="Quay về Trang Chủ">
+                        <i class="fa-solid fa-arrow-left"></i> <span>Trang Chủ</span>
+                    </button>
+                    <button type="button" class="secondary-btn btn-sm" id="btn-story-clear-all" title="Làm mới nội dung">
+                        <i class="fa-solid fa-trash-can"></i> <span>Xóa Hết</span>
+                    </button>
+                </div>
+            </div>
+
+            <!-- Two-column Studio Layout -->
+            <div class="story-studio-grid">
+                <!-- LEFT COLUMN: INPUT & REWRITE TOOLKIT -->
+                <div class="story-panel card">
+                    <div class="story-panel-header">
+                        <div class="section-title-group">
+                            <i class="fa-solid fa-file-pen icon-purple"></i>
+                            <h3>1. Nguồn Kịch Bản &amp; Xào Nấu AI</h3>
+                        </div>
+                        <!-- Source switcher tabs -->
+                        <div class="story-source-tabs">
+                            <button type="button" class="story-tab active" id="tab-source-text">
+                                <i class="fa-solid fa-align-left"></i> Dán Text / Tệp
+                            </button>
+                            <button type="button" class="story-tab" id="tab-source-yt">
+                                <i class="fa-brands fa-youtube" style="color: #ef4444;"></i> Lấy Từ YouTube
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- YouTube Link Box (toggled) -->
+                    <div class="story-yt-box d-none" id="box-source-yt">
+                        <label for="input-yt-url"><i class="fa-brands fa-youtube" style="color: #ef4444;"></i> Nhập liên kết video YouTube:</label>
+                        <div class="story-yt-input-row">
+                            <input type="text" id="input-yt-url" class="text-input" placeholder="https://www.youtube.com/watch?v=... hoặc https://youtu.be/..." />
+                            <button type="button" class="primary-btn btn-sm" id="btn-extract-yt">
+                                <i class="fa-solid fa-cloud-arrow-down"></i> Bóc Tách Phụ Đề
+                            </button>
+                        </div>
+                        <div class="yt-extract-status d-none" id="yt-extract-status">
+                            <i class="fa-solid fa-spinner fa-spin"></i> <span id="yt-extract-status-text">Đang phân tích video YouTube...</span>
+                        </div>
+                    </div>
+
+                    <!-- Script Textarea Box -->
+                    <div class="story-textarea-wrap">
+                        <div class="textarea-header-row">
+                            <label for="story-raw-text"><i class="fa-solid fa-book-open"></i> Nội dung kịch bản / truyện:</label>
+                            <div class="text-stats">
+                                <span id="story-char-count">0 ký tự</span> • 
+                                <span id="story-word-count">0 từ</span> • 
+                                <span id="story-est-duration">~0 phút</span>
+                            </div>
+                        </div>
+                        <textarea id="story-raw-text" class="story-textarea" rows="12" placeholder="Dán văn bản truyện, tiểu thuyết, kịch bản review hoặc nhập link YouTube bên trên để tự động bóc tách nội dung..."></textarea>
+                    </div>
+
+                    <!-- AI Rewriter Toolbar -->
+                    <div class="story-rewrite-toolbar">
+                        <div class="rewrite-config-row">
+                            <div class="input-group-sub" style="flex: 1;">
+                                <label for="story-rewrite-style"><i class="fa-solid fa-wand-magic-sparkles"></i> Phong cách Xào Nấu (AI):</label>
+                                <select id="story-rewrite-style" class="select-input">
+                                    <option value="storytelling" selected>📖 Kể Chuyện Truyền Cảm (Văn phong mượt, giàu cảm xúc)</option>
+                                    <option value="review">🎬 Review Tóm Tắt Kịch Tính (Nhịp nhanh, giật gân, cuốn hút)</option>
+                                    <option value="paraphrase">🛡️ Viết Lại Né Bản Quyền (100% câu từ mới, giữ cốt truyện)</option>
+                                </select>
+                            </div>
+                            <div class="input-group-sub" style="flex: 1.2;">
+                                <label for="story-rewrite-instruction"><i class="fa-solid fa-comment-dots"></i> Yêu cầu thêm (tùy chọn):</label>
+                                <input type="text" id="story-rewrite-instruction" class="text-input" placeholder="VD: Đổi ngôi kể thành 'tôi', làm rõ tâm lý nhân vật..." />
+                            </div>
+                        </div>
+                        <div class="rewrite-btn-row">
+                            <button type="button" class="primary-btn btn-gradient-purple" id="btn-story-ai-rewrite">
+                                <i class="fa-solid fa-wand-magic-sparkles"></i> ✨ Xào Nấu Kịch Bản Bằng AI (Lọc Rác &amp; Viết Lại)
+                            </button>
+                        </div>
+                        <div class="rewrite-status-bar d-none" id="story-rewrite-status">
+                            <i class="fa-solid fa-spinner fa-spin"></i> <span id="story-rewrite-status-text">AI đang phân tích và viết lại câu chuyện...</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- RIGHT COLUMN: VOICE CONFIG & GENERATION HUB -->
+                <div class="story-panel card">
+                    <div class="story-panel-header">
+                        <div class="section-title-group">
+                            <i class="fa-solid fa-sliders icon-purple"></i>
+                            <h3>2. Giọng Đọc TikTok &amp; Xuất Bản</h3>
+                        </div>
+                    </div>
+
+                    <!-- Voice Selection Box -->
+                    <div class="story-voice-box">
+                        <label for="story-voice-select"><i class="fa-brands fa-tiktok"></i> Chọn Giọng Đọc TikTok:</label>
+                        <div class="voice-picker-row">
+                            <select id="story-voice-select" class="select-input">
+                                <optgroup label="🔥 Giọng Nữ TikTok Triệu View (Đọc Truyện &amp; Kể Chuyện)">
+                                    <option value="capcut_cogaithoatngon" selected>🔥 Cô Gái Hoạt Ngôn (Hot TikTok)</option>
+                                    <option value="capcut_nhongotngao">🌸 Nhỏ Ngọt Ngào (Nữ Dễ Thương)</option>
+                                    <option value="capcut_banmai">☀️ Ban Mai (Trong Trẻo Ấm Áp)</option>
+                                    <option value="capcut_mai">🌿 Mai (Nhẹ Nhàng Trầm Ấm)</option>
+                                    <option value="capcut_tianmeijieshuo">🎀 Nữ Dịu Dàng (Truyền Cảm)</option>
+                                    <option value="capcut_nu_phothong">👩 Giọng Nữ Phổ Thông (Tự Nhiên)</option>
+                                    <option value="capcut_gaimoilon">👧 Giọng Gái Mới Lớn (Tươi Trẻ)</option>
+                                    <option value="capcut_sunny_idol">✨ Sunny Idol (Hiện Đại)</option>
+                                    <option value="capcut_giongbe">👶 Giọng Bé (Trẻ Em Đáng Yêu)</option>
+                                </optgroup>
+                                <optgroup label="🎬 Giọng Nữ Review Phim / Tiểu Thuyết">
+                                    <option value="capcut_reviewphim">🎬 Review Phim Mới (Nữ Truyền Cảm)</option>
+                                    <option value="capcut_reviewphim2">🎬 Review Phim 2 (Nữ Trôi Chảy)</option>
+                                    <option value="capcut_reviewphim3">🎬 Review Phim 3 (Nữ Trầm Tĩnh)</option>
+                                    <option value="capcut_reviewphim4">🎬 Review Phim 4 (Nữ Sâu Lắng)</option>
+                                    <option value="capcut_bantin_nu">📰 Bản Tin Nữ (Dõng Dạc)</option>
+                                    <option value="capcut_bantin_1">📢 Bản Tin 1 (Chuyên Nghiệp)</option>
+                                </optgroup>
+                                <optgroup label="🎙️ Giọng Nam TikTok (Kể Chuyện Đêm &amp; Recap)">
+                                    <option value="capcut_thanhnientutin">⚡ Thanh Niên Tự Tin (Recap Phim)</option>
+                                    <option value="capcut_namtram">🎙️ Giọng Nam Trầm (Kể Chuyện Đêm)</option>
+                                    <option value="capcut_nam_bantin">🎙️ Nam Bản Tin (Thời Sự)</option>
+                                    <option value="capcut_alex">👑 Alex Đại Đế (Mạnh Mẽ)</option>
+                                    <option value="capcut_kenny">😈 Kenny Đại Đế (Kịch Tính)</option>
+                                    <option value="capcut_robot">🤖 Robot VN (Điện Tử)</option>
+                                    <option value="capcut_vietmeo">🌊 Việt Méo (Hiệu Ứng Rung)</option>
+                                </optgroup>
+                            </select>
+                            <button type="button" id="btn-story-preview-voice" class="secondary-btn btn-icon" title="Nghe thử giọng mẫu">
+                                <i class="fa-solid fa-volume-high"></i>
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Pause & Pacing Setting -->
+                    <div class="story-pacing-box">
+                        <div class="pacing-label-row">
+                            <label for="story-pause-slider"><i class="fa-solid fa-pause"></i> Khoảng lặng ngắt nghỉ giữa các câu:</label>
+                            <span class="pacing-value-badge" id="story-pause-val">350 ms</span>
+                        </div>
+                        <input type="range" id="story-pause-slider" min="150" max="800" step="50" value="350" class="range-slider" />
+                        <div class="pacing-hint-row">
+                            <span>Nhanh (150ms)</span>
+                            <span>Tự nhiên (350ms - Khuyên dùng)</span>
+                            <span>Chậm rãi (800ms)</span>
+                        </div>
+                    </div>
+
+                    <!-- Main Action Button -->
+                    <div class="story-action-row" style="margin-top: 1.5rem;">
+                        <button type="button" class="primary-btn btn-accent btn-full" id="btn-story-generate-audio" style="font-size: 1.05rem; padding: 0.95rem;">
+                            <i class="fa-solid fa-microphone-lines"></i> Tạo Audio Đọc Truyện (MP3 + SRT)
+                        </button>
+                    </div>
+
+                    <!-- Progress Box -->
+                    <div class="story-progress-box d-none" id="story-progress-box">
+                        <div class="progress-info-row">
+                            <span id="story-progress-text"><i class="fa-solid fa-spinner fa-spin"></i> Đang sinh audio kịch bản...</span>
+                        </div>
+                        <div class="progress-bar-track">
+                            <div class="progress-bar-fill progress-bar-indeterminate" id="story-progress-bar" style="width: 100%;"></div>
+                        </div>
+                    </div>
+
+                    <!-- Output & Player Box -->
+                    <div class="story-result-box d-none" id="story-result-box">
+                        <div class="result-header">
+                            <i class="fa-solid fa-circle-check text-success"></i>
+                            <h4>Đã Tạo Hoàn Tất Bản Thu Âm!</h4>
+                        </div>
+                        
+                        <div class="result-meta-info">
+                            <span id="result-stat-sentences"><i class="fa-solid fa-list-ol"></i> 0 câu</span> • 
+                            <span id="result-stat-duration"><i class="fa-solid fa-clock"></i> 0:00</span> • 
+                            <span id="result-stat-voice"><i class="fa-brands fa-tiktok"></i> Giọng đọc</span>
+                        </div>
+
+                        <!-- Audio Player -->
+                        <div class="story-audio-player-wrap" style="margin: 1rem 0;">
+                            <audio id="story-audio-player" controls preload="metadata" style="width: 100%; border-radius: 8px;"></audio>
+                        </div>
+
+                        <!-- Download Action Buttons -->
+                        <div class="story-download-btn-row" style="display: flex; gap: 0.8rem; margin-top: 1rem;">
+                            <a id="btn-story-download-mp3" class="primary-btn btn-accent btn-full" download="truyen_audio.mp3" target="_blank" style="text-decoration: none; text-align: center; justify-content: center;">
+                                <i class="fa-solid fa-file-audio"></i> Tải File MP3
+                            </a>
+                            <a id="btn-story-download-srt" class="secondary-btn btn-full" download="truyen_phude.srt" target="_blank" style="text-decoration: none; text-align: center; justify-content: center;">
+                                <i class="fa-solid fa-file-lines"></i> Tải Phụ Đề SRT
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
 
 
 
@@ -2083,31 +2359,34 @@
                                     <i class="fa-solid fa-user input-icon"></i>
 
                                     <select id="shared-voice-select">
-
-                                        <optgroup label="Giọng TikTok / CapCut (Đặc sắc & Siêu hot)">
-
-                                            <option value="capcut_cogaithoatngon" selected>🔥 Cô Gái Hoạt Ngôn (CapCut Hot TikTok)</option>
-
-                                            <option value="capcut_thanhnientutin">⚡ Thanh Niên Tự Tin (CapCut Recap Phim)</option>
-
-                                            <option value="capcut_nhongotngao">🌸 Nhỏ Ngọt Ngào (CapCut Nữ Dễ Thương)</option>
-
-                                            <option value="capcut_giongbe">👶 Giọng Bé (CapCut Trẻ Em)</option>
-
-                                            <option value="capcut_namtram">🎙️ Giọng Nam Trầm (CapCut Kể Chuyện)</option>
-
-                                            <option value="capcut_reviewphim">🎬 Review Phim (CapCut Nữ Truyền Cảm)</option>
-
+                                        <optgroup label="🔥 Giọng Nữ TikTok Triệu View (Đọc Truyện &amp; Lồng Tiếng)">
+                                            <option value="capcut_cogaithoatngon" selected>🔥 Cô Gái Hoạt Ngôn (Hot TikTok)</option>
+                                            <option value="capcut_nhongotngao">🌸 Nhỏ Ngọt Ngào (Nữ Dễ Thương)</option>
+                                            <option value="capcut_banmai">☀️ Ban Mai (Trong Trẻo Ấm Áp)</option>
+                                            <option value="capcut_mai">🌿 Mai (Nhẹ Nhàng Trầm Ấm)</option>
+                                            <option value="capcut_tianmeijieshuo">🎀 Nữ Dịu Dàng (Truyền Cảm)</option>
+                                            <option value="capcut_nu_phothong">👩 Giọng Nữ Phổ Thông (Tự Nhiên)</option>
+                                            <option value="capcut_gaimoilon">👧 Giọng Gái Mới Lớn (Tươi Trẻ)</option>
+                                            <option value="capcut_sunny_idol">✨ Sunny Idol (Hiện Đại)</option>
+                                            <option value="capcut_giongbe">👶 Giọng Bé (Trẻ Em Đáng Yêu)</option>
                                         </optgroup>
-
-                                        <optgroup label="Giọng Chuẩn Edge-TTS">
-
-                                            <option value="female_hoaimy">Hoài My (Nữ chuẩn - vi-VN-HoaiMyNeural)</option>
-
-                                            <option value="male_namminh">Nam Minh (Nam chuẩn - vi-VN-NamMinhNeural)</option>
-
+                                        <optgroup label="🎬 Giọng Nữ Review Phim / Tiểu Thuyết">
+                                            <option value="capcut_reviewphim">🎬 Review Phim Mới (Nữ Truyền Cảm)</option>
+                                            <option value="capcut_reviewphim2">🎬 Review Phim 2 (Nữ Trôi Chảy)</option>
+                                            <option value="capcut_reviewphim3">🎬 Review Phim 3 (Nữ Trầm Tĩnh)</option>
+                                            <option value="capcut_reviewphim4">🎬 Review Phim 4 (Nữ Sâu Lắng)</option>
+                                            <option value="capcut_bantin_nu">📰 Bản Tin Nữ (Dõng Dạc)</option>
+                                            <option value="capcut_bantin_1">📢 Bản Tin 1 (Chuyên Nghiệp)</option>
                                         </optgroup>
-
+                                        <optgroup label="🎙️ Giọng Nam TikTok (Kể Chuyện Đêm &amp; Recap)">
+                                            <option value="capcut_thanhnientutin">⚡ Thanh Niên Tự Tin (Recap Phim)</option>
+                                            <option value="capcut_namtram">🎙️ Giọng Nam Trầm (Kể Chuyện Đêm)</option>
+                                            <option value="capcut_nam_bantin">🎙️ Nam Bản Tin (Thời Sự)</option>
+                                            <option value="capcut_alex">👑 Alex Đại Đế (Mạnh Mẽ)</option>
+                                            <option value="capcut_kenny">😈 Kenny Đại Đế (Kịch Tính)</option>
+                                            <option value="capcut_robot">🤖 Robot VN (Điện Tử)</option>
+                                            <option value="capcut_vietmeo">🌊 Việt Méo (Hiệu Ứng Rung)</option>
+                                        </optgroup>
                                     </select>
 
                                 </div>
@@ -2524,7 +2803,7 @@
         </div>
     </div>
 
-    <script src="app.js?v=52"></script>
+    <script src="app.js?v=54"></script>
 
 </body>
 

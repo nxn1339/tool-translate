@@ -737,7 +737,7 @@ def mix_timeline_audio_fast(
 def generate_preview_audio_track(
     project_dir: str,
     segments: List[Dict[str, Any]],
-    voice: str = "female_hoaimy",
+    voice: str = "capcut_cogaithoatngon",
     progress_callback: Optional[Any] = None,
     failed_only: bool = False
 ) -> str:

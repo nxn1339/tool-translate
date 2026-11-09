@@ -13,25 +13,8 @@ logger = logging.getLogger(__name__)
 
 from app.capcut_tts import CAPCUT_VOICES, generate_capcut_tts
 
-# Voice presets utilizing Microsoft Edge TTS neural voices and CapCut TTS voices
-VOICE_PRESETS = {
-    "female_hoaimy": {
-        "voice": "vi-VN-HoaiMyNeural",
-        "rate": "+0%",
-        "pitch": "+0Hz",
-        "name": "Hoài My (Nữ chuẩn - vi-VN-HoaiMyNeural)",
-        "engine": "edge-tts"
-    },
-    "male_namminh": {
-        "voice": "vi-VN-NamMinhNeural",
-        "rate": "+0%",
-        "pitch": "+0Hz",
-        "name": "Nam Minh (Nam chuẩn - vi-VN-NamMinhNeural)",
-        "engine": "edge-tts"
-    }
-}
-# Merge CapCut voices into VOICE_PRESETS
-VOICE_PRESETS.update(CAPCUT_VOICES)
+# Voice presets: 100% curated CapCut / TikTok voices
+VOICE_PRESETS = dict(CAPCUT_VOICES)
 
 # Legacy mapping for backwards compatibility
 LEGACY_VOICE_MAP = {
@@ -41,8 +24,10 @@ LEGACY_VOICE_MAP = {
     "gentle_girl": "capcut_nhongotngao",
     "warm_man": "capcut_namtram",
     "fast_man": "capcut_thanhnientutin",
-    "vi-VN-HoaiMyNeural": "female_hoaimy",
-    "vi-VN-NamMinhNeural": "male_namminh"
+    "female_hoaimy": "capcut_cogaithoatngon",
+    "male_namminh": "capcut_namtram",
+    "vi-VN-HoaiMyNeural": "capcut_cogaithoatngon",
+    "vi-VN-NamMinhNeural": "capcut_namtram"
 }
 
 
@@ -413,7 +398,7 @@ def generate_tts_for_segments(
     Supports failed_only=True to only retry segments that failed or are missing audio.
     """
     target_key = LEGACY_VOICE_MAP.get(voice_key, voice_key)
-    preset = VOICE_PRESETS.get(target_key, VOICE_PRESETS["female_hoaimy"])
+    preset = VOICE_PRESETS.get(target_key, VOICE_PRESETS.get("capcut_cogaithoatngon"))
 
     # Auto-heal: If segments still contain untranslated Chinese characters, translate them first
     untranslated_indices = []

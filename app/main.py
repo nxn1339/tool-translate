@@ -3,6 +3,7 @@ import uuid
 import shutil
 import logging
 import json
+import hashlib
 from typing import Optional, Dict, Any, List
 from fastapi import FastAPI, BackgroundTasks, HTTPException, UploadFile, File
 from fastapi.responses import FileResponse, Response
@@ -127,7 +128,7 @@ def load_project_meta(project_id: str) -> Dict[str, Any]:
             "box_opacity": 0.75,
             "bold": True
         },
-        "voice": "female_hoaimy",
+        "voice": "capcut_cogaithoatngon",
         "bg_volume": 0.15,
         "tts_volume": 1.0,
         "logo_box": {
@@ -293,7 +294,7 @@ class ProjectUpdateSegmentsRequest(BaseModel):
 
 
 class ProjectGenerateTTSRequest(BaseModel):
-    voice: Optional[str] = "female_hoaimy"
+    voice: Optional[str] = "capcut_cogaithoatngon"
     failed_only: Optional[bool] = False
     use_original: Optional[bool] = False
 
@@ -318,7 +319,7 @@ class SettingsUpdateRequest(BaseModel):
 
 
 class ProjectRenderRequest(BaseModel):
-    voice: str = "female_hoaimy"
+    voice: str = "capcut_cogaithoatngon"
     bg_volume: float = 0.15
     tts_volume: float = 1.0
     mask_box: Optional[Dict[str, Any]] = None
@@ -332,8 +333,13 @@ class ProjectRenderRequest(BaseModel):
 
 class TTSFreeRequest(BaseModel):
     text: str
-    voice: str = "female_hoaimy"
+    voice: str = "capcut_cogaithoatngon"
     rate: str = "+0%"
+
+
+class TTSPreviewRequest(BaseModel):
+    voice: Optional[str] = "capcut_cogaithoatngon"
+    text: Optional[str] = None
 
 
 # ==========================================
@@ -725,7 +731,7 @@ def process_project_translate_worker(
             projects_db[project_id]["message"] = "Đang khởi tạo giọng đọc lồng tiếng xem trước..."
             try:
                 meta = load_project_meta(project_id)
-                voice = meta.get("voice", "female_hoaimy")
+                voice = meta.get("voice", "capcut_cogaithoatngon")
                 from app.merger import generate_preview_audio_track
                 generate_preview_audio_track(project_dir, segments, voice=voice)
                 if os.path.exists(segments_json_path):
@@ -937,7 +943,7 @@ async def generate_free_tts(request: TTSFreeRequest):
 
     from app.tts import generate_single_tts, VOICE_PRESETS, LEGACY_VOICE_MAP
     target_key = LEGACY_VOICE_MAP.get(request.voice, request.voice)
-    preset = VOICE_PRESETS.get(target_key, VOICE_PRESETS["female_hoaimy"]).copy()
+    preset = VOICE_PRESETS.get(target_key, VOICE_PRESETS.get("capcut_cogaithoatngon", {})).copy()
     if request.rate:
         preset["rate"] = request.rate
 
@@ -954,7 +960,7 @@ async def generate_free_tts(request: TTSFreeRequest):
 
 
 @app.get("/api/preview-voice")
-async def preview_voice(voice: str = "female_hoaimy"):
+async def preview_voice(voice: str = "capcut_cogaithoatngon"):
     """
     Returns an audio sample previewing the selected TTS voice.
     Caches the generated sample audio in temp/previews so future requests are instant.
@@ -962,7 +968,7 @@ async def preview_voice(voice: str = "female_hoaimy"):
     from app.tts import generate_single_tts, VOICE_PRESETS, LEGACY_VOICE_MAP
 
     target_key = LEGACY_VOICE_MAP.get(voice, voice)
-    preset = VOICE_PRESETS.get(target_key, VOICE_PRESETS["female_hoaimy"])
+    preset = VOICE_PRESETS.get(target_key, VOICE_PRESETS.get("capcut_cogaithoatngon"))
 
     preview_dir = os.path.join(TEMP_DIR, "previews")
     os.makedirs(preview_dir, exist_ok=True)
@@ -989,10 +995,58 @@ async def preview_voice(voice: str = "female_hoaimy"):
     )
 
 
+@app.post("/api/tts-preview")
+@app.get("/api/tts-preview")
+async def api_tts_preview(
+    request: Optional[TTSPreviewRequest] = None,
+    voice: Optional[str] = None,
+    text: Optional[str] = None
+):
+    """
+    Endpoint for previewing TTS voice with custom or default sample text.
+    Handles both POST (JSON body) and GET (query params) seamlessly.
+    """
+    from app.tts import generate_single_tts, VOICE_PRESETS, LEGACY_VOICE_MAP
+
+    v = (request and request.voice) or voice or "capcut_cogaithoatngon"
+    t = (request and request.text) or text or ""
+
+    target_key = LEGACY_VOICE_MAP.get(v, v)
+    preset = VOICE_PRESETS.get(target_key, VOICE_PRESETS.get("capcut_cogaithoatngon"))
+
+    preview_dir = os.path.join(TEMP_DIR, "previews")
+    os.makedirs(preview_dir, exist_ok=True)
+
+    sample_text = t.strip()
+    if not sample_text:
+        sample_text = {
+            "female_hoaimy": "Xin chào, tôi là Hoài My. Đây là bản nghe thử giọng đọc lồng tiếng của tôi.",
+            "male_namminh": "Xin chào, tôi là Nam Minh. Đây là bản nghe thử giọng đọc lồng tiếng của tôi.",
+            "capcut_cogaithoatngon": "Xin chào các bạn, tôi là cô gái hoạt ngôn trên CapCut. Chào mừng các bạn đến với kênh của mình!",
+            "capcut_thanhnientutin": "Chào anh em, hôm nay chúng ta cùng recap bộ phim siêu kịch tính này nhé!",
+            "capcut_nhongotngao": "Xin chào, em là Nhỏ Ngọt Ngào, chúc cả nhà một ngày thật nhiều niềm vui nha!",
+            "capcut_giongbe": "Dạ con chào cô chú, con là giọng em bé siêu dễ thương đây ạ!",
+            "capcut_namtram": "Xin chào quý vị và các bạn, đây là câu chuyện kỳ bí hôm nay tôi muốn gửi đến các bạn.",
+            "capcut_reviewphim": "Chào mừng các bạn đã quay trở lại với chuyên mục review phim chiếu rạp hôm nay."
+        }.get(target_key, "Xin chào, đây là giọng đọc thử nghiệm kịch bản của Siêu Tool.")
+
+    text_hash = hashlib.md5(sample_text.encode("utf-8")).hexdigest()[:8]
+    file_path = os.path.join(preview_dir, f"preview_{target_key}_{text_hash}.mp3")
+
+    if not os.path.exists(file_path) or os.path.getsize(file_path) == 0:
+        await generate_single_tts(sample_text, preset, file_path)
+
+    return FileResponse(
+        path=file_path,
+        media_type="audio/mpeg",
+        filename=f"preview_{target_key}.mp3"
+    )
+
+
 @app.get("/api/voices")
 def api_get_voices():
     """
-    Returns the list of all available TTS voices grouped by engine (CapCut TTS & Edge-TTS).
+    Returns the list of all available TTS voices (100% CapCut / TikTok voices).
     """
     from app.tts import VOICE_PRESETS
     voices = []
@@ -1000,8 +1054,9 @@ def api_get_voices():
         voices.append({
             "id": key,
             "name": data.get("name", key),
-            "engine": data.get("engine", "edge-tts"),
-            "gender": data.get("gender", "female")
+            "engine": data.get("engine", "capcut"),
+            "gender": data.get("gender", "female"),
+            "category": data.get("category", "general")
         })
     return {"status": "ok", "voices": voices}
 
@@ -1016,6 +1071,104 @@ def api_get_rvc_models():
         "models": [],
         "system": {"ready": False}
     }
+
+
+# ==========================================
+# STORY TTS STUDIO APIS
+# ==========================================
+
+class StoryExtractRequest(BaseModel):
+    url: str
+
+class StoryRewriteRequest(BaseModel):
+    text: str
+    style: Optional[str] = "storytelling"
+    custom_instruction: Optional[str] = ""
+
+class StorySynthesizeRequest(BaseModel):
+    text: str
+    voice: Optional[str] = "capcut_cogaithoatngon"
+    pause_ms: Optional[int] = 350
+
+
+@app.get("/api/story-tts/voices")
+def api_get_story_tts_voices():
+    """
+    Returns available TikTok voices grouped by category for Story TTS Studio.
+    """
+    from app.capcut_tts import CAPCUT_VOICES
+    female_voices = []
+    male_voices = []
+    for k, v in CAPCUT_VOICES.items():
+        entry = {
+            "id": k,
+            "name": v.get("name", k),
+            "gender": v.get("gender", "female"),
+            "category": v.get("category", "general")
+        }
+        if v.get("gender") == "female":
+            female_voices.append(entry)
+        else:
+            male_voices.append(entry)
+    return {
+        "status": "ok",
+        "female_voices": female_voices,
+        "male_voices": male_voices
+    }
+
+
+@app.post("/api/story-tts/extract-youtube")
+def api_story_extract_youtube(req: StoryExtractRequest):
+    """
+    Extracts transcript / captions from YouTube URL via yt-dlp.
+    """
+    from app.story_tts import extract_youtube_transcript
+    res = extract_youtube_transcript(req.url)
+    return res
+
+
+@app.post("/api/story-tts/rewrite")
+def api_story_rewrite(req: StoryRewriteRequest):
+    """
+    Rewrites story content using Groq / Gemini with custom storytelling styles.
+    """
+    from app.story_tts import rewrite_story_content
+    res = rewrite_story_content(req.text, style=req.style, custom_instruction=req.custom_instruction)
+    return res
+
+
+@app.post("/api/story-tts/synthesize")
+async def api_story_synthesize(req: StorySynthesizeRequest):
+    """
+    Synthesizes story text into MP3 + synchronized SRT subtitle.
+    """
+    from app.story_tts import synthesize_story_session
+    res = await synthesize_story_session(req.text, voice_key=req.voice, pause_ms=req.pause_ms)
+    return res
+
+
+@app.get("/api/story-tts/download/{task_id}/audio")
+def api_story_download_audio(task_id: str):
+    """
+    Downloads synthesized story MP3 file.
+    """
+    from app.story_tts import STORY_TEMP_DIR
+    mp3_path = os.path.join(STORY_TEMP_DIR, task_id, "final_story.mp3")
+    if not os.path.exists(mp3_path):
+        raise HTTPException(status_code=404, detail="Không tìm thấy file âm thanh.")
+    return FileResponse(mp3_path, media_type="audio/mpeg", filename=f"{task_id}.mp3")
+
+
+@app.get("/api/story-tts/download/{task_id}/srt")
+def api_story_download_srt(task_id: str):
+    """
+    Downloads synchronized story SRT file.
+    """
+    from app.story_tts import STORY_TEMP_DIR
+    srt_path = os.path.join(STORY_TEMP_DIR, task_id, "final_story.srt")
+    if not os.path.exists(srt_path):
+        raise HTTPException(status_code=404, detail="Không tìm thấy file phụ đề.")
+    return FileResponse(srt_path, media_type="application/x-subrip", filename=f"{task_id}.srt")
 
 
 # ==========================================
@@ -1091,7 +1244,7 @@ def create_project(request: Optional[ProjectCreateRequest] = None):
             "box_opacity": 0.75,
             "bold": True
         },
-        "voice": "female_hoaimy",
+        "voice": "capcut_cogaithoatngon",
         "bg_volume": 0.15,
         "tts_volume": 1.0,
         "logo_box": {
@@ -1445,7 +1598,7 @@ def project_generate_tts(project_id: str, request: ProjectGenerateTTSRequest, ba
     if not segments:
         raise HTTPException(status_code=400, detail="Danh sách phụ đề rỗng.")
 
-    voice = request.voice or "female_hoaimy"
+    voice = request.voice or "capcut_cogaithoatngon"
     failed_only = bool(request.failed_only)
     use_original = bool(request.use_original) if not failed_only else False
     action_text = "tạo lại các câu lỗi" if failed_only else "tạo giọng đọc"
@@ -1612,7 +1765,7 @@ def project_generate_preview_audio(project_id: str, request: Optional[Dict[str, 
         with open(segments_path, "r", encoding="utf-8") as f:
             segments = json.load(f)
     meta = load_project_meta(project_id)
-    voice = (request and request.get("voice")) or meta.get("voice", "female_hoaimy")
+    voice = (request and request.get("voice")) or meta.get("voice", "capcut_cogaithoatngon")
 
     append_project_log(project_id, f"[Lồng tiếng] Bắt đầu tổng hợp âm thanh lồng tiếng xem trước ({len(segments)} câu, giọng: {voice})...")
     generate_preview_audio_track(
@@ -1880,7 +2033,7 @@ def project_download_audio_dubbed(project_id: str):
     if not segments:
         segments = meta.get("segments", [])
 
-    voice = meta.get("voice", "female_hoaimy")
+    voice = meta.get("voice", "capcut_cogaithoatngon")
     preview_audio_path = generate_preview_audio_track(project_dir, segments, voice)
 
     if not os.path.exists(preview_audio_path):
