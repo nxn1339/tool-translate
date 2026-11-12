@@ -5023,6 +5023,7 @@ input[type="color"]::-webkit-color-swatch {
     background: linear-gradient(180deg, rgba(30, 41, 59, 0.7) 0%, rgba(15, 23, 42, 0.85) 100%);
     border: 1px solid rgba(99, 102, 241, 0.4);
     box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.4);
+    cursor: pointer;
 }
 
 .feature-active:hover {
@@ -5517,4 +5518,549 @@ input[type="color"]::-webkit-color-swatch {
 .result-meta-info {
     font-size: 0.85rem;
     color: #94a3b8;
+}
+
+/* ========================================================== */
+/* SOCIAL SHORT VIDEO STUDIO (THREADS & FACEBOOK) */
+/* ========================================================== */
+.social-video-workspace {
+    width: 100%;
+    margin-bottom: 3rem;
+    animation: fadeIn 0.3s ease;
+}
+
+.social-step-card {
+    background: rgba(30, 41, 59, 0.45);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 16px;
+    padding: 1.6rem;
+    backdrop-filter: blur(16px);
+    transition: all 0.25s ease;
+}
+
+.social-card-head {
+    display: flex;
+    align-items: flex-start;
+    gap: 1rem;
+    margin-bottom: 1.25rem;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+    padding-bottom: 0.9rem;
+}
+
+.social-step-number {
+    width: 34px;
+    height: 34px;
+    border-radius: 10px;
+    background: linear-gradient(135deg, #0095f6, #0866ff);
+    color: #ffffff;
+    font-weight: 800;
+    font-size: 1.05rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 4px 12px rgba(8, 102, 255, 0.3);
+    flex-shrink: 0;
+}
+
+.social-step-number.success {
+    background: linear-gradient(135deg, #10b981, #059669);
+    box-shadow: 0 4px 12px rgba(16, 185, 129, 0.3);
+}
+
+.social-mode-card {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 1rem;
+    padding: 0.9rem 1.4rem;
+    background: rgba(15, 23, 42, 0.55);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 14px;
+}
+
+.social-mode-left {
+    display: flex;
+    align-items: center;
+    gap: 0.8rem;
+}
+
+.social-mode-label {
+    font-weight: 700;
+    color: #e2e8f0;
+    font-size: 0.92rem;
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+}
+
+.mode-toggle-group {
+    display: inline-flex;
+    background: rgba(15, 23, 42, 0.7);
+    border-radius: 30px;
+    padding: 3px;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.mode-pill-btn {
+    border: none;
+    background: transparent;
+    color: #94a3b8;
+    padding: 6px 16px;
+    border-radius: 24px;
+    font-size: 0.86rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.mode-pill-btn.active {
+    background: linear-gradient(135deg, #0095f6, #0866ff);
+    color: #ffffff;
+    box-shadow: 0 4px 12px rgba(8, 102, 255, 0.35);
+}
+
+.mode-pill-btn:hover:not(.active) {
+    color: #f8fafc;
+}
+
+.social-checkbox-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-size: 0.88rem;
+    color: #cbd5e1;
+    cursor: pointer;
+    user-select: none;
+}
+
+/* URL Bar styling */
+.social-url-bar {
+    display: flex;
+    align-items: center;
+    gap: 0.85rem;
+    width: 100%;
+}
+
+.social-url-badge {
+    width: 52px;
+    height: 52px;
+    border-radius: 12px;
+    background: rgba(15, 23, 42, 0.8);
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.35rem;
+    color: #94a3b8;
+    flex-shrink: 0;
+    transition: all 0.3s ease;
+}
+
+.social-url-badge.threads {
+    background: linear-gradient(135deg, #181818, #2a2a2a);
+    border-color: rgba(255, 255, 255, 0.25);
+    color: #ffffff;
+    box-shadow: 0 0 14px rgba(255, 255, 255, 0.15);
+}
+
+.social-url-badge.facebook {
+    background: linear-gradient(135deg, #0866ff, #0052cc);
+    border-color: rgba(8, 102, 255, 0.4);
+    color: #ffffff;
+    box-shadow: 0 0 14px rgba(8, 102, 255, 0.4);
+}
+
+.social-url-input {
+    flex: 1 1 auto;
+    min-width: 260px;
+    height: 52px;
+    background: rgba(15, 23, 42, 0.7);
+    border: 1px solid rgba(255, 255, 255, 0.14);
+    border-radius: 12px;
+    padding: 0 1.25rem;
+    font-size: 1rem;
+    color: #f8fafc;
+    font-family: inherit;
+    transition: all 0.2s ease;
+}
+
+.social-url-input:focus {
+    border-color: #0095f6;
+    background: rgba(15, 23, 42, 0.95);
+    box-shadow: 0 0 0 3px rgba(0, 149, 246, 0.25);
+    outline: none;
+}
+
+.social-url-bar .primary-btn {
+    width: auto !important;
+    min-width: max-content;
+    height: 52px !important;
+    padding: 0 1.5rem !important;
+    font-size: 0.95rem !important;
+    font-weight: 700 !important;
+    white-space: nowrap !important;
+    flex-shrink: 0 !important;
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    gap: 0.5rem !important;
+}
+
+@media (max-width: 860px) {
+    .social-url-bar {
+        flex-wrap: wrap;
+    }
+    .social-url-input {
+        width: calc(100% - 65px);
+    }
+    .social-url-bar .primary-btn {
+        flex: 1;
+        width: 100% !important;
+    }
+}
+
+/* Options strip */
+.social-options-strip {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 1.5rem;
+    padding: 0.75rem 1.1rem;
+    background: rgba(15, 23, 42, 0.45);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 12px;
+}
+
+.social-opt-item {
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+}
+
+.social-opt-label {
+    font-weight: 600;
+    font-size: 0.88rem;
+    color: #cbd5e1;
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+}
+
+.social-num-input {
+    width: 65px;
+    height: 34px;
+    background: rgba(15, 23, 42, 0.8);
+    border: 1px solid rgba(255, 255, 255, 0.15);
+    border-radius: 8px;
+    color: #ffffff;
+    text-align: center;
+    font-weight: 700;
+    font-size: 0.92rem;
+}
+
+.social-opt-checkbox {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-size: 0.88rem;
+    color: #cbd5e1;
+    cursor: pointer;
+}
+
+.story-chain-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    background: rgba(16, 185, 129, 0.15);
+    border: 1px solid rgba(16, 185, 129, 0.35);
+    color: #34d399;
+    padding: 0.35rem 0.85rem;
+    border-radius: 999px;
+    font-size: 0.85rem;
+    font-weight: 600;
+}
+
+/* Form inputs & grids */
+.social-editor-panel {
+    background: rgba(15, 23, 42, 0.45);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 14px;
+    padding: 1.25rem;
+}
+
+.social-form-grid-3 {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    gap: 1rem;
+}
+
+.social-form-field {
+    display: flex;
+    flex-direction: column;
+}
+
+.social-field-label {
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+    font-size: 0.86rem;
+    font-weight: 600;
+    color: #94a3b8;
+    margin-bottom: 0.45rem;
+}
+
+.social-input,
+.social-select,
+.social-textarea {
+    width: 100%;
+    background: rgba(15, 23, 42, 0.7);
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    border-radius: 10px;
+    color: #f8fafc;
+    padding: 0.65rem 0.9rem;
+    font-family: inherit;
+    font-size: 0.92rem;
+    box-sizing: border-box;
+    transition: all 0.2s ease;
+}
+
+.social-input:focus,
+.social-select:focus,
+.social-textarea:focus {
+    border-color: #0095f6;
+    background: rgba(15, 23, 42, 0.95);
+    box-shadow: 0 0 0 3px rgba(0, 149, 246, 0.25);
+    outline: none;
+}
+
+.social-select option {
+    background: #0f172a;
+    color: #f8fafc;
+}
+
+.social-helper-text {
+    font-size: 0.8rem;
+    color: #64748b;
+    margin-top: 0.35rem;
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+}
+
+/* Comments section */
+.social-comments-head {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    flex-wrap: wrap;
+    gap: 0.8rem;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+    padding-bottom: 0.6rem;
+}
+
+.social-comments-title {
+    font-size: 1.05rem;
+    font-weight: 700;
+    color: #f8fafc;
+    margin-bottom: 0.2rem;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.social-comments-sub {
+    font-size: 0.83rem;
+    color: #94a3b8;
+    margin-bottom: 0;
+}
+
+.social-comments-stack {
+    display: flex;
+    flex-direction: column;
+    gap: 0.85rem;
+}
+
+.social-comment-card {
+    background: rgba(15, 23, 42, 0.5) !important;
+    border: 1px solid rgba(255, 255, 255, 0.08) !important;
+    border-radius: 12px !important;
+    padding: 1rem 1.15rem !important;
+    transition: all 0.2s ease !important;
+}
+
+.social-comment-card:hover {
+    border-color: rgba(0, 149, 246, 0.45) !important;
+    background: rgba(15, 23, 42, 0.65) !important;
+}
+
+.comment-card-top {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 0.65rem;
+}
+
+.comment-checkbox-label {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    cursor: pointer;
+    user-select: none;
+}
+
+.comment-check {
+    width: 18px;
+    height: 18px;
+    accent-color: #0095f6;
+    cursor: pointer;
+    border-radius: 4px;
+    margin: 0;
+}
+
+.comment-badge-idx {
+    font-weight: 700;
+    font-size: 0.88rem;
+    color: #38bdf8;
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+}
+
+.btn-comment-delete {
+    background: transparent;
+    border: 1px solid rgba(239, 68, 68, 0.3);
+    color: #f87171;
+    width: 30px;
+    height: 30px;
+    border-radius: 8px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.85rem;
+    transition: all 0.2s ease;
+}
+
+.btn-comment-delete:hover {
+    background: rgba(239, 68, 68, 0.15);
+    border-color: #ef4444;
+    color: #ffffff;
+}
+
+.comment-fields-grid {
+    display: grid;
+    grid-template-columns: 1fr 1.3fr 0.7fr;
+    gap: 0.65rem;
+    margin-bottom: 0.65rem;
+}
+
+.comment-field-item {
+    display: flex;
+    flex-direction: column;
+    gap: 0.3rem;
+}
+
+.comment-field-tag {
+    font-size: 0.78rem;
+    color: #64748b;
+    font-weight: 600;
+    display: flex;
+    align-items: center;
+    gap: 0.3rem;
+}
+
+.social-btn-render {
+    padding: 0.85rem 2rem !important;
+    font-size: 1.05rem !important;
+    border-radius: 12px !important;
+    box-shadow: 0 8px 24px rgba(99, 102, 241, 0.3) !important;
+}
+
+/* Progress & result */
+.social-progress-card {
+    background: rgba(15, 23, 42, 0.6);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 12px;
+    padding: 1.1rem 1.4rem;
+}
+
+.social-progress-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.social-progress-label {
+    font-weight: 700;
+    color: #f8fafc;
+    font-size: 0.95rem;
+}
+
+.social-progress-num {
+    font-weight: 800;
+    color: #0095f6;
+    font-size: 1.05rem;
+}
+
+.social-progress-track {
+    height: 10px;
+    background: rgba(255, 255, 255, 0.08);
+    border-radius: 6px;
+    overflow: hidden;
+}
+
+.social-progress-fill {
+    height: 100%;
+    background: linear-gradient(90deg, #0095f6, #0866ff);
+    border-radius: 6px;
+    transition: width 0.3s ease;
+}
+
+.social-video-frame {
+    max-width: 360px;
+    margin: 0 auto 1.5rem;
+    border-radius: 18px;
+    overflow: hidden;
+    box-shadow: 0 16px 40px rgba(0, 0, 0, 0.6);
+    border: 1px solid rgba(255, 255, 255, 0.12);
+}
+
+.social-video-frame video {
+    width: 100%;
+    display: block;
+}
+
+.social-btn-download {
+    padding: 0.75rem 1.8rem !important;
+    border-radius: 12px !important;
+    display: inline-flex !important;
+    align-items: center !important;
+    gap: 0.5rem !important;
+    text-decoration: none !important;
+    font-weight: 700 !important;
+}
+
+.cookie-details summary {
+    font-size: 0.88rem;
+    padding: 4px 0;
+    user-select: none;
+}
+
+.cookie-details[open] summary {
+    color: #0095f6 !important;
+}
+
+.btn-success {
+    background: linear-gradient(135deg, #10b981, #059669) !important;
+    border: none !important;
+    color: #ffffff !important;
+}
+
+.btn-success:hover {
+    background: linear-gradient(135deg, #059669, #047857) !important;
+    box-shadow: 0 4px 14px rgba(16, 185, 129, 0.4);
 }

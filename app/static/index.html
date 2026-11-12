@@ -18,12 +18,10 @@
     <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@700;800;900&family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
 
     <!-- FontAwesome Icons -->
-
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.6.0/css/all.min.css">
 
     <!-- Custom CSS -->
-
-    <link rel="stylesheet" href="style.css?v=53">
+    <link rel="stylesheet" href="style.css?v=60">
 
 </head>
 
@@ -57,6 +55,9 @@
                     </button>
                     <button type="button" class="nav-tab" id="btn-nav-story-tts">
                         <i class="fa-solid fa-microphone-lines"></i> <span>Đọc Truyện TTS</span>
+                    </button>
+                    <button type="button" class="nav-tab" id="btn-nav-social-video">
+                        <i class="fa-brands fa-threads"></i> <span>Video Threads / FB</span>
                     </button>
                     <button type="button" class="nav-tab" id="btn-nav-settings">
                         <i class="fa-solid fa-gear"></i> <span>Cài Đặt API</span>
@@ -148,7 +149,7 @@
                 <div class="feature-card feature-locked">
                     <div class="feature-card-header">
                         <div class="feature-icon-badge disabled-icon">
-                            <i class="fa-solid fa-waveform-lines"></i>
+                            <i class="fa-solid fa-sliders"></i>
                         </div>
                         <span class="feature-status-pill pill-upcoming">
                             <i class="fa-solid fa-clock"></i> Sắp Ra Mắt
@@ -226,6 +227,37 @@
                     <div class="feature-card-footer">
                         <button type="button" class="primary-btn btn-accent btn-full" id="btn-home-open-story-tts">
                             <i class="fa-solid fa-arrow-right"></i> Mở Studio Đọc Truyện
+                        </button>
+                    </div>
+                </div>
+
+                <!-- FEATURE 5: VIDEO NGẮN THREADS & FACEBOOK (ACTIVE) -->
+                <div class="feature-card feature-active" id="card-feature-social-video" style="cursor: pointer;">
+                    <div class="card-glow-edge"></div>
+                    <div class="feature-card-header">
+                        <div class="feature-icon-badge active-icon" style="background: linear-gradient(135deg, #0095f6, #0866ff); font-size: 1.3rem;">
+                            <i class="fa-brands fa-threads"></i>
+                        </div>
+                        <span class="feature-status-pill pill-active">
+                            <i class="fa-solid fa-fire"></i> Mới Ra Mắt
+                        </span>
+                    </div>
+                    <div class="feature-card-body">
+                        <h4 class="feature-name">Video Ngắn Threads / Facebook</h4>
+                        <p class="feature-summary">
+                            Tự động biến bài viết Threads hoặc Facebook thành video ngắn 9:16 (TikTok, Reels, Shorts). Bóc tách nội dung và bình luận, vẽ thẻ giao diện pixel-perfect siêu nét, phân vai giọng đọc CapCut AI cho từng bình luận, ghép video gameplay nền và xuất file MP4.
+                        </p>
+                        <div class="feature-tags">
+                            <span class="feature-tag">Threads & FB</span>
+                            <span class="feature-tag">Thẻ UI 1080p</span>
+                            <span class="feature-tag">Đa Giọng Đọc</span>
+                            <span class="feature-tag">Nền Gameplay</span>
+                            <span class="feature-tag">1-Click / Step-by-Step</span>
+                        </div>
+                    </div>
+                    <div class="feature-card-footer">
+                        <button type="button" class="primary-btn btn-accent btn-full" id="btn-home-open-social-video">
+                            <i class="fa-solid fa-arrow-right"></i> Mở Tool Video Threads / FB
                         </button>
                     </div>
                 </div>
@@ -1928,6 +1960,234 @@
             </div>
         </section>
 
+        <!-- ========================================================== -->
+        <!-- VIEW: TOOL TẠO VIDEO NGẮN THREADS & FACEBOOK -->
+        <!-- ========================================================== -->
+        <section class="social-video-workspace view-section d-none" id="social-video-view">
+            <!-- Project Control Bar -->
+            <div class="project-control-bar card mb-4">
+                <div class="project-bar-left">
+                    <div class="project-bar-icon-badge" style="background: linear-gradient(135deg, #0095f6, #0866ff); font-size: 1.4rem;">
+                        <i class="fa-brands fa-threads"></i>
+                    </div>
+                    <div>
+                        <h2 class="project-bar-title">Tool Video Ngắn Threads &amp; Facebook</h2>
+                        <p class="project-bar-desc">Tự động biến câu chuyện và bình luận thành video ngắn 9:16 (TikTok, Reels, Shorts)</p>
+                    </div>
+                </div>
+                <div class="project-bar-actions">
+                    <button type="button" class="secondary-btn btn-sm" id="btn-social-back-home">
+                        <i class="fa-solid fa-arrow-left"></i> Quay về Trang Chủ
+                    </button>
+                </div>
+            </div>
+
+            <!-- Mode Selector Bar -->
+            <div class="card mb-4 social-mode-card">
+                <div class="social-mode-left">
+                    <span class="social-mode-label"><i class="fa-solid fa-sliders"></i> Chế độ:</span>
+                    <div class="mode-toggle-group">
+                        <button type="button" class="mode-pill-btn active" id="btn-mode-quick">
+                            <i class="fa-solid fa-bolt"></i> Tạo Nhanh (1 Chạm)
+                        </button>
+                        <button type="button" class="mode-pill-btn" id="btn-mode-step">
+                            <i class="fa-solid fa-list-check"></i> Từng Bước (Kiểm Soát)
+                        </button>
+                    </div>
+                </div>
+                <div class="social-mode-right">
+                    <label class="social-checkbox-pill">
+                        <input type="checkbox" id="social-theme-dark" checked>
+                        <span><i class="fa-solid fa-moon"></i> Giao diện Thẻ Tối (Dark)</span>
+                    </label>
+                </div>
+            </div>
+
+            <!-- STEP 1: NHẬP LINK BÀI VIẾT -->
+            <div class="card mb-4 social-step-card">
+                <div class="social-card-head">
+                    <div class="social-step-number">1</div>
+                    <div>
+                        <h3 class="section-title"><i class="fa-solid fa-link"></i> Nhập Đường Dẫn Bài Viết</h3>
+                        <p class="section-desc">Hỗ trợ liên kết bài viết công khai trên Threads (threads.net, threads.com) hoặc Facebook.</p>
+                    </div>
+                </div>
+                
+                <div class="social-url-bar mb-3">
+                    <div class="social-url-badge" id="social-platform-badge">
+                        <i class="fa-solid fa-link" id="social-platform-icon"></i>
+                    </div>
+                    <input type="text" id="social-input-url" class="social-url-input" placeholder="Dán link bài viết (Ví dụ: https://www.threads.net/@user/post/xyz... hoặc https://facebook.com/...)">
+                    <button type="button" class="primary-btn btn-accent" id="btn-social-fetch">
+                        <i class="fa-solid fa-cloud-arrow-down"></i> Lấy Dữ Liệu
+                    </button>
+                    <button type="button" class="primary-btn btn-success" id="btn-social-quick-render">
+                        <i class="fa-solid fa-bolt"></i> 1-Click Xuất Video
+                    </button>
+                </div>
+
+                <!-- Scraping Options Row -->
+                <div class="social-options-strip mb-3">
+                    <div class="social-opt-item">
+                        <span class="social-opt-label"><i class="fa-solid fa-comments"></i> Số bình luận lấy:</span>
+                        <input type="number" id="social-max-comments" class="social-num-input" value="3" min="1" max="20">
+                    </div>
+                    <label class="social-opt-checkbox">
+                        <input type="checkbox" id="social-include-op-chain" checked>
+                        <span><i class="fa-solid fa-layer-group"></i> Tự động nối các phần tiếp theo của tác giả (Thread Story Chain)</span>
+                    </label>
+                </div>
+
+                <!-- Collapsible Cookie Header for private/group posts -->
+                <details class="cookie-details">
+                    <summary class="cursor-pointer text-muted"><i class="fa-solid fa-cookie-bite"></i> Cấu hình Cookie / Session (Dành cho bài viết riêng tư hoặc trang bắt đăng nhập)</summary>
+                    <div class="mt-2">
+                        <textarea id="social-input-cookie" class="social-textarea" rows="2" placeholder="Dán chuỗi cookie (c_user=...; xs=...) hoặc JSON cookie nếu trang yêu cầu tài khoản để đọc bình luận."></textarea>
+                    </div>
+                </details>
+            </div>
+
+            <!-- STEP 2: NỘI DUNG BÀI VIẾT & PHÂN VAI GIỌNG ĐỌC -->
+            <div class="card mb-4 social-step-card" id="social-editor-section">
+                <div class="social-card-head">
+                    <div class="social-step-number">2</div>
+                    <div class="flex-grow-1">
+                        <div class="d-flex align-items-center justify-content-between flex-wrap gap-2">
+                            <h3 class="section-title"><i class="fa-solid fa-pen-nib"></i> Kịch Bản &amp; Phân Vai Giọng Đọc</h3>
+                            <div id="social-chain-badge-box" class="d-none">
+                                <span class="story-chain-pill"><i class="fa-solid fa-circle-check"></i> <span id="social-chain-count-text">Đã nối 1 phần</span></span>
+                            </div>
+                        </div>
+                        <p class="section-desc">Kiểm tra nội dung câu chuyện, chọn giọng đọc cho tác giả và gán giọng riêng cho từng bình luận.</p>
+                    </div>
+                </div>
+
+                <!-- Post Card Data -->
+                <div class="social-editor-panel mb-4">
+                    <div class="social-form-grid-3 mb-3">
+                        <div class="social-form-field">
+                            <label class="social-field-label"><i class="fa-solid fa-globe"></i> Nền tảng:</label>
+                            <select id="social-post-platform" class="social-select">
+                                <option value="threads">Threads (Chuẩn)</option>
+                                <option value="facebook">Facebook</option>
+                            </select>
+                        </div>
+                        <div class="social-form-field">
+                            <label class="social-field-label"><i class="fa-solid fa-user-pen"></i> Tên tác giả:</label>
+                            <input type="text" id="social-author-name" class="social-input" value="Người dùng Threads">
+                        </div>
+                        <div class="social-form-field">
+                            <label class="social-field-label"><i class="fa-solid fa-at"></i> Handle (@username):</label>
+                            <input type="text" id="social-author-handle" class="social-input" value="threads_user">
+                        </div>
+                    </div>
+
+                    <div class="social-form-field mb-3">
+                        <label class="social-field-label"><i class="fa-solid fa-align-left"></i> Toàn bộ nội dung câu chuyện (Voice AI sẽ đọc đoạn này):</label>
+                        <textarea id="social-post-content" class="social-textarea" rows="5" placeholder="Nhập hoặc dán nội dung bài viết..."></textarea>
+                    </div>
+
+                    <div class="social-form-grid-3">
+                        <div class="social-form-field">
+                            <label class="social-field-label"><i class="fa-solid fa-microphone-lines"></i> Giọng đọc tác giả chính:</label>
+                            <select id="social-post-voice" class="social-select">
+                                <option value="capcut_cogaithoatngon">🔥 Cô Gái Hoạt Ngôn (CapCut Hot)</option>
+                                <option value="capcut_thanhnientutin">🔥 Thanh Niên Tự Tin (CapCut Nam)</option>
+                                <option value="capcut_nhongotngao">🌸 Nhỏ Ngọt Ngào (CapCut Nữ)</option>
+                                <option value="capcut_namtram">🎙️ Nam Trầm Ấm (CapCut)</option>
+                                <option value="vi-VN-NamMinhNeural">Edge TTS Nam Minh</option>
+                                <option value="vi-VN-HoaiMyNeural">Edge TTS Hoài My</option>
+                            </select>
+                        </div>
+                        <div class="social-form-field">
+                            <label class="social-field-label"><i class="fa-solid fa-heart"></i> Lượt thích:</label>
+                            <input type="text" id="social-post-likes" class="social-input" value="1.5K">
+                        </div>
+                        <div class="social-form-field">
+                            <label class="social-field-label"><i class="fa-solid fa-comment-dots"></i> Lượt bình luận:</label>
+                            <input type="text" id="social-post-replies" class="social-input" value="84">
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Comments List Editor -->
+                <div class="social-comments-head mb-3">
+                    <div>
+                        <h4 class="social-comments-title"><i class="fa-solid fa-comments"></i> Bình Luận Của Khán Giả (Đọc Tiếp Theo)</h4>
+                        <p class="social-comments-sub">Mỗi bình luận tự động được đổi giọng đọc luân phiên để tạo không khí tranh luận sống động.</p>
+                    </div>
+                    <button type="button" class="secondary-btn btn-sm" id="btn-social-add-comment">
+                        <i class="fa-solid fa-plus"></i> Thêm Bình Luận
+                    </button>
+                </div>
+
+                <div id="social-comments-container" class="social-comments-stack mb-3">
+                    <!-- Comment items inserted dynamically -->
+                </div>
+            </div>
+
+            <!-- STEP 3: NỀN VIDEO & XUẤT VIDEO -->
+            <div class="card mb-4 social-step-card">
+                <div class="social-card-head">
+                    <div class="social-step-number">3</div>
+                    <div>
+                        <h3 class="section-title"><i class="fa-solid fa-video"></i> Video Nền &amp; Dựng Video 9:16</h3>
+                        <p class="section-desc">Chọn footage video gameplay hoặc hình nền động hiển thị rõ nét phía sau thẻ bài viết.</p>
+                    </div>
+                </div>
+                
+                <div class="social-bg-selector-row mb-4">
+                    <div class="social-form-field" style="max-width: 480px;">
+                        <label class="social-field-label"><i class="fa-solid fa-film"></i> Video Nền Footage:</label>
+                        <select id="social-select-bg-video" class="social-select">
+                            <option value="">-- Mặc định: Nền Tối Gradient Chuyển Động --</option>
+                        </select>
+                        <span class="social-helper-text"><i class="fa-solid fa-circle-info"></i> Thả thêm video gameplay (.mp4) vào thư mục <code>app/data/backgrounds/</code>.</span>
+                    </div>
+                </div>
+
+                <div>
+                    <button type="button" class="primary-btn btn-accent btn-lg social-btn-render" id="btn-social-build-video">
+                        <i class="fa-solid fa-wand-magic-sparkles"></i> Bắt Đầu Dựng Video Hoàn Chỉnh
+                    </button>
+                </div>
+            </div>
+
+            <!-- STEP 4: KẾT QUẢ & TIẾN TRÌNH -->
+            <div class="card mb-4 social-step-card d-none" id="social-result-section">
+                <div class="social-card-head">
+                    <div class="social-step-number success"><i class="fa-solid fa-check"></i></div>
+                    <div>
+                        <h3 class="section-title"><i class="fa-solid fa-clapperboard"></i> Kết Quả Xuất Video</h3>
+                        <p class="section-desc">Video ngắn chuẩn 9:16 sẵn sàng để đăng tải lên TikTok, Reels hoặc Shorts.</p>
+                    </div>
+                </div>
+                
+                <!-- Progress bar -->
+                <div id="social-progress-wrap" class="social-progress-card mb-4">
+                    <div class="social-progress-header mb-2">
+                        <span id="social-progress-msg" class="social-progress-label">Đang xử lý...</span>
+                        <span id="social-progress-percent" class="social-progress-num">0%</span>
+                    </div>
+                    <div class="social-progress-track">
+                        <div id="social-progress-bar" class="social-progress-fill" style="width: 0%;"></div>
+                    </div>
+                </div>
+
+                <!-- Video player and download -->
+                <div id="social-video-preview-wrap" class="d-none text-center">
+                    <div class="social-video-frame">
+                        <video id="social-result-video" controls></video>
+                    </div>
+                    <div>
+                        <a id="btn-social-download-video" class="primary-btn btn-success btn-lg social-btn-download" download="short_video.mp4" target="_blank">
+                            <i class="fa-solid fa-circle-down"></i> Tải Video MP4 Về Máy
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </section>
+
 
 
         <!-- TAB 3 CONTENT: CapCut Subtitle Studio -->
@@ -2803,7 +3063,7 @@
         </div>
     </div>
 
-    <script src="app.js?v=54"></script>
+    <script src="app.js?v=60"></script>
 
 </body>
 

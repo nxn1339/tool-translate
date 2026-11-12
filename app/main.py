@@ -2187,6 +2187,10 @@ def update_app_settings(req: SettingsUpdateRequest):
     }
 
 
+# Include Social Video Generator router
+from app.social_router import router as social_router
+app.include_router(social_router, prefix="/api/social", tags=["social"])
+
 # Serve the static UI files
 if os.path.exists(STATIC_DIR):
     app.mount("/", StaticFiles(directory=STATIC_DIR, html=True), name="static")

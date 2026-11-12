@@ -1,5 +1,39 @@
 document.addEventListener("DOMContentLoaded", () => {
     // ==========================================
+    // GLOBAL TOAST NOTIFICATION SYSTEM
+    // ==========================================
+    function showToast(message, type = "info") {
+        let container = document.getElementById("toast-global-container");
+        if (!container) {
+            container = document.createElement("div");
+            container.id = "toast-global-container";
+            container.style.cssText = "position: fixed; top: 24px; right: 24px; z-index: 999999; display: flex; flex-direction: column; gap: 10px; pointer-events: none;";
+            document.body.appendChild(container);
+        }
+        const toast = document.createElement("div");
+        const colors = {
+            success: { bg: "#10b981", icon: "fa-solid fa-circle-check" },
+            error: { bg: "#ef4444", icon: "fa-solid fa-circle-xmark" },
+            warning: { bg: "#f59e0b", icon: "fa-solid fa-triangle-exclamation" },
+            info: { bg: "#0095f6", icon: "fa-solid fa-circle-info" }
+        };
+        const conf = colors[type] || colors.info;
+        toast.style.cssText = `background: rgba(15, 23, 42, 0.95); border: 1px solid ${conf.bg}; border-left: 5px solid ${conf.bg}; color: #ffffff; padding: 12px 18px; border-radius: 10px; font-size: 0.92rem; font-weight: 600; box-shadow: 0 10px 25px rgba(0,0,0,0.5); display: flex; align-items: center; gap: 10px; min-width: 260px; max-width: 440px; pointer-events: auto; transform: translateX(50px); opacity: 0; transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);`;
+        toast.innerHTML = `<i class="${conf.icon}" style="color: ${conf.bg}; font-size: 1.15rem;"></i> <span>${message}</span>`;
+        container.appendChild(toast);
+        requestAnimationFrame(() => {
+            toast.style.transform = "translateX(0)";
+            toast.style.opacity = "1";
+        });
+        setTimeout(() => {
+            toast.style.transform = "translateX(50px)";
+            toast.style.opacity = "0";
+            setTimeout(() => toast.remove(), 300);
+        }, 4000);
+    }
+    window.showToast = showToast;
+
+    // ==========================================
     // 1. STATE & STORAGE MANAGEMENT
     // ==========================================
     let currentTab = "tab-ocr"; // "tab-ocr", "tab-whisper", "tab-settings"
@@ -4564,17 +4598,21 @@ document.addEventListener("DOMContentLoaded", () => {
     // ==========================================
     const homeView = document.getElementById("home-view");
     const storyTtsView = document.getElementById("story-tts-view");
+    const socialVideoView = document.getElementById("social-video-view");
     const btnNavHome = document.getElementById("btn-nav-home");
     const btnNavDubber = document.getElementById("btn-nav-dubber");
     const btnNavStoryTts = document.getElementById("btn-nav-story-tts");
+    const btnNavSocialVideo = document.getElementById("btn-nav-social-video");
     const btnNavSettings = document.getElementById("btn-nav-settings");
     const btnBackToHome = document.getElementById("btn-back-to-home");
     const btnStoryBackHome = document.getElementById("btn-story-back-home");
+    const btnSocialBackHome = document.getElementById("btn-social-back-home");
     const headerLogo = document.getElementById("header-logo");
 
     const btnHomeOpenDubber = document.getElementById("btn-home-open-dubber");
     const btnHomeNewDubber = document.getElementById("btn-home-new-dubber");
     const btnHomeOpenStoryTts = document.getElementById("btn-home-open-story-tts");
+    const btnHomeOpenSocialVideo = document.getElementById("btn-home-open-social-video");
     const btnHomeCreateProject = document.getElementById("btn-home-create-project");
     const btnHomeEmptyCreate = document.getElementById("btn-home-empty-create");
     const btnHomeRefreshProjects = document.getElementById("btn-home-refresh-projects");
@@ -4595,10 +4633,12 @@ document.addEventListener("DOMContentLoaded", () => {
         if (viewName === "dubber") {
             if (homeView) homeView.classList.add("d-none");
             if (storyTtsView) storyTtsView.classList.add("d-none");
+            if (socialVideoView) socialVideoView.classList.add("d-none");
             if (workspaceLayout) workspaceLayout.classList.remove("d-none");
             if (btnNavDubber) btnNavDubber.classList.add("active");
             if (btnNavHome) btnNavHome.classList.remove("active");
             if (btnNavStoryTts) btnNavStoryTts.classList.remove("active");
+            if (btnNavSocialVideo) btnNavSocialVideo.classList.remove("active");
             if (updateHash) {
                 history.pushState(null, "", "#dubber");
             }
@@ -4606,22 +4646,40 @@ document.addEventListener("DOMContentLoaded", () => {
         } else if (viewName === "story-tts") {
             if (homeView) homeView.classList.add("d-none");
             if (workspaceLayout) workspaceLayout.classList.add("d-none");
+            if (socialVideoView) socialVideoView.classList.add("d-none");
             if (storyTtsView) storyTtsView.classList.remove("d-none");
             if (btnNavStoryTts) btnNavStoryTts.classList.add("active");
             if (btnNavHome) btnNavHome.classList.remove("active");
             if (btnNavDubber) btnNavDubber.classList.remove("active");
+            if (btnNavSocialVideo) btnNavSocialVideo.classList.remove("active");
             if (updateHash) {
                 history.pushState(null, "", "#story-tts");
             }
+            window.scrollTo({ top: 0, behavior: "smooth" });
+        } else if (viewName === "social-video") {
+            if (homeView) homeView.classList.add("d-none");
+            if (workspaceLayout) workspaceLayout.classList.add("d-none");
+            if (storyTtsView) storyTtsView.classList.add("d-none");
+            if (socialVideoView) socialVideoView.classList.remove("d-none");
+            if (btnNavSocialVideo) btnNavSocialVideo.classList.add("active");
+            if (btnNavHome) btnNavHome.classList.remove("active");
+            if (btnNavDubber) btnNavDubber.classList.remove("active");
+            if (btnNavStoryTts) btnNavStoryTts.classList.remove("active");
+            if (updateHash) {
+                history.pushState(null, "", "#social-video");
+            }
+            loadSocialBackgrounds();
             window.scrollTo({ top: 0, behavior: "smooth" });
         } else {
             // Default to 'home'
             if (workspaceLayout) workspaceLayout.classList.add("d-none");
             if (storyTtsView) storyTtsView.classList.add("d-none");
+            if (socialVideoView) socialVideoView.classList.add("d-none");
             if (homeView) homeView.classList.remove("d-none");
             if (btnNavHome) btnNavHome.classList.add("active");
             if (btnNavDubber) btnNavDubber.classList.remove("active");
             if (btnNavStoryTts) btnNavStoryTts.classList.remove("active");
+            if (btnNavSocialVideo) btnNavSocialVideo.classList.remove("active");
             if (updateHash) {
                 history.pushState(null, "", "#home");
             }
@@ -4920,10 +4978,24 @@ document.addEventListener("DOMContentLoaded", () => {
         });
     }
     if (btnHomeRefreshProjects) btnHomeRefreshProjects.addEventListener("click", loadHomeRecentProjects);
+    if (btnNavSocialVideo) btnNavSocialVideo.addEventListener("click", () => switchView("social-video"));
+    if (btnHomeOpenSocialVideo) btnHomeOpenSocialVideo.addEventListener("click", () => switchView("social-video"));
+    if (btnSocialBackHome) btnSocialBackHome.addEventListener("click", () => switchView("home"));
+
+    const cardFeatureSocialVideo = document.getElementById("card-feature-social-video");
+    if (cardFeatureSocialVideo) cardFeatureSocialVideo.addEventListener("click", () => switchView("social-video"));
+
+    const cardFeatureStoryTts = document.getElementById("card-feature-story-tts");
+    if (cardFeatureStoryTts) cardFeatureStoryTts.addEventListener("click", () => switchView("story-tts"));
+
+    const cardFeatureDubber = document.getElementById("card-feature-dubber");
+    if (cardFeatureDubber) cardFeatureDubber.addEventListener("click", () => switchView("dubber"));
 
     // Browser navigation back/forward support
     window.addEventListener("popstate", () => {
-        if (window.location.hash === "#story-tts") {
+        if (window.location.hash === "#social-video") {
+            switchView("social-video", false);
+        } else if (window.location.hash === "#story-tts") {
             switchView("story-tts", false);
         } else if (window.location.hash === "#dubber") {
             switchView("dubber", false);
@@ -5202,6 +5274,431 @@ document.addEventListener("DOMContentLoaded", () => {
     initStoryTtsStudio();
 
     // ==========================================
+    // SOCIAL VIDEO STUDIO CONTROLLER (THREADS & FACEBOOK)
+    // ==========================================
+    async function loadSocialBackgrounds() {
+        const sel = document.getElementById("social-select-bg-video");
+        if (!sel) return;
+        try {
+            const res = await fetch("/api/social/backgrounds");
+            if (res.ok) {
+                const data = await res.json();
+                const currentVal = sel.value;
+                sel.innerHTML = '<option value="">-- Mặc định: Nền Tối Gradient Chuyển Động --</option>';
+                if (data.backgrounds && data.backgrounds.length > 0) {
+                    data.backgrounds.forEach(bg => {
+                        const opt = document.createElement("option");
+                        opt.value = bg;
+                        opt.textContent = `🎬 ${bg}`;
+                        sel.appendChild(opt);
+                    });
+                }
+                if (currentVal) sel.value = currentVal;
+            }
+        } catch (e) {
+            console.warn("Could not load backgrounds:", e);
+        }
+    }
+
+    function initSocialVideoController() {
+        const inputUrl = document.getElementById("social-input-url");
+        const inputCookie = document.getElementById("social-input-cookie");
+        const platformIcon = document.getElementById("social-platform-icon");
+        const platformBadge = document.getElementById("social-platform-badge");
+        const btnFetch = document.getElementById("btn-social-fetch");
+        const btnQuickRender = document.getElementById("btn-social-quick-render");
+        const selectPlatform = document.getElementById("social-post-platform");
+        const authorName = document.getElementById("social-author-name");
+        const authorHandle = document.getElementById("social-author-handle");
+        const postContent = document.getElementById("social-post-content");
+        const postVoice = document.getElementById("social-post-voice");
+        const postLikes = document.getElementById("social-post-likes");
+        const postReplies = document.getElementById("social-post-replies");
+        const commentsContainer = document.getElementById("social-comments-container");
+        const btnAddComment = document.getElementById("btn-social-add-comment");
+        const selectBgVideo = document.getElementById("social-select-bg-video");
+        const themeDark = document.getElementById("social-theme-dark");
+        const btnBuildVideo = document.getElementById("btn-social-build-video");
+
+        const btnModeQuick = document.getElementById("btn-mode-quick");
+        const btnModeStep = document.getElementById("btn-mode-step");
+        const editorSection = document.getElementById("social-editor-section");
+
+        const resultSection = document.getElementById("social-result-section");
+        const progressWrap = document.getElementById("social-progress-wrap");
+        const progressMsg = document.getElementById("social-progress-msg");
+        const progressPercent = document.getElementById("social-progress-percent");
+        const progressBar = document.getElementById("social-progress-bar");
+        const videoPreviewWrap = document.getElementById("social-video-preview-wrap");
+        const resultVideo = document.getElementById("social-result-video");
+        const btnDownloadVideo = document.getElementById("btn-social-download-video");
+
+        let currentActiveMode = "quick"; // "quick" or "step"
+
+        // Mode Switching
+        if (btnModeQuick && btnModeStep) {
+            btnModeQuick.addEventListener("click", () => {
+                currentActiveMode = "quick";
+                btnModeQuick.classList.add("active");
+                btnModeStep.classList.remove("active");
+                showToast("Đã chuyển sang chế độ Tạo Nhanh 1 Chạm.", "info");
+            });
+            btnModeStep.addEventListener("click", () => {
+                currentActiveMode = "step";
+                btnModeStep.classList.add("active");
+                btnModeQuick.classList.remove("active");
+                showToast("Đã chuyển sang chế độ Từng Bước (Kiểm Soát).", "info");
+            });
+        }
+
+        // Helper update platform badge icon
+        function updatePlatformBadge(platform) {
+            if (!platformBadge || !platformIcon) return;
+            platformBadge.classList.remove("threads", "facebook");
+            if (platform === "threads") {
+                platformBadge.classList.add("threads");
+                platformIcon.className = "fa-brands fa-threads";
+            } else if (platform === "facebook") {
+                platformBadge.classList.add("facebook");
+                platformIcon.className = "fa-brands fa-facebook";
+            } else {
+                platformIcon.className = "fa-solid fa-link";
+            }
+        }
+
+        // URL input listener to auto-detect platform
+        if (inputUrl) {
+            inputUrl.addEventListener("input", () => {
+                const val = inputUrl.value.trim().toLowerCase();
+                if (val.includes("threads.net") || val.includes("threads.com")) {
+                    updatePlatformBadge("threads");
+                    if (selectPlatform) selectPlatform.value = "threads";
+                } else if (val.includes("facebook.com") || val.includes("fb.com") || val.includes("fb.watch")) {
+                    updatePlatformBadge("facebook");
+                    if (selectPlatform) selectPlatform.value = "facebook";
+                } else {
+                    updatePlatformBadge("");
+                }
+            });
+        }
+
+        // Render single comment item HTML with polished styling
+        function createCommentElement(comment, index) {
+            const card = document.createElement("div");
+            card.className = "social-comment-card";
+            card.dataset.commentIndex = index;
+
+            const isChecked = comment.selected !== false ? "checked" : "";
+            const cAuthor = comment.author?.name || `Bình luận viên ${index + 1}`;
+            const cContent = comment.content || "";
+            const cLikes = comment.likes || "32";
+            const cVoice = comment.voice || (index % 2 === 0 ? "capcut_thanhnientutin" : "capcut_nhongotngao");
+
+            card.innerHTML = `
+                <div class="comment-card-top">
+                    <label class="comment-checkbox-label">
+                        <input type="checkbox" class="comment-check" ${isChecked}>
+                        <span class="comment-badge-idx"><i class="fa-solid fa-comment-dots"></i> Bình luận #${index + 1}</span>
+                    </label>
+                    <button type="button" class="btn-comment-delete" title="Xóa bình luận này">
+                        <i class="fa-solid fa-trash-can"></i>
+                    </button>
+                </div>
+                <div class="comment-fields-grid">
+                    <div class="comment-field-item">
+                        <span class="comment-field-tag"><i class="fa-solid fa-user"></i> Người bình luận</span>
+                        <input type="text" class="social-input comment-author" value="${cAuthor}" placeholder="Tên tác giả comment">
+                    </div>
+                    <div class="comment-field-item">
+                        <span class="comment-field-tag"><i class="fa-solid fa-microphone-lines"></i> Giọng đọc AI</span>
+                        <select class="social-select comment-voice">
+                            <option value="capcut_cogaithoatngon" ${cVoice === 'capcut_cogaithoatngon' ? 'selected' : ''}>🔥 Cô Gái Hoạt Ngôn (CapCut)</option>
+                            <option value="capcut_thanhnientutin" ${cVoice === 'capcut_thanhnientutin' ? 'selected' : ''}>🔥 Thanh Niên Tự Tin (CapCut)</option>
+                            <option value="capcut_nhongotngao" ${cVoice === 'capcut_nhongotngao' ? 'selected' : ''}>🌸 Nhỏ Ngọt Ngào (CapCut)</option>
+                            <option value="capcut_namtram" ${cVoice === 'capcut_namtram' ? 'selected' : ''}>🎙️ Nam Trầm Ấm (CapCut)</option>
+                            <option value="vi-VN-HoaiMyNeural" ${cVoice === 'vi-VN-HoaiMyNeural' ? 'selected' : ''}>Edge TTS Hoài My</option>
+                            <option value="vi-VN-NamMinhNeural" ${cVoice === 'vi-VN-NamMinhNeural' ? 'selected' : ''}>Edge TTS Nam Minh</option>
+                        </select>
+                    </div>
+                    <div class="comment-field-item">
+                        <span class="comment-field-tag"><i class="fa-solid fa-heart"></i> Lượt thích</span>
+                        <input type="text" class="social-input comment-likes" value="${cLikes}" placeholder="15">
+                    </div>
+                </div>
+                <div class="comment-field-item">
+                    <span class="comment-field-tag"><i class="fa-solid fa-align-left"></i> Nội dung bình luận</span>
+                    <textarea class="social-textarea comment-content" rows="2" placeholder="Nội dung bình luận...">${cContent}</textarea>
+                </div>
+            `;
+
+            const btnRemove = card.querySelector(".btn-comment-delete");
+            if (btnRemove) {
+                btnRemove.addEventListener("click", () => {
+                    card.remove();
+                });
+            }
+
+            return card;
+        }
+
+        // Add manual comment
+        if (btnAddComment && commentsContainer) {
+            btnAddComment.addEventListener("click", () => {
+                const count = commentsContainer.children.length;
+                const newCard = createCommentElement({
+                    author: { name: `Người dùng ${count + 1}` },
+                    content: "Bình luận mới...",
+                    likes: "15",
+                    selected: true
+                }, count);
+                commentsContainer.appendChild(newCard);
+                newCard.scrollIntoView({ behavior: "smooth", block: "nearest" });
+            });
+        }
+
+        // Parse Social URL
+        async function fetchSocialData() {
+            const url = inputUrl ? inputUrl.value.trim() : "";
+            if (!url) {
+                showToast("Vui lòng nhập link bài viết Threads hoặc Facebook.", "error");
+                if (inputUrl) inputUrl.focus();
+                return null;
+            }
+
+            if (btnFetch) {
+                btnFetch.disabled = true;
+                btnFetch.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Đang lấy dữ liệu...';
+            }
+
+            try {
+                const cookieVal = inputCookie ? inputCookie.value.trim() : "";
+                const maxCommentsInput = document.getElementById("social-max-comments");
+                const includeOpChainInput = document.getElementById("social-include-op-chain");
+
+                const maxCommentsVal = maxCommentsInput ? parseInt(maxCommentsInput.value, 10) || 3 : 3;
+                const includeOpChainVal = includeOpChainInput ? includeOpChainInput.checked : true;
+
+                const res = await fetch("/api/social/parse", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({
+                        url: url,
+                        cookie_raw: cookieVal,
+                        max_comments: maxCommentsVal,
+                        include_op_chain: includeOpChainVal
+                    })
+                });
+
+                if (!res.ok) {
+                    const err = await res.json();
+                    throw new Error(err.detail || "Không thể lấy dữ liệu bài viết.");
+                }
+
+                const data = await res.json();
+
+                // Populate UI
+                const detectedPlat = data.platform || "threads";
+                if (selectPlatform) selectPlatform.value = detectedPlat;
+                updatePlatformBadge(detectedPlat);
+
+                if (authorName) authorName.value = data.author?.name || "Người dùng Threads";
+                if (authorHandle) authorHandle.value = data.author?.handle || "threads_user";
+                if (postContent) postContent.value = data.content || "";
+                if (postLikes) postLikes.value = data.likes || "1.2K";
+                if (postReplies) postReplies.value = data.replies || (data.comments ? String(data.comments.length) : "24");
+
+                // Show thread chain badge if multiple parts detected
+                const badgeBox = document.getElementById("social-chain-badge-box");
+                const badgeText = document.getElementById("social-chain-count-text");
+                if (badgeBox && badgeText) {
+                    if (data.story_parts_count && data.story_parts_count > 1) {
+                        badgeBox.classList.remove("d-none");
+                        badgeText.textContent = `Đã tự động nối ${data.story_parts_count} phần bài viết của tác giả`;
+                    } else {
+                        badgeBox.classList.add("d-none");
+                    }
+                }
+
+                // Render comments
+                if (commentsContainer) {
+                    commentsContainer.innerHTML = "";
+                    const comments = data.comments || [];
+                    if (comments.length === 0) {
+                        comments.push({
+                            author: { name: "Bình luận 1" },
+                            content: "Thực sự rất đồng cảm với tác giả!",
+                            likes: "45",
+                            selected: true
+                        });
+                        comments.push({
+                            author: { name: "Bình luận 2" },
+                            content: "Kể chi tiết hơn phần sau đi bạn ơi...",
+                            likes: "28",
+                            selected: true
+                        });
+                    }
+
+                    comments.forEach((c, i) => {
+                        c.selected = true; // Auto-select all filtered comments up to max_comments
+                        const el = createCommentElement(c, i);
+                        commentsContainer.appendChild(el);
+                    });
+                }
+
+                showToast("Đã tải thông tin bài viết và bình luận thành công!", "success");
+                return data;
+            } catch (err) {
+                showToast(err.message, "error");
+                return null;
+            } finally {
+                if (btnFetch) {
+                    btnFetch.disabled = false;
+                    btnFetch.innerHTML = '<i class="fa-solid fa-cloud-arrow-down"></i> Lấy Dữ Liệu';
+                }
+            }
+        }
+
+        if (btnFetch) {
+            btnFetch.addEventListener("click", fetchSocialData);
+        }
+
+        // Start video generation
+        async function triggerVideoGeneration() {
+            const content = postContent ? postContent.value.trim() : "";
+            if (!content) {
+                showToast("Nội dung bài viết không được để trống.", "error");
+                return;
+            }
+
+            // Gather selected comments
+            const comments = [];
+            if (commentsContainer) {
+                const commentCards = commentsContainer.querySelectorAll(".social-comment-card");
+                commentCards.forEach((cCard, i) => {
+                    const check = cCard.querySelector(".comment-check");
+                    if (check && check.checked) {
+                        const cText = cCard.querySelector(".comment-content")?.value?.trim() || "";
+                        if (cText) {
+                            comments.push({
+                                id: `c_${i + 1}`,
+                                author: {
+                                    name: cCard.querySelector(".comment-author")?.value?.trim() || `Bình luận viên ${i + 1}`
+                                },
+                                content: cText,
+                                likes: cCard.querySelector(".comment-likes")?.value?.trim() || "20",
+                                voice: cCard.querySelector(".comment-voice")?.value || "capcut_thanhnientutin"
+                            });
+                        }
+                    }
+                });
+            }
+
+            const payload = {
+                platform: selectPlatform ? selectPlatform.value : "threads",
+                author_name: authorName ? authorName.value.trim() : "Tác giả",
+                author_handle: authorHandle ? authorHandle.value.trim() : "user",
+                post_content: content,
+                post_likes: postLikes ? postLikes.value.trim() : "1.5K",
+                post_replies: postReplies ? postReplies.value.trim() : String(comments.length),
+                comments: comments,
+                post_voice: postVoice ? postVoice.value : "capcut_cogaithoatngon",
+                background_video: selectBgVideo ? selectBgVideo.value : "",
+                dark_mode: themeDark ? themeDark.checked : true
+            };
+
+            // Show result section & reset progress
+            if (resultSection) resultSection.classList.remove("d-none");
+            if (videoPreviewWrap) videoPreviewWrap.classList.add("d-none");
+            if (progressWrap) progressWrap.classList.remove("d-none");
+            if (progressBar) progressBar.style.width = "5%";
+            if (progressPercent) progressPercent.textContent = "5%";
+            if (progressMsg) progressMsg.textContent = "Đang gửi yêu cầu khởi tạo...";
+
+            if (resultSection) {
+                resultSection.scrollIntoView({ behavior: "smooth", block: "start" });
+            }
+
+            try {
+                const res = await fetch("/api/social/generate", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify(payload)
+                });
+
+                if (!res.ok) {
+                    const err = await res.json();
+                    throw new Error(err.detail || "Không thể khởi tạo tác vụ tạo video.");
+                }
+
+                const data = await res.json();
+                const taskId = data.task_id;
+
+                pollSocialVideoTask(taskId);
+
+            } catch (e) {
+                showToast(e.message, "error");
+                if (progressMsg) progressMsg.textContent = `Thất bại: ${e.message}`;
+            }
+        }
+
+        // Poll task status
+        function pollSocialVideoTask(taskId) {
+            const timer = setInterval(async () => {
+                try {
+                    const res = await fetch(`/api/social/status/${taskId}`);
+                    if (!res.ok) return;
+                    const task = await res.json();
+
+                    if (progressBar) progressBar.style.width = `${task.progress || 0}%`;
+                    if (progressPercent) progressPercent.textContent = `${task.progress || 0}%`;
+                    if (progressMsg) progressMsg.textContent = task.message || "Đang xử lý...";
+
+                    if (task.status === "completed") {
+                        clearInterval(timer);
+                        try { showToast("Đã tạo video hoàn tất!", "success"); } catch (e) {}
+
+                        if (progressWrap) progressWrap.classList.add("d-none");
+                        if (videoPreviewWrap) {
+                            videoPreviewWrap.classList.remove("d-none");
+                            videoPreviewWrap.scrollIntoView({ behavior: "smooth", block: "center" });
+                        }
+
+                        if (resultVideo) {
+                            resultVideo.src = task.video_url;
+                            resultVideo.load();
+                        }
+                        if (btnDownloadVideo) {
+                            btnDownloadVideo.href = task.video_url;
+                        }
+                    } else if (task.status === "failed") {
+                        clearInterval(timer);
+                        try { showToast(`Lỗi tạo video: ${task.message}`, "error"); } catch (e) {}
+                    }
+                } catch (err) {
+                    console.warn("Polling error:", err);
+                }
+            }, 1500);
+        }
+
+        if (btnBuildVideo) {
+            btnBuildVideo.addEventListener("click", triggerVideoGeneration);
+        }
+
+        // Quick 1-Click Render Button
+        if (btnQuickRender) {
+            btnQuickRender.addEventListener("click", async () => {
+                if (!postContent || !postContent.value.trim()) {
+                    const parsed = await fetchSocialData();
+                    if (!parsed) return;
+                }
+                triggerVideoGeneration();
+            });
+        }
+    }
+
+    initSocialVideoController();
+
+    // ==========================================
     // INITIALIZATION & PROJECT RESTORE
     // ==========================================
     async function initStudioSession() {
@@ -5241,7 +5738,9 @@ document.addEventListener("DOMContentLoaded", () => {
         }
 
         // Initial Routing based on URL hash
-        if (window.location.hash === "#story-tts") {
+        if (window.location.hash === "#social-video") {
+            switchView("social-video", false);
+        } else if (window.location.hash === "#story-tts") {
             switchView("story-tts", false);
         } else if (window.location.hash === "#dubber") {
             switchView("dubber", false);
