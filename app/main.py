@@ -1662,13 +1662,18 @@ def project_generate_tts(project_id: str, request: ProjectGenerateTTSRequest, ba
             append_project_log(project_id, f"[Tạo Giọng] Bắt đầu {action_text} cho {len(segments)} câu (Giọng: {voice})...")
             
             def _progress_cb(done, total, text):
-                pct = int(done / max(1, total) * 100)
+                real_pct = int(done / max(1, total) * 100)
                 if done % 15 == 0 or done == total or done == 1:
                     short_t = text[:35] + ("..." if len(text) > 35 else "")
-                    append_project_log(project_id, f"[Tạo Giọng] [{done}/{total}] ({pct}%): '{short_t}'")
+                    append_project_log(project_id, f"[Tạo Giọng] [{done}/{total}] ({real_pct}%): '{short_t}'")
                 if project_id in projects_db:
-                    projects_db[project_id]["progress"] = pct
-                    projects_db[project_id]["message"] = f"Đang {action_text} AI ({done}/{total} câu)..."
+                    if done >= total:
+                        projects_db[project_id]["progress"] = 96
+                        projects_db[project_id]["message"] = "Đang tổng hợp toàn bộ âm thanh lồng tiếng vào timeline..."
+                    else:
+                        pct = int(done / max(1, total) * 95)
+                        projects_db[project_id]["progress"] = pct
+                        projects_db[project_id]["message"] = f"Đang {action_text} AI ({done}/{total} câu)..."
 
             generate_preview_audio_track(
                 project_dir,

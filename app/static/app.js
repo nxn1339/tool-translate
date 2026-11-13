@@ -772,6 +772,7 @@ document.addEventListener("DOMContentLoaded", () => {
                 element.classList.remove("active-focus");
                 document.removeEventListener("mousemove", onMouseMove);
                 document.removeEventListener("mouseup", onMouseUp);
+                triggerDebouncedAutoSave(600);
             }
 
             document.addEventListener("mousemove", onMouseMove);
@@ -779,25 +780,34 @@ document.addEventListener("DOMContentLoaded", () => {
         });
     }
 
-    // Setup Red Box (Mask) Drag & Resize
+    // Setup Red Box (Mask) Drag & Resize - Luôn đồng bộ Khung Xanh theo Khung Đỏ
     setupDragAndResize(
         bboxMask,
         () => maskBoxCoords,
-        (newCoords) => { maskBoxCoords = newCoords; },
         (newCoords) => {
-            if (isLocked) {
-                subBoxCoords = { ...newCoords };
-                applyBoxStyles();
-            }
+            maskBoxCoords = newCoords;
+            subBoxCoords = { ...newCoords };
+            applyBoxStyles();
+        },
+        (newCoords) => {
+            subBoxCoords = { ...newCoords };
+            applyBoxStyles();
         }
     );
 
-    // Setup Green Box (Subtitle) Drag & Resize
+    // Setup Green Box (Subtitle) Drag & Resize - Luôn đồng bộ vùng che mờ (maskBoxCoords) theo Khung Xanh
     setupDragAndResize(
         bboxSub,
         () => subBoxCoords,
-        (newCoords) => { subBoxCoords = newCoords; },
-        null
+        (newCoords) => {
+            subBoxCoords = newCoords;
+            maskBoxCoords = { ...newCoords };
+            applyBoxStyles();
+        },
+        (newCoords) => {
+            maskBoxCoords = { ...newCoords };
+            applyBoxStyles();
+        }
     );
 
     // Setup Blue/Amber Box (Logo) Drag & Resize
@@ -840,16 +850,18 @@ document.addEventListener("DOMContentLoaded", () => {
     if (btnPresetBottom) {
         btnPresetBottom.addEventListener("click", () => {
             maskBoxCoords = { x: 10, y: 78, w: 80, h: 14 };
-            if (isLocked) subBoxCoords = { ...maskBoxCoords };
+            subBoxCoords = { ...maskBoxCoords };
             applyBoxStyles();
+            triggerDebouncedAutoSave(500);
         });
     }
 
     if (btnPresetTop) {
         btnPresetTop.addEventListener("click", () => {
             maskBoxCoords = { x: 10, y: 8, w: 80, h: 14 };
-            if (isLocked) subBoxCoords = { ...maskBoxCoords };
+            subBoxCoords = { ...maskBoxCoords };
             applyBoxStyles();
+            triggerDebouncedAutoSave(500);
         });
     }
 
@@ -858,6 +870,7 @@ document.addEventListener("DOMContentLoaded", () => {
             maskBoxCoords = { x: 10, y: 78, w: 80, h: 14 };
             subBoxCoords = { x: 10, y: 78, w: 80, h: 14 };
             applyBoxStyles();
+            triggerDebouncedAutoSave(500);
         });
     }
 
@@ -6101,7 +6114,7 @@ document.addEventListener("DOMContentLoaded", () => {
                     if (step3ProgressPct) step3ProgressPct.textContent = `${progress}%`;
                     if (step3ProgressMsg) step3ProgressMsg.innerHTML = `<i class="fa-solid fa-spinner fa-spin"></i> ${msg}`;
 
-                    if (statusData.status === "tts_ready" || progress === 100) {
+                    if (statusData.status === "tts_ready") {
                         clearInterval(ttsGenPollingInterval);
                         if (btnStep3GenerateTTS) {
                             btnStep3GenerateTTS.disabled = false;

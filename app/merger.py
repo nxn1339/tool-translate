@@ -498,10 +498,12 @@ def merge_audio_segments_to_video(
 
     # --- 1. Video Filters: Masking (Blur) & Hardsub ---
     if has_mask:
-        x_pct = max(0.0, min(100.0, float(mask_box.get("x", 10.0))))
-        y_pct = max(0.0, min(100.0, float(mask_box.get("y", 80.0))))
-        w_pct = max(5.0, min(100.0, float(mask_box.get("w", 80.0))))
-        h_pct = max(3.0, min(100.0, float(mask_box.get("h", 12.0))))
+        # Synchronize mask/blur box with sub_box coordinates so it follows the user-stretched subtitle box size
+        box_src = sub_box if (sub_box and isinstance(sub_box, dict) and any(k in sub_box for k in ("x", "y", "w", "h"))) else mask_box
+        x_pct = max(0.0, min(100.0, float(box_src.get("x", mask_box.get("x", 10.0)))))
+        y_pct = max(0.0, min(100.0, float(box_src.get("y", mask_box.get("y", 80.0)))))
+        w_pct = max(5.0, min(100.0, float(box_src.get("w", mask_box.get("w", 80.0)))))
+        h_pct = max(3.0, min(100.0, float(box_src.get("h", mask_box.get("h", 12.0)))))
 
         mx = int(x_pct * video_w / 100.0)
         my = int(y_pct * video_h / 100.0)
