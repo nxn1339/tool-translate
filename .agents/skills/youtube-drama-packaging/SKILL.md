@@ -48,29 +48,37 @@ Luôn đề xuất **3 nhóm tiêu đề** (mỗi nhóm 3 phương án):
 #### 3.1. Nguyên tắc Bố cục & Text Thumbnail
 - **Tỷ lệ:** `16:9` (1920x1080) cho YouTube, `9:16` cho Shorts/TikTok.
 - **Góc máy (Framing):** Luôn ưu tiên `medium bust shot` (bán thân trên, thu nhỏ chủ thể vừa phải, có khoảng thở hai bên và phía dưới) để **cân đối khung hình và có chỗ đặt chữ**, tránh `extreme close-up` phóng mặt quá to choán hết ảnh.
-- **Text Thumbnail:**
-  - Độ dài: Tối đa **2 dòng (4 – 6 từ)**, viết IN HOA 100%.
-  - Màu sắc chuẩn CTR:
-    - **Dòng 1:** Trắng sáng (`#FFFFFF`) viền đen dày (`10-12px`).
-    - **Dòng 2 (Từ khóa đắt nhất):** Vàng chanh ánh kim (`#FFE600`) hoặc Đỏ tươi (`#FF1E27`), viền kép (hào quang đỏ + viền đen dày `14px`), đổ bóng 3D sâu, nghiêng nhẹ `2.5°`.
-  - Vị trí: Đặt ở **trung tâm cạnh dưới** hoặc **góc dưới bên trái**. Tuyệt đối tránh góc dưới bên phải (bị đè bởi đồng hồ thời lượng YouTube).
+- **Nguyên tắc Chữ Text Thumbnail:**
+  - **Giật tít nhưng PHẢI CÓ NGHĨA & ĐÚNG CỐT TRUYỆN:** Tuyệt đối không giật con số ảo, số tiền vô lý gây cấn tai hoặc tối nghĩa (ví dụ: tránh dùng "giảm béo 70 tỷ" vì người xem sẽ tưởng là bỏ 70 tỷ đi hút mỡ). Phải tập trung vào **nghịch lý hành động / tình huống trớ trêu** (Ví dụ: `YÊU ĐỂ GIẢM BÉO` ➔ `VỚ THÁI TỬ GIA!`, hoặc `TÁN ĐỂ BỊ ĐÁ` ➔ `AI NGỜ ÉP CƯỚI!`).
+  - **Độ dài & Cân bằng ký tự 1:1 (Bắt buộc):**
+    - Tối đa **2 dòng (mỗi dòng 3 - 4 từ)**, viết IN HOA 100%.
+    - **Số lượng ký tự dòng 1 và dòng 2 phải xấp xỉ bằng nhau** (ví dụ: dòng 1 có 12-14 ký tự thì dòng 2 cũng 12-14 ký tự). Nếu dòng 2 quá dài, AI sẽ tự động co nhỏ cỡ chữ và giảm độ dày nét chữ (stroke weight) làm dòng 2 bị mỏng lét, mất cân đối.
+  - **Độ dày nét chữ (Stroke Weight):** Luôn khóa nét `uniform ultra-chunky`, độ to, độ dày nét và độ dập nổi 3D của cả 2 dòng phải dày cộm bằng nhau 1:1.
+  - **Bảng màu dễ nhìn, tương phản cực đại (Tránh màu đỏ tối):**
+    - Tuyệt đối **không dùng màu đỏ thuần / đỏ đô** làm màu thân chữ dòng dưới vì độ sáng quang học thấp, dễ bị bệt và chìm vào nền tối hoặc trang phục nhân vật.
+    - **Bộ màu chuẩn khuyên dùng:**
+      - **Dòng 1:** Vàng chanh kim loại rực rỡ (`#FFE600`), viền đen dày (`10-12px`).
+      - **Dòng 2:** Xanh Cyan Neon điện tử (`#00F0FF`) có viền trắng mảnh bên trong và viền đen dày bên ngoài, bóng khối 3D sâu; HOẶC Trắng tuyết phản quang (`#FFFFFF`) có hào quang Cyan phát sáng.
+  - **Vị trí:** Đặt ở **góc dưới bên trái** hoặc **trung tâm cạnh dưới**. Tuyệt đối tránh góc dưới bên phải (bị che bởi đồng hồ thời lượng YouTube).
 
 #### 3.2. Cấu trúc Prompt tiếng Anh chuẩn cho Flow AI
 Luôn xuất kèm **Prompt chính** và **Negative Prompt** theo khuôn mẫu sau:
 
 ```text
-A breathtaking cinematic YouTube thumbnail, 16:9 aspect ratio, 8k resolution, [CHỌN STYLE: Chinese 3D CGI donghua style, Unreal Engine 5 render HOẶC Photorealistic Chinese modern mini-drama movie still].
+A hyper-vivid, ultra-catchy cinematic YouTube thumbnail, 16:9 aspect ratio, 8k resolution, [CHỌN STYLE: Photorealistic Chinese modern mini-drama movie poster, master lighting HOẶC Chinese 3D CGI donghua style, Unreal Engine 5 render].
 
-Framing & Composition: Balanced medium bust shot with comfortable breathing room, perfectly centered, zoomed-out slightly for balanced proportions. [Mô tả chi tiết vị trí, trang phục, hành động tương tác giữa nam chính và nữ chính, nhấn mạnh sự đối lập cảm xúc: một bên chiếm hữu/nguy hiểm/tâm cơ vs một bên hoảng hốt/ngây thơ/bối rối].
+Framing & Expression: Balanced medium bust shot with comfortable breathing room, off-center dynamic composition. [Mô tả chi tiết nam chính và nữ chính, trang phục cao cấp, biểu cảm đối lập mạnh: một bên chiếm hữu/tự tin/cười ngạo nghễ vs một bên hoảng hốt/ngơ ngác/hài hước, đạo cụ đi kèm như điện thoại sáng đèn, túi hiệu, tạ tay...].
 
-Beauty & Lighting Effects: Flawless ethereal skin glow, soft cinematic bloom, [hiệu ứng phụ: floating red rose petals / dark feathers / subtle bokeh], dramatic crimson and deep violet rim lighting against a moody dark background, high contrast, ultra-detailed textures, 32k UHD, masterpiece quality, clean image with no watermark or video player overlay.
+Color & Lighting: Extreme color contrast and hyper-saturated visual pop. Vibrant dual-tone rim lighting (electric magenta-pink backlight on one side vs intense cyan-blue edge lighting on the other side). Volumetric light rays, floating sparkles/particles, razor-sharp focus on faces, glossy skin highlights, 32k UHD, clean image with no watermark or video player overlay.
 
-Text Overlay: Clean, aesthetic 3D typography at the lower third: "[DÒNG 1]" in bold white metallic with heavy black contour, and "[DÒNG 2]" in vibrant glowing gold-yellow (#FFE600) with dual red-and-black outline, deep 3D drop shadow, professional poster design --ar 16:9 --style raw
+Text Overlay: Two lines of massive, uniform ultra-chunky 3D embossed typographic stickers anchored at the lower-left, perfectly matched identical heavy stroke thickness and visual weight across both lines, no thin lines, equal font boldness:
+Line 1: "[DÒNG 1 - 3-4 TỪ CÓ NGHĨA]" in ultra-bold chunky metallic gold-yellow (#FFE600) with heavy black contour;
+Line 2: "[DÒNG 2 - 3-4 TỪ CÓ NGHĨA, BẰNG KÝ TỰ DÒNG 1]" in identical ultra-bold chunky electric neon cyan (#00F0FF) with a brilliant pure white inner stroke and deep black 3D extrusion drop-shadow, no dark red muddy colors, same giant font size and thickness as Line 1, tilted 3 degrees, professional movie poster typography --ar 16:9 --style raw
 ```
 
 **Negative Prompt bắt buộc:**
 ```text
-subtitles, watermark, logo, channel avatar, banner, username, Chinese characters, messy text, blurry, low resolution, bad anatomy, deformed fingers, extra limbs, oversaturated cartoon, cropped head
+dark muddy colors, washed out, desaturated, flat lighting, tiny text, thin font, mismatched text thickness, unreadable text, blurry, subtitles, watermark, logo, channel avatar, username, Chinese characters, bad anatomy, deformed fingers, extra limbs, oversaturated cartoon, cropped head
 ```
 
 #### 3.3. Script Tự động Xử lý & Xuất Thumbnail (Khi người dùng cung cấp ảnh chụp màn hình)
