@@ -12,7 +12,9 @@ from app.story_tts import (
     split_story_sentences,
     format_srt_timestamp,
     synthesize_story_session,
-    rewrite_story_content
+    rewrite_story_content,
+    generate_channel_intro,
+    CHANNEL_INTRO_TEMPLATES
 )
 
 
@@ -81,6 +83,26 @@ class TestStoryTTSStudio(unittest.TestCase):
             self.assertIn("Xin chào các bạn", srt_content)
         
         print(f"E2E Synthesis passed! Duration: {result['total_duration_sec']}s, MP3 Size: {os.path.getsize(result['mp3_path'])} bytes.")
+
+    def test_generate_channel_intro_templates(self):
+        """Test channel intro generation using preset templates."""
+        channel = "Hạt Tiêu Vietsub"
+        for style in ["storytelling", "dramatic", "review", "short"]:
+            res = generate_channel_intro(channel_name=channel, story_text="", style=style)
+            self.assertEqual(res["status"], "ok")
+            self.assertIn("intro_text", res)
+            self.assertIn(channel, res["intro_text"])
+            self.assertEqual(res["channel_name"], channel)
+        print("Channel intro template tests passed!")
+
+    def test_generate_channel_intro_custom_or_ai(self):
+        """Test channel intro with story context."""
+        channel = "Hạt Tiêu Phim Hay"
+        sample_story = "Đêm mưa bão, một bóng đen lẻn vào biệt viện cổ kính của gia tộc họ Lâm..."
+        res = generate_channel_intro(channel_name=channel, story_text=sample_story, style="dramatic")
+        self.assertEqual(res["status"], "ok")
+        self.assertGreater(len(res["intro_text"]), 10)
+        print(f"Channel intro result ({res['engine']}): {res['intro_text']}")
 
 
 if __name__ == "__main__":

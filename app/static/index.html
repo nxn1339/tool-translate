@@ -21,7 +21,7 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.6.0/css/all.min.css">
 
     <!-- Custom CSS -->
-    <link rel="stylesheet" href="style.css?v=60">
+    <link rel="stylesheet" href="style.css?v=62">
 
 </head>
 
@@ -215,12 +215,12 @@
                     <div class="feature-card-body">
                         <h4 class="feature-name">Studio Đọc Truyện &amp; Kể Chuyện AI</h4>
                         <p class="feature-summary">
-                            Chuyển văn bản thành audio đọc truyện chuyên nghiệp. Nhập trực tiếp hoặc bóc tách từ link YouTube, tích hợp AI xào nấu kịch bản (Groq/Gemini) chống bản quyền, chọn 15+ giọng TikTok Nữ hot nhất, xuất MP3 và file phụ đề SRT đồng bộ.
+                            Chuyển văn bản thành audio đọc truyện chuyên nghiệp. Nhập trực tiếp hoặc bóc tách từ link YouTube, tích hợp tính năng thêm đoạn giới thiệu kênh tự động (kèm AI tạo lời dẫn hook mở đầu), chọn 15+ giọng TikTok Nữ hot nhất, xuất MP3 và file phụ đề SRT đồng bộ.
                         </p>
                         <div class="feature-tags">
                             <span class="feature-tag">15+ Giọng TikTok Nữ</span>
                             <span class="feature-tag">Bóc Tách YouTube</span>
-                            <span class="feature-tag">AI Xào Nấu</span>
+                            <span class="feature-tag">Đoạn Giới Thiệu Kênh</span>
                             <span class="feature-tag">Xuất MP3 + SRT</span>
                         </div>
                     </div>
@@ -268,7 +268,7 @@
                 <div class="home-section-header">
                     <div class="section-title-group">
                         <i class="fa-solid fa-folder-open icon-purple"></i>
-                        <h3>Dự Án Gần Đây (Dịch Phim)</h3>
+                        <h3>Dự Án Gần Đây</h3>
                     </div>
                     <div class="home-projects-actions">
                         <button type="button" class="secondary-btn btn-sm" id="btn-home-refresh-projects" title="Làm mới danh sách">
@@ -278,6 +278,14 @@
                             <i class="fa-solid fa-plus"></i> Dự Án Mới
                         </button>
                     </div>
+                </div>
+
+                <!-- Category filter tabs for Recent Projects -->
+                <div class="home-projects-filter-bar mb-3">
+                    <button type="button" class="home-filter-tab active" data-type="all">Tất Cả</button>
+                    <button type="button" class="home-filter-tab" data-type="dubber"><i class="fa-solid fa-film"></i> Dịch Phim</button>
+                    <button type="button" class="home-filter-tab" data-type="story_tts"><i class="fa-solid fa-microphone-lines"></i> Đọc Truyện</button>
+                    <button type="button" class="home-filter-tab" data-type="social_video"><i class="fa-brands fa-threads"></i> Video Threads</button>
                 </div>
 
                 <div class="home-projects-grid" id="home-recent-projects-list">
@@ -1750,21 +1758,35 @@
                         <i class="fa-solid fa-microphone-lines"></i>
                     </div>
                     <div class="project-info-group">
-                        <div class="project-title-row">
-                            <span class="project-label">Studio:</span>
-                            <span class="project-active-name" id="story-session-title">Đọc Truyện &amp; Kể Chuyện AI</span>
+                        <div class="project-name-wrapper">
+                            <span class="project-name" id="story-project-name-display" title="Nhấp để đổi tên dự án">Đọc Truyện &amp; Kể Chuyện AI</span>
+                            <input type="text" class="project-name-input d-none" id="story-project-name-input" maxlength="60" placeholder="Nhập tên dự án...">
+                            <button type="button" class="btn-icon-subtle" id="btn-story-edit-project-name" title="Đổi tên dự án">
+                                <i class="fa-solid fa-pen"></i>
+                            </button>
                         </div>
                         <div class="project-meta-line">
+                            <span class="project-save-status" id="story-project-save-status">
+                                <i class="fa-solid fa-circle-check"></i> <span id="story-project-save-text">Đã tự động lưu</span>
+                            </span>
+                            <span class="project-meta-dot">•</span>
                             <span class="project-step-badge" style="background: rgba(236, 72, 153, 0.2); color: #f472b6; border-color: rgba(236, 72, 153, 0.4);">
                                 <i class="fa-brands fa-tiktok"></i> 100% Giọng TikTok
                             </span>
-                            <span class="project-meta-dot">•</span>
-                            <span class="text-muted" id="story-status-text">Sẵn sàng nhập liệu</span>
                         </div>
                     </div>
                 </div>
 
                 <div class="project-bar-right">
+                    <button type="button" class="secondary-btn btn-sm" id="btn-story-project-open" title="Mở danh sách dự án">
+                        <i class="fa-solid fa-folder-tree"></i> <span>Mở Dự Án...</span>
+                    </button>
+                    <button type="button" class="secondary-btn btn-sm" id="btn-story-project-new" title="Tạo dự án đọc truyện mới">
+                        <i class="fa-solid fa-plus"></i> <span>Dự Án Mới</span>
+                    </button>
+                    <button type="button" class="primary-btn btn-sm btn-accent" id="btn-story-project-save" title="Lưu ngay lập tức">
+                        <i class="fa-solid fa-floppy-disk"></i> <span>Lưu Ngay</span>
+                    </button>
                     <button type="button" class="secondary-btn btn-sm btn-nav-home-back" id="btn-story-back-home" title="Quay về Trang Chủ">
                         <i class="fa-solid fa-arrow-left"></i> <span>Trang Chủ</span>
                     </button>
@@ -1821,29 +1843,42 @@
                         <textarea id="story-raw-text" class="story-textarea" rows="12" placeholder="Dán văn bản truyện, tiểu thuyết, kịch bản review hoặc nhập link YouTube bên trên để tự động bóc tách nội dung..."></textarea>
                     </div>
 
-                    <!-- AI Rewriter Toolbar -->
-                    <div class="story-rewrite-toolbar">
-                        <div class="rewrite-config-row">
+                    <!-- Channel Intro Toolbar -->
+                    <div class="story-intro-toolbar">
+                        <div class="intro-header-row">
+                            <label><i class="fa-solid fa-bullhorn" style="color: #a855f7;"></i> Đoạn Giới Thiệu Kênh (Channel Intro):</label>
+                            <span class="intro-hint-badge">Chèn câu mở đầu thương hiệu vào kịch bản</span>
+                        </div>
+                        <div class="intro-config-row">
                             <div class="input-group-sub" style="flex: 1;">
-                                <label for="story-rewrite-style"><i class="fa-solid fa-wand-magic-sparkles"></i> Phong cách Xào Nấu (AI):</label>
-                                <select id="story-rewrite-style" class="select-input">
-                                    <option value="storytelling" selected>📖 Kể Chuyện Truyền Cảm (Văn phong mượt, giàu cảm xúc)</option>
-                                    <option value="review">🎬 Review Tóm Tắt Kịch Tính (Nhịp nhanh, giật gân, cuốn hút)</option>
-                                    <option value="paraphrase">🛡️ Viết Lại Né Bản Quyền (100% câu từ mới, giữ cốt truyện)</option>
-                                </select>
+                                <label for="story-channel-name"><i class="fa-brands fa-youtube" style="color: #ef4444;"></i> Tên Kênh:</label>
+                                <input type="text" id="story-channel-name" class="text-input" placeholder="VD: Hạt Tiêu Vietsub" value="Hạt Tiêu Vietsub" />
                             </div>
                             <div class="input-group-sub" style="flex: 1.2;">
-                                <label for="story-rewrite-instruction"><i class="fa-solid fa-comment-dots"></i> Yêu cầu thêm (tùy chọn):</label>
-                                <input type="text" id="story-rewrite-instruction" class="text-input" placeholder="VD: Đổi ngôi kể thành 'tôi', làm rõ tâm lý nhân vật..." />
+                                <label for="story-intro-style"><i class="fa-solid fa-wand-magic-sparkles"></i> Mẫu Giới Thiệu:</label>
+                                <select id="story-intro-style" class="select-input">
+                                    <option value="storytelling" selected>📖 Kể Chuyện Truyền Cảm (Thư giãn, mượt mà)</option>
+                                    <option value="dramatic">⚡ Kịch Tính / Gay Cấn (Cuốn hút, hồi hộp)</option>
+                                    <option value="review">🎬 Review / Tóm Tắt (Dẫn nhập nhanh, trực diện)</option>
+                                    <option value="short">✨ Lời Chào Ngắn Gọn (Nhanh, súc tích)</option>
+                                    <option value="custom">✍️ Tùy Chỉnh (Tự gõ lời mở đầu riêng)</option>
+                                </select>
                             </div>
                         </div>
-                        <div class="rewrite-btn-row">
-                            <button type="button" class="primary-btn btn-gradient-purple" id="btn-story-ai-rewrite">
-                                <i class="fa-solid fa-wand-magic-sparkles"></i> ✨ Xào Nấu Kịch Bản Bằng AI (Lọc Rác &amp; Viết Lại)
+                        <div class="intro-text-row">
+                            <label for="story-intro-text"><i class="fa-regular fa-comment-dots"></i> Lời mở đầu sẽ chèn vào kịch bản:</label>
+                            <textarea id="story-intro-text" class="text-input intro-textarea" rows="2" placeholder="Nội dung câu giới thiệu kênh sẽ hiển thị tại đây..."></textarea>
+                        </div>
+                        <div class="intro-btn-row">
+                            <button type="button" class="secondary-btn btn-sm" id="btn-story-ai-intro">
+                                <i class="fa-solid fa-wand-magic-sparkles"></i> ✨ AI Viết Hook Mở Đầu
+                            </button>
+                            <button type="button" class="primary-btn btn-gradient-purple" id="btn-story-insert-intro">
+                                <i class="fa-solid fa-circle-plus"></i> ➕ Chèn Đoạn Giới Thiệu Vào Đầu Kịch Bản
                             </button>
                         </div>
-                        <div class="rewrite-status-bar d-none" id="story-rewrite-status">
-                            <i class="fa-solid fa-spinner fa-spin"></i> <span id="story-rewrite-status-text">AI đang phân tích và viết lại câu chuyện...</span>
+                        <div class="intro-status-bar d-none" id="story-intro-status">
+                            <i class="fa-solid fa-spinner fa-spin"></i> <span id="story-intro-status-text">AI đang sáng tạo lời dẫn hook giới thiệu kênh...</span>
                         </div>
                     </div>
                 </div>
@@ -1922,9 +1957,10 @@
                     <div class="story-progress-box d-none" id="story-progress-box">
                         <div class="progress-info-row">
                             <span id="story-progress-text"><i class="fa-solid fa-spinner fa-spin"></i> Đang sinh audio kịch bản...</span>
+                            <span class="story-progress-percent" id="story-progress-percent" style="font-weight: 800; color: #ec4899; font-size: 0.95rem;">0%</span>
                         </div>
                         <div class="progress-bar-track">
-                            <div class="progress-bar-fill progress-bar-indeterminate" id="story-progress-bar" style="width: 100%;"></div>
+                            <div class="progress-bar-fill" id="story-progress-bar" style="width: 0%; transition: width 0.3s ease;"></div>
                         </div>
                     </div>
 
@@ -1958,6 +1994,35 @@
                     </div>
                 </div>
             </div>
+
+            <!-- Story TTS Terminal Console -->
+            <div class="terminal-console-wrapper" id="story-terminal-box" style="margin-top: 1.5rem;">
+                <div class="terminal-console-header">
+                    <div class="terminal-header-title">
+                        <span class="terminal-dot dot-red"></span>
+                        <span class="terminal-dot dot-yellow"></span>
+                        <span class="terminal-dot dot-green"></span>
+                        <span class="terminal-title-text"><i class="fa-solid fa-terminal"></i> Terminal Tiến Trình Đọc Truyện TTS</span>
+                        <span class="terminal-status-tag" id="story-terminal-status-tag">Sẵn sàng</span>
+                    </div>
+                    <div class="terminal-header-actions">
+                        <button type="button" class="terminal-btn" id="btn-story-terminal-copy" title="Sao chép toàn bộ log">
+                            <i class="fa-regular fa-copy"></i> <span>Sao chép</span>
+                        </button>
+                        <button type="button" class="terminal-btn" id="btn-story-terminal-clear" title="Xóa màn hình log">
+                            <i class="fa-solid fa-ban"></i> <span>Xóa</span>
+                        </button>
+                        <button type="button" class="terminal-btn btn-collapse" id="btn-story-terminal-toggle" title="Thu gọn / Mở rộng Terminal">
+                            <i class="fa-solid fa-chevron-up" id="story-terminal-toggle-icon"></i> <span id="story-terminal-toggle-text">Thu gọn</span>
+                        </button>
+                    </div>
+                </div>
+                <div class="terminal-console-body" id="story-terminal-body">
+                    <div class="terminal-logs-stream" id="story-terminal-logs">
+                        <div class="terminal-line"><span class="term-time">[00:00:00]</span><span class="term-badge term-badge-info">[Sẵn sàng]</span><span class="term-text">Sẵn sàng ghi nhận tiến trình Studio Đọc Truyện...</span></div>
+                    </div>
+                </div>
+            </div>
         </section>
 
         <!-- ========================================================== -->
@@ -1970,14 +2035,35 @@
                     <div class="project-bar-icon-badge" style="background: linear-gradient(135deg, #0095f6, #0866ff); font-size: 1.4rem;">
                         <i class="fa-brands fa-threads"></i>
                     </div>
-                    <div>
-                        <h2 class="project-bar-title">Tool Video Ngắn Threads &amp; Facebook</h2>
-                        <p class="project-bar-desc">Tự động biến câu chuyện và bình luận thành video ngắn 9:16 (TikTok, Reels, Shorts)</p>
+                    <div class="project-info-group">
+                        <div class="project-name-wrapper">
+                            <span class="project-name" id="social-project-name-display" title="Nhấp để đổi tên dự án">Video Ngắn Threads &amp; Facebook</span>
+                            <input type="text" class="project-name-input d-none" id="social-project-name-input" maxlength="60" placeholder="Nhập tên dự án...">
+                            <button type="button" class="btn-icon-subtle" id="btn-social-edit-project-name" title="Đổi tên dự án">
+                                <i class="fa-solid fa-pen"></i>
+                            </button>
+                        </div>
+                        <div class="project-meta-line">
+                            <span class="project-save-status" id="social-project-save-status">
+                                <i class="fa-solid fa-circle-check"></i> <span id="social-project-save-text">Đã tự động lưu</span>
+                            </span>
+                            <span class="project-meta-dot">•</span>
+                            <span class="text-muted">Định dạng 9:16 (TikTok, Reels, Shorts)</span>
+                        </div>
                     </div>
                 </div>
-                <div class="project-bar-actions">
-                    <button type="button" class="secondary-btn btn-sm" id="btn-social-back-home">
-                        <i class="fa-solid fa-arrow-left"></i> Quay về Trang Chủ
+                <div class="project-bar-right">
+                    <button type="button" class="secondary-btn btn-sm" id="btn-social-project-open" title="Mở danh sách dự án">
+                        <i class="fa-solid fa-folder-tree"></i> <span>Mở Dự Án...</span>
+                    </button>
+                    <button type="button" class="secondary-btn btn-sm" id="btn-social-project-new" title="Tạo dự án video Threads mới">
+                        <i class="fa-solid fa-plus"></i> <span>Dự Án Mới</span>
+                    </button>
+                    <button type="button" class="primary-btn btn-sm btn-accent" id="btn-social-project-save" title="Lưu ngay lập tức">
+                        <i class="fa-solid fa-floppy-disk"></i> <span>Lưu Ngay</span>
+                    </button>
+                    <button type="button" class="secondary-btn btn-sm btn-nav-home-back" id="btn-social-back-home" title="Quay về Trang Chủ">
+                        <i class="fa-solid fa-arrow-left"></i> <span>Trang Chủ</span>
                     </button>
                 </div>
             </div>
@@ -2171,6 +2257,35 @@
                     </div>
                     <div class="social-progress-track">
                         <div id="social-progress-bar" class="social-progress-fill" style="width: 0%;"></div>
+                    </div>
+                </div>
+
+                <!-- Social Video Terminal Console -->
+                <div class="terminal-console-wrapper mb-4" id="social-terminal-box">
+                    <div class="terminal-console-header">
+                        <div class="terminal-header-title">
+                            <span class="terminal-dot dot-red"></span>
+                            <span class="terminal-dot dot-yellow"></span>
+                            <span class="terminal-dot dot-green"></span>
+                            <span class="terminal-title-text"><i class="fa-solid fa-terminal"></i> Terminal Tiến Trình Video Threads / FB</span>
+                            <span class="terminal-status-tag" id="social-terminal-status-tag">Sẵn sàng</span>
+                        </div>
+                        <div class="terminal-header-actions">
+                            <button type="button" class="terminal-btn" id="btn-social-terminal-copy" title="Sao chép toàn bộ log">
+                                <i class="fa-regular fa-copy"></i> <span>Sao chép</span>
+                            </button>
+                            <button type="button" class="terminal-btn" id="btn-social-terminal-clear" title="Xóa màn hình log">
+                                <i class="fa-solid fa-ban"></i> <span>Xóa</span>
+                            </button>
+                            <button type="button" class="terminal-btn btn-collapse" id="btn-social-terminal-toggle" title="Thu gọn / Mở rộng Terminal">
+                                <i class="fa-solid fa-chevron-up" id="social-terminal-toggle-icon"></i> <span id="social-terminal-toggle-text">Thu gọn</span>
+                            </button>
+                        </div>
+                    </div>
+                    <div class="terminal-console-body" id="social-terminal-body">
+                        <div class="terminal-logs-stream" id="social-terminal-logs">
+                            <div class="terminal-line"><span class="term-time">[00:00:00]</span><span class="term-badge term-badge-info">[Sẵn sàng]</span><span class="term-text">Sẵn sàng ghi nhận tiến trình tạo video Threads / FB...</span></div>
+                        </div>
                     </div>
                 </div>
 
@@ -2820,21 +2935,21 @@
             <div class="studio-modal-body">
 
                 <div class="project-modal-toolbar">
-
                     <div class="project-search-wrapper">
-
                         <i class="fa-solid fa-magnifying-glass"></i>
-
                         <input type="text" id="project-search-input" placeholder="Tìm kiếm theo tên dự án hoặc link...">
-
                     </div>
-
                     <button type="button" class="primary-btn btn-sm" id="btn-modal-create-new">
-
                         <i class="fa-solid fa-plus"></i> Tạo Dự Án Mới
-
                     </button>
+                </div>
 
+                <!-- Modal Filter Tabs -->
+                <div class="home-projects-filter-bar mb-3" id="modal-projects-filters" style="margin-top: 0.75rem;">
+                    <button type="button" class="home-filter-tab active" data-type="all">Tất Cả</button>
+                    <button type="button" class="home-filter-tab" data-type="dubber"><i class="fa-solid fa-film"></i> Dịch Phim</button>
+                    <button type="button" class="home-filter-tab" data-type="story_tts"><i class="fa-solid fa-microphone-lines"></i> Đọc Truyện</button>
+                    <button type="button" class="home-filter-tab" data-type="social_video"><i class="fa-brands fa-threads"></i> Video Threads</button>
                 </div>
 
                 
@@ -3063,7 +3178,7 @@
         </div>
     </div>
 
-    <script src="app.js?v=60"></script>
+    <script src="app.js?v=62"></script>
 
 </body>
 

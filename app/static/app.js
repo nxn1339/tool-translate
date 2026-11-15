@@ -1022,13 +1022,6 @@ document.addEventListener("DOMContentLoaded", () => {
     let lastRenderedLogsCount = 0;
     let autoScrollTerminal = true;
 
-    if (step1TerminalBody) {
-        step1TerminalBody.addEventListener("scroll", () => {
-            const isNearBottom = (step1TerminalBody.scrollHeight - step1TerminalBody.scrollTop - step1TerminalBody.clientHeight) < 30;
-            autoScrollTerminal = isNearBottom;
-        });
-    }
-
     function parseLogLine(rawLine) {
         const m = rawLine.match(/^\[(\d{2}:\d{2}:\d{2})\]\s*(?:\[(INFO|WARN|ERROR|SUCCESS|Cảnh báo|Lỗi)\])?\s*(.*)$/i);
         if (m) {
@@ -1042,92 +1035,193 @@ document.addEventListener("DOMContentLoaded", () => {
         return { time: "", level: "INFO", text: rawLine };
     }
 
-    function appendTerminalLog(rawLine) {
-        if (!step1TerminalLogs) return;
-        const { time, level, text } = parseLogLine(rawLine);
-        const lineEl = document.createElement("div");
-        lineEl.className = `terminal-line term-type-${level.toLowerCase()}`;
+    function createTerminalManager({ boxId, logsId, bodyId, statusTagId, toggleBtnId, toggleIconId, toggleTextId, copyBtnId, clearBtnId, defaultText }) {
+        const box = document.getElementById(boxId);
+        const logsEl = document.getElementById(logsId);
+        const bodyEl = document.getElementById(bodyId);
+        const statusTag = document.getElementById(statusTagId);
+        const btnToggle = document.getElementById(toggleBtnId);
+        const toggleIcon = document.getElementById(toggleIconId);
+        const toggleText = document.getElementById(toggleTextId);
+        const btnCopy = document.getElementById(copyBtnId);
+        const btnClear = document.getElementById(clearBtnId);
 
-        let badgeClass = "term-badge-info";
-        let badgeLabel = level;
-        if (level === "WARN") { badgeClass = "term-badge-warn"; badgeLabel = "CẢNH BÁO"; }
-        else if (level === "ERROR") { badgeClass = "term-badge-error"; badgeLabel = "LỖI"; }
-        else if (level === "SUCCESS") { badgeClass = "term-badge-success"; badgeLabel = "XONG"; }
+        let autoScroll = true;
+        let renderedLogs = [];
 
-        lineEl.innerHTML = `
-            ${time ? `<span class="term-time">[${time}]</span>` : ''}
-            <span class="term-badge ${badgeClass}">[${badgeLabel}]</span>
-            <span class="term-text">${escapeHtml(text)}</span>
-        `;
-        step1TerminalLogs.appendChild(lineEl);
-
-        if (autoScrollTerminal && step1TerminalBody) {
-            step1TerminalBody.scrollTop = step1TerminalBody.scrollHeight;
+        if (bodyEl) {
+            bodyEl.addEventListener("scroll", () => {
+                const isNearBottom = (bodyEl.scrollHeight - bodyEl.scrollTop - bodyEl.clientHeight) < 30;
+                autoScroll = isNearBottom;
+            });
         }
+
+        if (btnToggle && box) {
+            btnToggle.addEventListener("click", () => {
+                const isCollapsed = box.classList.toggle("collapsed");
+                if (toggleIcon) toggleIcon.className = isCollapsed ? "fa-solid fa-chevron-down" : "fa-solid fa-chevron-up";
+                if (toggleText) toggleText.textContent = isCollapsed ? "Mở rộng" : "Thu gọn";
+            });
+        }
+
+        if (btnCopy && logsEl) {
+            btnCopy.addEventListener("click", () => {
+                const text = logsEl.innerText;
+                if (!text || text.trim().length === 0) {
+                    showToast("Chưa có log để sao chép.", "info");
+                    return;
+                }
+                navigator.clipboard.writeText(text).then(() => {
+                    const origHtml = btnCopy.innerHTML;
+                    btnCopy.innerHTML = '<i class="fa-solid fa-check"></i> <span>Đã chép</span>';
+                    setTimeout(() => { btnCopy.innerHTML = origHtml; }, 1500);
+                }).catch(() => {
+                    showToast("Không thể sao chép tự động.", "warning");
+                });
+            });
+        }
+
+        if (btnClear && logsEl) {
+            btnClear.addEventListener("click", () => {
+                clear();
+                showToast("Đã xóa trắng màn hình log.", "info");
+            });
+        }
+
+        function appendLine(rawLine) {
+            if (!logsEl) return;
+            const { time, level, text } = parseLogLine(rawLine);
+            const lineEl = document.createElement("div");
+            lineEl.className = `terminal-line term-type-${level.toLowerCase()}`;
+
+            let badgeClass = "term-badge-info";
+            let badgeLabel = level;
+            if (level === "WARN") { badgeClass = "term-badge-warn"; badgeLabel = "CẢNH BÁO"; }
+            else if (level === "ERROR") { badgeClass = "term-badge-error"; badgeLabel = "LỖI"; }
+            else if (level === "SUCCESS") { badgeClass = "term-badge-success"; badgeLabel = "XONG"; }
+
+            lineEl.innerHTML = `
+                ${time ? `<span class="term-time">[${time}]</span>` : ''}
+                <span class="term-badge ${badgeClass}">[${badgeLabel}]</span>
+                <span class="term-text">${escapeHtml(text)}</span>
+            `;
+            logsEl.appendChild(lineEl);
+
+            if (autoScroll && bodyEl) {
+                bodyEl.scrollTop = bodyEl.scrollHeight;
+            }
+        }
+
+        function updateLogs(logs) {
+            if (!Array.isArray(logs) || !logsEl) return;
+            if (logs.length === 0) return;
+
+            if (renderedLogs.length === 0) {
+                logsEl.innerHTML = "";
+                for (const line of logs) {
+                    appendLine(line);
+                }
+                renderedLogs = [...logs];
+                return;
+            }
+
+            const lastOld = renderedLogs[renderedLogs.length - 1];
+            const lastNew = logs[logs.length - 1];
+            if (lastOld === lastNew && renderedLogs.length === logs.length) return;
+
+            let lastMatchedIndex = -1;
+            for (let i = logs.length - 1; i >= 0; i--) {
+                if (logs[i] === lastOld) {
+                    lastMatchedIndex = i;
+                    break;
+                }
+            }
+
+            if (lastMatchedIndex !== -1) {
+                for (let i = lastMatchedIndex + 1; i < logs.length; i++) {
+                    appendLine(logs[i]);
+                }
+                renderedLogs = [...logs];
+            } else {
+                logsEl.innerHTML = "";
+                for (const line of logs) {
+                    appendLine(line);
+                }
+                renderedLogs = [...logs];
+            }
+        }
+
+        function clear() {
+            if (logsEl) {
+                logsEl.innerHTML = defaultText ? `<div class="terminal-line"><span class="term-time">[00:00:00]</span><span class="term-badge term-badge-info">[Sẵn sàng]</span><span class="term-text">${escapeHtml(defaultText)}</span></div>` : "";
+            }
+            renderedLogs = [];
+        }
+
+        function setStatus(text) {
+            if (statusTag) statusTag.textContent = text;
+        }
+
+        function show() {
+            if (box) box.classList.remove("d-none");
+        }
+
+        return { appendLine, updateLogs, clear, setStatus, show, box };
     }
 
-    let lastRenderedLogsList = [];
+    const dubberTerminal = createTerminalManager({
+        boxId: "step1-terminal-box",
+        logsId: "step1-terminal-logs",
+        bodyId: "step1-terminal-body",
+        statusTagId: "step1-terminal-status-tag",
+        toggleBtnId: "btn-step1-terminal-toggle",
+        toggleIconId: "step1-terminal-toggle-icon",
+        toggleTextId: "step1-terminal-toggle-text",
+        copyBtnId: "btn-step1-terminal-copy",
+        clearBtnId: "btn-step1-terminal-clear",
+        defaultText: "Sẵn sàng ghi nhận tiến trình Studio..."
+    });
+
+    const storyTerminal = createTerminalManager({
+        boxId: "story-terminal-box",
+        logsId: "story-terminal-logs",
+        bodyId: "story-terminal-body",
+        statusTagId: "story-terminal-status-tag",
+        toggleBtnId: "btn-story-terminal-toggle",
+        toggleIconId: "story-terminal-toggle-icon",
+        toggleTextId: "story-terminal-toggle-text",
+        copyBtnId: "btn-story-terminal-copy",
+        clearBtnId: "btn-story-terminal-clear",
+        defaultText: "Sẵn sàng ghi nhận tiến trình Studio Đọc Truyện..."
+    });
+
+    const socialTerminal = createTerminalManager({
+        boxId: "social-terminal-box",
+        logsId: "social-terminal-logs",
+        bodyId: "social-terminal-body",
+        statusTagId: "social-terminal-status-tag",
+        toggleBtnId: "btn-social-terminal-toggle",
+        toggleIconId: "social-terminal-toggle-icon",
+        toggleTextId: "social-terminal-toggle-text",
+        copyBtnId: "btn-social-terminal-copy",
+        clearBtnId: "btn-social-terminal-clear",
+        defaultText: "Sẵn sàng ghi nhận tiến trình tạo video Threads / FB..."
+    });
+
+    window.dubberTerminal = dubberTerminal;
+    window.storyTerminal = storyTerminal;
+    window.socialTerminal = socialTerminal;
+
+    function appendTerminalLog(rawLine) {
+        dubberTerminal.appendLine(rawLine);
+    }
 
     function clearTerminalUI() {
-        if (step1TerminalLogs) step1TerminalLogs.innerHTML = "";
-        lastRenderedLogsList = [];
-        lastRenderedLogsCount = 0;
+        dubberTerminal.clear();
     }
 
     function updateTerminalLogs(logs) {
-        if (!Array.isArray(logs) || !step1TerminalLogs) return;
-        if (logs.length === 0) return;
-
-        // If nothing is rendered yet, render all
-        if (lastRenderedLogsList.length === 0) {
-            step1TerminalLogs.innerHTML = "";
-            for (const line of logs) {
-                appendTerminalLog(line);
-            }
-            lastRenderedLogsList = [...logs];
-            lastRenderedLogsCount = logs.length;
-            return;
-        }
-
-        const lastOld = lastRenderedLogsList[lastRenderedLogsList.length - 1];
-        const lastNew = logs[logs.length - 1];
-        if (lastOld === lastNew && lastRenderedLogsList.length === logs.length) {
-            return;
-        }
-
-        // Find match of lastOld in logs
-        let lastMatchedIndex = -1;
-        for (let i = logs.length - 1; i >= 0; i--) {
-            if (logs[i] === lastOld) {
-                lastMatchedIndex = i;
-                break;
-            }
-        }
-
-        if (lastMatchedIndex !== -1) {
-            for (let i = lastMatchedIndex + 1; i < logs.length; i++) {
-                appendTerminalLog(logs[i]);
-            }
-            lastRenderedLogsList = [...logs];
-            lastRenderedLogsCount = logs.length;
-        } else {
-            // Either sliding window passed or project switched
-            if (logs[0] !== lastRenderedLogsList[0]) {
-                step1TerminalLogs.innerHTML = "";
-                for (const line of logs) {
-                    appendTerminalLog(line);
-                }
-            } else {
-                const renderedSet = new Set(lastRenderedLogsList);
-                for (const line of logs) {
-                    if (!renderedSet.has(line)) {
-                        appendTerminalLog(line);
-                    }
-                }
-            }
-            lastRenderedLogsList = [...logs];
-            lastRenderedLogsCount = logs.length;
-        }
+        dubberTerminal.updateLogs(logs);
     }
 
     const btnToggleTerminalGlobal = document.getElementById("btn-toggle-terminal-global");
@@ -1152,37 +1246,6 @@ document.addEventListener("DOMContentLoaded", () => {
             if (isCurrentlyHidden && step1TerminalBody) {
                 step1TerminalBody.scrollTop = step1TerminalBody.scrollHeight;
             }
-        });
-    }
-
-    if (btnStep1TerminalToggle) {
-        btnStep1TerminalToggle.addEventListener("click", () => {
-            if (!step1TerminalBox) return;
-            const isCollapsed = step1TerminalBox.classList.toggle("collapsed");
-            if (step1TerminalToggleIcon) {
-                step1TerminalToggleIcon.className = isCollapsed ? "fa-solid fa-chevron-down" : "fa-solid fa-chevron-up";
-            }
-            if (step1TerminalToggleText) {
-                step1TerminalToggleText.textContent = isCollapsed ? "Mở rộng" : "Thu gọn";
-            }
-        });
-    }
-
-    if (btnStep1TerminalClear) {
-        btnStep1TerminalClear.addEventListener("click", () => {
-            clearTerminalUI();
-        });
-    }
-
-    if (btnStep1TerminalCopy) {
-        btnStep1TerminalCopy.addEventListener("click", () => {
-            if (!step1TerminalLogs) return;
-            const text = step1TerminalLogs.innerText;
-            navigator.clipboard.writeText(text).then(() => {
-                const origHtml = btnStep1TerminalCopy.innerHTML;
-                btnStep1TerminalCopy.innerHTML = '<i class="fa-solid fa-check"></i> <span>Đã chép</span>';
-                setTimeout(() => { btnStep1TerminalCopy.innerHTML = origHtml; }, 1500);
-            });
         });
     }
 
@@ -1687,17 +1750,45 @@ document.addEventListener("DOMContentLoaded", () => {
         }
     }
 
+    let modalProjectFilter = "all";
+    const modalProjectsFilters = document.getElementById("modal-projects-filters");
+    if (modalProjectsFilters) {
+        modalProjectsFilters.querySelectorAll(".home-filter-tab").forEach(btn => {
+            btn.addEventListener("click", () => {
+                modalProjectsFilters.querySelectorAll(".home-filter-tab").forEach(b => b.classList.remove("active"));
+                btn.classList.add("active");
+                modalProjectFilter = btn.dataset.type || "all";
+                fetchProjectsList(projectSearchInput ? projectSearchInput.value : "");
+            });
+        });
+    }
+
+    function openModalProjectsWithType(type = "all") {
+        if (!modalProjects) return;
+        modalProjectFilter = type;
+        if (modalProjectsFilters) {
+            modalProjectsFilters.querySelectorAll(".home-filter-tab").forEach(b => {
+                if (b.dataset.type === type) b.classList.add("active");
+                else b.classList.remove("active");
+            });
+        }
+        modalProjects.classList.remove("d-none");
+        fetchProjectsList("");
+    }
+    window.openModalProjectsWithType = openModalProjectsWithType;
+
     async function fetchProjectsList(searchQuery = "") {
         if (!projectListContainer) return;
         projectListContainer.innerHTML = `<div style="text-align:center; padding: 2.5rem; color: var(--text-muted);"><i class="fa-solid fa-spinner fa-spin"></i> Đang tải danh sách...</div>`;
         try {
-            const res = await fetch("/api/projects");
+            const fetchUrl = `/api/projects${modalProjectFilter && modalProjectFilter !== 'all' ? `?type=${modalProjectFilter}` : ''}`;
+            const res = await fetch(fetchUrl);
             if (!res.ok) throw new Error("Không thể tải danh sách dự án.");
             let list = await res.json();
 
             if (searchQuery && searchQuery.trim()) {
                 const q = searchQuery.toLowerCase().trim();
-                list = list.filter(p => (p.name || "").toLowerCase().includes(q) || (p.video_url || "").toLowerCase().includes(q));
+                list = list.filter(p => (p.name || "").toLowerCase().includes(q) || (p.video_url || "").toLowerCase().includes(q) || (p.preview_text || "").toLowerCase().includes(q));
             }
 
             if (list.length === 0) {
@@ -1712,17 +1803,45 @@ document.addEventListener("DOMContentLoaded", () => {
             list.forEach(p => {
                 const card = document.createElement("div");
                 card.className = "project-card";
-                if (p.id === currentProjectId) {
+                const pType = p.type || "dubber";
+
+                if (p.id === currentProjectId || p.id === window.currentStoryProjectId || p.id === window.currentSocialProjectId) {
                     card.classList.add("active-project");
                 }
 
                 let statusBadgeHTML = "";
                 if (p.status === "completed") {
                     statusBadgeHTML = `<span class="project-card-status-badge status-badge-done"><i class="fa-solid fa-check"></i> Hoàn Thành</span>`;
-                } else if (p.current_step > 1 || (p.completed_steps && p.completed_steps.length > 0)) {
+                } else if (pType === "dubber" && (p.current_step > 1 || (p.completed_steps && p.completed_steps.length > 0))) {
                     statusBadgeHTML = `<span class="project-card-status-badge status-badge-progress">Đang làm: Bước ${p.current_step || 1}</span>`;
                 } else {
                     statusBadgeHTML = `<span class="project-card-status-badge status-badge-draft">Mới tạo</span>`;
+                }
+
+                let typeBadgeHTML = "";
+                let typeMetaHTML = "";
+                if (pType === "story_tts") {
+                    typeBadgeHTML = `<span class="home-project-step-pill type-story_tts"><i class="fa-solid fa-microphone-lines"></i> Đọc Truyện</span>`;
+                    typeMetaHTML = `
+                        <span class="project-card-meta-item"><i class="fa-brands fa-tiktok"></i> ${escapeHtml(p.voice_name || 'TikTok Voice')}</span>
+                        ${p.has_audio ? '<span class="project-card-meta-item text-success"><i class="fa-solid fa-music"></i> Có Audio MP3</span>' : ''}
+                        ${p.preview_text ? `<span class="project-card-url" style="color:#94a3b8;"><i class="fa-solid fa-quote-left"></i> ${escapeHtml(p.preview_text)}</span>` : ''}
+                    `;
+                } else if (pType === "social_video") {
+                    typeBadgeHTML = `<span class="home-project-step-pill type-social_video"><i class="fa-brands fa-threads"></i> Threads/FB</span>`;
+                    typeMetaHTML = `
+                        <span class="project-card-meta-item"><i class="fa-solid fa-user"></i> ${escapeHtml(p.author_name || 'Tác giả')}</span>
+                        ${p.has_dubbed_video ? '<span class="project-card-meta-item text-success"><i class="fa-solid fa-film"></i> Có Video 9:16</span>' : ''}
+                        ${p.preview_text ? `<span class="project-card-url" style="color:#94a3b8;"><i class="fa-solid fa-quote-left"></i> ${escapeHtml(p.preview_text)}</span>` : ''}
+                    `;
+                } else {
+                    typeBadgeHTML = `<span class="home-project-step-pill"><i class="fa-solid fa-film"></i> Dịch Phim</span>`;
+                    typeMetaHTML = `
+                        <span class="project-card-meta-item"><i class="fa-solid fa-closed-captioning"></i> ${p.segments_count || 0} câu sub</span>
+                        ${p.has_raw_video ? '<span class="project-card-meta-item text-success"><i class="fa-solid fa-video"></i> Video gốc</span>' : ''}
+                        ${p.has_dubbed_video ? '<span class="project-card-meta-item text-success"><i class="fa-solid fa-film"></i> Đã xuất MP4</span>' : ''}
+                        ${p.video_url ? `<span class="project-card-url" title="${escapeHtml(p.video_url)}"><i class="fa-solid fa-link"></i> ${escapeHtml(p.video_url)}</span>` : ''}
+                    `;
                 }
 
                 const updatedDate = p.updated_at ? new Date(p.updated_at) : new Date();
@@ -1730,16 +1849,16 @@ document.addEventListener("DOMContentLoaded", () => {
 
                 card.innerHTML = `
                     <div class="project-card-main">
-                        <div class="project-card-header">
+                        <div class="project-card-header" style="gap: 0.5rem; flex-wrap: wrap;">
                             <span class="project-card-title">${escapeHtml(p.name || "Dự án không tên")}</span>
-                            ${statusBadgeHTML}
+                            <div style="display: flex; gap: 0.4rem; align-items: center;">
+                                ${typeBadgeHTML}
+                                ${statusBadgeHTML}
+                            </div>
                         </div>
                         <div class="project-card-meta">
                             <span class="project-card-meta-item"><i class="fa-regular fa-clock"></i> Sửa: ${dateStr}</span>
-                            <span class="project-card-meta-item"><i class="fa-solid fa-closed-captioning"></i> ${p.segments_count || 0} câu sub</span>
-                            ${p.has_raw_video ? '<span class="project-card-meta-item text-success"><i class="fa-solid fa-video"></i> Video gốc</span>' : ''}
-                            ${p.has_dubbed_video ? '<span class="project-card-meta-item text-success"><i class="fa-solid fa-film"></i> Đã xuất MP4</span>' : ''}
-                            ${p.video_url ? `<span class="project-card-url" title="${escapeHtml(p.video_url)}"><i class="fa-solid fa-link"></i> ${escapeHtml(p.video_url)}</span>` : ''}
+                            ${typeMetaHTML}
                         </div>
                     </div>
                     <div class="project-card-actions">
@@ -1752,13 +1871,29 @@ document.addEventListener("DOMContentLoaded", () => {
                     </div>
                 `;
 
+                const handleOpenCard = async () => {
+                    modalProjects.classList.add("d-none");
+                    if (pType === "story_tts") {
+                        switchView("story-tts");
+                        if (typeof window.loadStoryProject === "function") {
+                            await window.loadStoryProject(p.id);
+                        }
+                    } else if (pType === "social_video") {
+                        switchView("social-video");
+                        if (typeof window.loadSocialProject === "function") {
+                            await window.loadSocialProject(p.id);
+                        }
+                    } else {
+                        switchView("dubber");
+                        await openProject(p.id, false);
+                    }
+                };
+
                 card.querySelector(".btn-card-open").addEventListener("click", (e) => {
                     e.stopPropagation();
-                    openProject(p.id, true);
+                    handleOpenCard();
                 });
-                card.addEventListener("click", () => {
-                    openProject(p.id, true);
-                });
+                card.addEventListener("click", handleOpenCard);
 
                 card.querySelector(".btn-card-del").addEventListener("click", async (e) => {
                     e.stopPropagation();
@@ -1776,11 +1911,15 @@ document.addEventListener("DOMContentLoaded", () => {
                                 await createNewProject(false);
                             }
                             fetchProjectsList(projectSearchInput ? projectSearchInput.value : "");
+                            if (typeof loadHomeRecentProjects === "function") {
+                                await loadHomeRecentProjects();
+                            }
+                            showToast("Đã xóa dự án thành công.", "success");
                         } else {
-                            alert("Xóa dự án thất bại.");
+                            showToast("Không thể xóa dự án.", "error");
                         }
                     } catch (err) {
-                        alert("Lỗi khi xóa: " + err.message);
+                        showToast("Lỗi khi xóa: " + err.message, "error");
                     }
                 });
 
@@ -4740,6 +4879,19 @@ document.addEventListener("DOMContentLoaded", () => {
         }
     }
 
+    let homeProjectsFilterType = "all";
+    const homeFilterBar = document.querySelector(".home-projects-section .home-projects-filter-bar");
+    if (homeFilterBar) {
+        homeFilterBar.querySelectorAll(".home-filter-tab").forEach(tab => {
+            tab.addEventListener("click", () => {
+                homeFilterBar.querySelectorAll(".home-filter-tab").forEach(t => t.classList.remove("active"));
+                tab.classList.add("active");
+                homeProjectsFilterType = tab.dataset.type || "all";
+                loadHomeRecentProjects();
+            });
+        });
+    }
+
     async function loadHomeRecentProjects() {
         const listContainer = document.getElementById("home-recent-projects-list");
         const emptyContainer = document.getElementById("home-projects-empty");
@@ -4747,7 +4899,8 @@ document.addEventListener("DOMContentLoaded", () => {
 
         try {
             listContainer.innerHTML = `<div style="grid-column: 1/-1; text-align: center; padding: 2rem; color: #94a3b8;"><i class="fa-solid fa-spinner fa-spin"></i> Đang tải danh sách dự án gần đây...</div>`;
-            const res = await fetch("/api/projects");
+            const fetchUrl = `/api/projects${homeProjectsFilterType && homeProjectsFilterType !== 'all' ? `?type=${homeProjectsFilterType}` : ''}`;
+            const res = await fetch(fetchUrl);
             if (!res.ok) throw new Error("Không thể tải danh sách dự án.");
             const projects = await res.json();
 
@@ -4760,31 +4913,44 @@ document.addEventListener("DOMContentLoaded", () => {
             if (emptyContainer) emptyContainer.classList.add("d-none");
             listContainer.innerHTML = "";
 
-            projects.slice(0, 12).forEach(p => {
+            projects.slice(0, 16).forEach(p => {
                 const card = document.createElement("div");
                 card.className = "home-project-card";
                 card.dataset.id = p.id;
+                const pType = p.type || "dubber";
 
                 const stepName = STEP_NAMES[p.current_step] || `Bước ${p.current_step || 1}`;
                 const title = escapeHtml(p.name || "Dự án không tên");
                 const timeStr = p.updated_at ? new Date(p.updated_at).toLocaleString("vi-VN", { hour: '2-digit', minute: '2-digit', day: '2-digit', month: '2-digit' }) : "Mới đây";
 
+                let iconHTML = `<div class="home-project-icon type-dubber"><i class="fa-solid fa-film"></i></div>`;
+                let stepPillHTML = `<span class="home-project-step-pill"><i class="fa-solid fa-list-check"></i> ${stepName}</span>`;
+                let metaHTML = `<span><i class="fa-regular fa-clock"></i> ${timeStr}</span>`;
+
+                if (pType === "story_tts") {
+                    iconHTML = `<div class="home-project-icon type-story_tts"><i class="fa-solid fa-microphone-lines"></i></div>`;
+                    stepPillHTML = `<span class="home-project-step-pill type-story_tts"><i class="fa-solid fa-microphone-lines"></i> Đọc Truyện TTS</span>`;
+                    metaHTML = `<span><i class="fa-brands fa-tiktok"></i> ${escapeHtml(p.voice_name || 'TikTok Voice')}</span> • <span><i class="fa-regular fa-clock"></i> ${timeStr}</span>`;
+                } else if (pType === "social_video") {
+                    iconHTML = `<div class="home-project-icon type-social_video"><i class="fa-brands fa-threads"></i></div>`;
+                    stepPillHTML = `<span class="home-project-step-pill type-social_video"><i class="fa-brands fa-threads"></i> Video Threads</span>`;
+                    metaHTML = `<span><i class="fa-solid fa-user"></i> ${escapeHtml(p.author_name || 'Tác giả')}</span> • <span><i class="fa-regular fa-clock"></i> ${timeStr}</span>`;
+                }
+
                 card.innerHTML = `
                     <div class="home-project-top">
                         <div class="home-project-icon-title">
-                            <div class="home-project-icon">
-                                <i class="fa-solid fa-film"></i>
-                            </div>
+                            ${iconHTML}
                             <div style="min-width: 0;">
                                 <div class="home-project-title" title="${title}">${title}</div>
                                 <div class="home-project-meta">
-                                    <span><i class="fa-regular fa-clock"></i> ${timeStr}</span>
+                                    ${metaHTML}
                                 </div>
                             </div>
                         </div>
                     </div>
                     <div class="home-project-bottom">
-                        <span class="home-project-step-pill"><i class="fa-solid fa-list-check"></i> ${stepName}</span>
+                        ${stepPillHTML}
                         <div class="home-project-btns">
                             <button type="button" class="primary-btn btn-sm btn-accent btn-home-open-proj" title="Mở dự án này">
                                 <i class="fa-solid fa-arrow-right"></i> Tiếp Tục
@@ -4800,8 +4966,20 @@ document.addEventListener("DOMContentLoaded", () => {
                 const btnOpen = card.querySelector(".btn-home-open-proj");
                 const openHandler = async (e) => {
                     e.stopPropagation();
-                    await openProject(p.id, false);
-                    switchView("dubber");
+                    if (pType === "story_tts") {
+                        switchView("story-tts");
+                        if (typeof window.loadStoryProject === "function") {
+                            await window.loadStoryProject(p.id);
+                        }
+                    } else if (pType === "social_video") {
+                        switchView("social-video");
+                        if (typeof window.loadSocialProject === "function") {
+                            await window.loadSocialProject(p.id);
+                        }
+                    } else {
+                        switchView("dubber");
+                        await openProject(p.id, false);
+                    }
                 };
                 card.addEventListener("click", openHandler);
                 if (btnOpen) btnOpen.addEventListener("click", openHandler);
@@ -4828,12 +5006,13 @@ document.addEventListener("DOMContentLoaded", () => {
                                 if (typeof fetchProjectsList === "function") {
                                     fetchProjectsList("");
                                 }
+                                showToast("Đã xóa dự án thành công.", "success");
                             } else {
-                                alert("Không thể xóa dự án.");
+                                showToast("Không thể xóa dự án.", "error");
                             }
                         } catch (err) {
                             console.error(err);
-                            alert("Lỗi khi xóa dự án: " + err.message);
+                            showToast("Lỗi khi xóa dự án: " + err.message, "error");
                         }
                     });
                 }
@@ -5034,11 +5213,13 @@ document.addEventListener("DOMContentLoaded", () => {
         const storyWordCount = document.getElementById("story-word-count");
         const storyEstDuration = document.getElementById("story-est-duration");
 
-        const storyRewriteStyle = document.getElementById("story-rewrite-style");
-        const storyRewriteInstruction = document.getElementById("story-rewrite-instruction");
-        const btnStoryAiRewrite = document.getElementById("btn-story-ai-rewrite");
-        const storyRewriteStatus = document.getElementById("story-rewrite-status");
-        const storyRewriteStatusText = document.getElementById("story-rewrite-status-text");
+        const storyChannelName = document.getElementById("story-channel-name");
+        const storyIntroStyle = document.getElementById("story-intro-style");
+        const storyIntroText = document.getElementById("story-intro-text");
+        const btnStoryAiIntro = document.getElementById("btn-story-ai-intro");
+        const btnStoryInsertIntro = document.getElementById("btn-story-insert-intro");
+        const storyIntroStatus = document.getElementById("story-intro-status");
+        const storyIntroStatusText = document.getElementById("story-intro-status-text");
 
         const storyVoiceSelect = document.getElementById("story-voice-select");
         const btnStoryPreviewVoice = document.getElementById("btn-story-preview-voice");
@@ -5048,6 +5229,8 @@ document.addEventListener("DOMContentLoaded", () => {
         const btnStoryGenerateAudio = document.getElementById("btn-story-generate-audio");
         const storyProgressBox = document.getElementById("story-progress-box");
         const storyProgressText = document.getElementById("story-progress-text");
+        const storyProgressPercent = document.getElementById("story-progress-percent");
+        const storyProgressBar = document.getElementById("story-progress-bar");
         const storyResultBox = document.getElementById("story-result-box");
         const resultStatSentences = document.getElementById("result-stat-sentences");
         const resultStatDuration = document.getElementById("result-stat-duration");
@@ -5057,7 +5240,199 @@ document.addEventListener("DOMContentLoaded", () => {
         const btnStoryDownloadSrt = document.getElementById("btn-story-download-srt");
         const btnStoryClearAll = document.getElementById("btn-story-clear-all");
 
+        // Project Controls for Story TTS
+        const storyProjectNameDisplay = document.getElementById("story-project-name-display");
+        const storyProjectNameInput = document.getElementById("story-project-name-input");
+        const btnStoryEditProjectName = document.getElementById("btn-story-edit-project-name");
+        const storyProjectSaveStatus = document.getElementById("story-project-save-status");
+        const storyProjectSaveText = document.getElementById("story-project-save-text");
+        const btnStoryProjectOpen = document.getElementById("btn-story-project-open");
+        const btnStoryProjectNew = document.getElementById("btn-story-project-new");
+        const btnStoryProjectSave = document.getElementById("btn-story-project-save");
+        let currentStoryProjectId = localStorage.getItem("current_story_project_id") || null;
+        window.currentStoryProjectId = currentStoryProjectId;
+
         if (!storyRawText) return;
+
+        // Project Management Methods for Story TTS
+        async function createNewStoryProject(silent = false) {
+            try {
+                const nowStr = `${new Date().toLocaleDateString('vi-VN')} ${new Date().toLocaleTimeString('vi-VN', {hour: '2-digit', minute: '2-digit'})}`;
+                const res = await fetch("/api/projects", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({
+                        type: "story_tts",
+                        name: `Truyện ${nowStr}`,
+                        data: {
+                            story_text: "",
+                            channel_name: storyChannelName ? storyChannelName.value.trim() : "Hạt Tiêu Vietsub",
+                            intro_style: storyIntroStyle ? storyIntroStyle.value : "storytelling",
+                            intro_text: storyIntroText ? storyIntroText.value : "",
+                            source_type: "text",
+                            youtube_url: "",
+                            voice: storyVoiceSelect ? storyVoiceSelect.value : "capcut_cogaithoatngon",
+                            pause_ms: storyPauseSlider ? parseInt(storyPauseSlider.value, 10) : 350
+                        }
+                    })
+                });
+                if (!res.ok) throw new Error("Không thể tạo dự án truyện mới.");
+                const p = await res.json();
+                currentStoryProjectId = p.id;
+                window.currentStoryProjectId = p.id;
+                localStorage.setItem("current_story_project_id", p.id);
+                if (storyProjectNameDisplay) storyProjectNameDisplay.textContent = p.name || "Dự án đọc truyện";
+                if (storyProjectNameInput) storyProjectNameInput.value = p.name || "";
+                if (storyRawText) storyRawText.value = "";
+                if (inputYtUrl) inputYtUrl.value = "";
+                updateStoryStats();
+                if (storyResultBox) storyResultBox.classList.add("d-none");
+                if (window.storyTerminal) window.storyTerminal.clear();
+                if (!silent) showToast("Đã tạo dự án đọc truyện mới!", "success");
+                return p;
+            } catch (e) {
+                if (!silent) showToast(e.message, "error");
+            }
+        }
+
+        async function saveStoryProject(manual = false) {
+            if (!currentStoryProjectId) {
+                await createNewStoryProject(true);
+                if (!currentStoryProjectId) return;
+            }
+            const name = (storyProjectNameDisplay ? storyProjectNameDisplay.textContent.trim() : "") || "Dự án đọc truyện";
+            const payload = {
+                id: currentStoryProjectId,
+                name: name,
+                type: "story_tts",
+                status: "saved",
+                data: {
+                    story_text: storyRawText ? storyRawText.value : "",
+                    channel_name: storyChannelName ? storyChannelName.value.trim() : "Hạt Tiêu Vietsub",
+                    intro_style: storyIntroStyle ? storyIntroStyle.value : "storytelling",
+                    intro_text: storyIntroText ? storyIntroText.value : "",
+                    source_type: (tabSourceYt && tabSourceYt.classList.contains("active")) ? "youtube" : "text",
+                    youtube_url: inputYtUrl ? inputYtUrl.value.trim() : "",
+                    voice: storyVoiceSelect ? storyVoiceSelect.value : "capcut_cogaithoatngon",
+                    pause_ms: storyPauseSlider ? parseInt(storyPauseSlider.value, 10) : 350
+                }
+            };
+            try {
+                if (storyProjectSaveText) storyProjectSaveText.textContent = "Đang lưu...";
+                const res = await fetch(`/api/projects/${currentStoryProjectId}/save`, {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify(payload)
+                });
+                if (res.ok) {
+                    if (storyProjectSaveText) storyProjectSaveText.textContent = manual ? "Đã lưu thành công" : "Đã tự động lưu";
+                    if (manual) showToast("Đã lưu dự án đọc truyện thành công!", "success");
+                }
+            } catch (e) {
+                if (storyProjectSaveText) storyProjectSaveText.textContent = "Lỗi khi lưu";
+            }
+        }
+
+        async function loadStoryProject(projectId) {
+            try {
+                const res = await fetch(`/api/projects/${projectId}`);
+                if (!res.ok) throw new Error("Không thể tải dự án đọc truyện.");
+                const p = await res.json();
+                currentStoryProjectId = p.id;
+                window.currentStoryProjectId = p.id;
+                localStorage.setItem("current_story_project_id", p.id);
+                if (storyProjectNameDisplay) storyProjectNameDisplay.textContent = p.name || "Dự án đọc truyện";
+                if (storyProjectNameInput) storyProjectNameInput.value = p.name || "";
+
+                const d = p.data || {};
+                if (storyRawText) storyRawText.value = d.story_text || "";
+                if (storyChannelName && d.channel_name) storyChannelName.value = d.channel_name;
+                if (storyIntroStyle && d.intro_style) storyIntroStyle.value = d.intro_style;
+                if (storyIntroText && d.intro_text) storyIntroText.value = d.intro_text;
+                if (inputYtUrl && d.youtube_url) inputYtUrl.value = d.youtube_url;
+                if (storyVoiceSelect && d.voice) storyVoiceSelect.value = d.voice;
+                if (storyPauseSlider && d.pause_ms) {
+                    storyPauseSlider.value = d.pause_ms;
+                    if (storyPauseVal) storyPauseVal.textContent = `${d.pause_ms} ms`;
+                }
+                updateStoryStats();
+
+                if (window.storyTerminal) {
+                    window.storyTerminal.clear();
+                    if (Array.isArray(p.logs) && p.logs.length > 0) {
+                        window.storyTerminal.updateLogs(p.logs);
+                    }
+                }
+
+                if (p.has_audio || d.audio_url) {
+                    const audioUrl = d.audio_url || `/api/story-tts/download/${p.id}/audio`;
+                    const srtUrl = d.srt_url || `/api/story-tts/download/${p.id}/srt`;
+                    if (storyResultBox) storyResultBox.classList.remove("d-none");
+                    if (storyAudioPlayer) { storyAudioPlayer.src = audioUrl; storyAudioPlayer.load(); }
+                    if (btnStoryDownloadMp3) btnStoryDownloadMp3.href = audioDownloadUrl = audioUrl;
+                    if (btnStoryDownloadSrt) btnStoryDownloadSrt.href = srtUrl;
+                    if (resultStatSentences) resultStatSentences.innerHTML = `<i class="fa-solid fa-list-ol"></i> ${d.total_sentences || 0} câu`;
+                    if (resultStatDuration && d.total_duration_sec) {
+                        const totalSec = Math.round(d.total_duration_sec);
+                        resultStatDuration.innerHTML = `<i class="fa-solid fa-clock"></i> ${Math.floor(totalSec/60)}:${(totalSec%60).toString().padStart(2, '0')}`;
+                    }
+                    if (resultStatVoice) resultStatVoice.innerHTML = `<i class="fa-brands fa-tiktok"></i> ${d.voice || 'TikTok Voice'}`;
+                } else {
+                    if (storyResultBox) storyResultBox.classList.add("d-none");
+                }
+                showToast(`Đã mở dự án đọc truyện: "${p.name}"`, "info");
+            } catch (e) {
+                showToast(e.message, "error");
+            }
+        }
+        window.loadStoryProject = loadStoryProject;
+
+        // Project Rename Listeners
+        if (btnStoryEditProjectName && storyProjectNameDisplay && storyProjectNameInput) {
+            btnStoryEditProjectName.addEventListener("click", () => {
+                storyProjectNameInput.value = storyProjectNameDisplay.textContent.trim();
+                storyProjectNameDisplay.classList.add("d-none");
+                storyProjectNameInput.classList.remove("d-none");
+                storyProjectNameInput.focus();
+            });
+
+            const finalizeStoryName = async () => {
+                const newName = storyProjectNameInput.value.trim() || "Dự án đọc truyện";
+                storyProjectNameDisplay.textContent = newName;
+                storyProjectNameInput.classList.add("d-none");
+                storyProjectNameDisplay.classList.remove("d-none");
+                await saveStoryProject(false);
+            };
+
+            storyProjectNameInput.addEventListener("blur", finalizeStoryName);
+            storyProjectNameInput.addEventListener("keydown", (e) => {
+                if (e.key === "Enter") finalizeStoryName();
+                if (e.key === "Escape") {
+                    storyProjectNameInput.classList.add("d-none");
+                    storyProjectNameDisplay.classList.remove("d-none");
+                }
+            });
+        }
+
+        if (btnStoryProjectNew) {
+            btnStoryProjectNew.addEventListener("click", async () => {
+                await createNewStoryProject(false);
+            });
+        }
+
+        if (btnStoryProjectOpen) {
+            btnStoryProjectOpen.addEventListener("click", () => {
+                if (typeof window.openModalProjectsWithType === "function") {
+                    window.openModalProjectsWithType("story_tts");
+                }
+            });
+        }
+
+        if (btnStoryProjectSave) {
+            btnStoryProjectSave.addEventListener("click", async () => {
+                await saveStoryProject(true);
+            });
+        }
 
         // Source Tab Switching
         if (tabSourceText && tabSourceYt && boxSourceYt) {
@@ -5134,44 +5509,105 @@ document.addEventListener("DOMContentLoaded", () => {
             });
         }
 
-        // AI Rewriter
-        if (btnStoryAiRewrite) {
-            btnStoryAiRewrite.addEventListener("click", async () => {
-                const text = storyRawText.value.trim();
-                if (!text) {
-                    showToast("Vui lòng nhập hoặc dán nội dung kịch bản trước khi xào nấu.", "warning");
-                    return;
-                }
+        // Channel Intro Management
+        const INTRO_TEMPLATES = {
+            storytelling: "Chào mừng các bạn đã quay trở lại với {channel}. Hôm nay, hãy cùng lắng nghe và đắm chìm vào câu chuyện tiếp theo ngay sau đây.",
+            dramatic: "{channel} xin chào tất cả các bạn! Hôm nay chúng ta sẽ cùng bước vào một câu chuyện vô cùng kịch tính và khó đoán. Đừng quên bấm theo dõi kênh để không bỏ lỡ những diễn biến hấp dẫn nhất.",
+            review: "Xin chào các bạn, chào mừng đã đến với {channel}. Ngay sau đây, mình sẽ gửi tới các bạn bản tóm tắt trọn vẹn và cuốn hút nhất của câu chuyện này.",
+            short: "Chào mừng các bạn đến với kênh {channel}! Cùng theo dõi câu chuyện ngày hôm nay nhé.",
+            custom: ""
+        };
 
-                const style = storyRewriteStyle ? storyRewriteStyle.value : "storytelling";
-                const custom_instruction = storyRewriteInstruction ? storyRewriteInstruction.value.trim() : "";
+        function refreshIntroPreview(force = false) {
+            if (!storyIntroStyle || !storyIntroText) return;
+            const style = storyIntroStyle.value;
+            if (style === "custom" && !force) return;
+            const channel = (storyChannelName && storyChannelName.value.trim()) || "Hạt Tiêu Vietsub";
+            const template = INTRO_TEMPLATES[style] || INTRO_TEMPLATES.storytelling;
+            storyIntroText.value = template.replace(/{channel}/g, channel);
+        }
 
-                btnStoryAiRewrite.disabled = true;
-                if (storyRewriteStatus) {
-                    storyRewriteStatus.classList.remove("d-none");
-                    if (storyRewriteStatusText) storyRewriteStatusText.textContent = "AI đang xào nấu kịch bản, lọc bỏ rác video và viết lại...";
+        if (storyChannelName) {
+            const savedChannel = localStorage.getItem("story_channel_name");
+            if (savedChannel) {
+                storyChannelName.value = savedChannel;
+            }
+            storyChannelName.addEventListener("input", () => {
+                const val = storyChannelName.value.trim();
+                localStorage.setItem("story_channel_name", val || "Hạt Tiêu Vietsub");
+                refreshIntroPreview(false);
+            });
+        }
+
+        if (storyIntroStyle) {
+            storyIntroStyle.addEventListener("change", () => {
+                refreshIntroPreview(true);
+            });
+        }
+
+        // Initialize preview on load
+        refreshIntroPreview(true);
+
+        // AI Intro Generator Hook
+        if (btnStoryAiIntro) {
+            btnStoryAiIntro.addEventListener("click", async () => {
+                const channel_name = (storyChannelName && storyChannelName.value.trim()) || "Hạt Tiêu Vietsub";
+                const story_text = storyRawText ? storyRawText.value.trim() : "";
+                const style = storyIntroStyle ? storyIntroStyle.value : "storytelling";
+
+                btnStoryAiIntro.disabled = true;
+                if (storyIntroStatus) {
+                    storyIntroStatus.classList.remove("d-none");
+                    if (storyIntroStatusText) storyIntroStatusText.textContent = "AI đang sáng tạo lời dẫn hook giới thiệu kênh...";
                 }
 
                 try {
-                    const res = await fetch("/api/story-tts/rewrite", {
+                    const res = await fetch("/api/story-tts/generate-intro", {
                         method: "POST",
                         headers: { "Content-Type": "application/json" },
-                        body: JSON.stringify({ text, style, custom_instruction })
+                        body: JSON.stringify({ channel_name, story_text, style })
                     });
                     const data = await res.json();
                     if (!res.ok || data.status !== "ok") {
-                        throw new Error(data.message || "Lỗi khi xào nấu kịch bản.");
+                        throw new Error(data.message || "Lỗi khi sinh lời giới thiệu kênh.");
                     }
 
-                    storyRawText.value = data.rewritten_text;
-                    updateStoryStats();
-                    showToast(`Đã xào nấu kịch bản thành công bằng ${data.engine}!`, "success");
+                    if (storyIntroText) {
+                        storyIntroText.value = data.intro_text;
+                    }
+                    showToast(`Đã tạo câu giới thiệu kênh bằng ${data.engine}!`, "success");
                 } catch (e) {
-                    showToast(e.message || "Không thể xào nấu kịch bản.", "error");
+                    showToast(e.message || "Không thể tạo lời dẫn kênh.", "error");
                 } finally {
-                    btnStoryAiRewrite.disabled = false;
-                    if (storyRewriteStatus) storyRewriteStatus.classList.add("d-none");
+                    btnStoryAiIntro.disabled = false;
+                    if (storyIntroStatus) storyIntroStatus.classList.add("d-none");
                 }
+            });
+        }
+
+        // Insert Intro into Script Textarea
+        if (btnStoryInsertIntro) {
+            btnStoryInsertIntro.addEventListener("click", () => {
+                if (!storyIntroText) return;
+                const introText = storyIntroText.value.trim();
+                if (!introText) {
+                    showToast("Vui lòng nhập hoặc chọn nội dung đoạn giới thiệu kênh trước khi chèn.", "warning");
+                    return;
+                }
+
+                const currentScript = storyRawText.value.trim();
+                if (currentScript.startsWith(introText)) {
+                    showToast("Đoạn giới thiệu này đã có sẵn ở đầu kịch bản rồi!", "info");
+                    return;
+                }
+
+                if (currentScript) {
+                    storyRawText.value = introText + "\n\n" + currentScript;
+                } else {
+                    storyRawText.value = introText;
+                }
+                updateStoryStats();
+                showToast("Đã chèn đoạn giới thiệu kênh vào đầu kịch bản!", "success");
             });
         }
 
@@ -5213,7 +5649,69 @@ document.addEventListener("DOMContentLoaded", () => {
             });
         }
 
-        // Synthesize Full Story Audio (MP3 + SRT)
+        // Synthesize Full Story Audio (MP3 + SRT) with Background Polling & Terminal Progress
+        function pollStorySynthesizeTask(taskId) {
+            let pollTimer = setInterval(async () => {
+                try {
+                    const sRes = await fetch(`/api/story-tts/status/${taskId}`);
+                    if (!sRes.ok) return;
+                    const sData = await sRes.json();
+
+                    const prog = Math.max(0, Math.min(100, sData.progress || 0));
+                    if (storyProgressBar) storyProgressBar.style.width = `${prog}%`;
+                    if (storyProgressPercent) storyProgressPercent.textContent = `${prog}%`;
+                    if (storyProgressText) storyProgressText.textContent = sData.message || "Đang xử lý...";
+
+                    if (window.storyTerminal && Array.isArray(sData.logs)) {
+                        window.storyTerminal.updateLogs(sData.logs);
+                    }
+
+                    if (sData.status === "completed") {
+                        clearInterval(pollTimer);
+                        btnStoryGenerateAudio.disabled = false;
+                        if (storyProgressBox) storyProgressBox.classList.add("d-none");
+                        if (window.storyTerminal) window.storyTerminal.setStatus("Hoàn tất", "tag-completed");
+
+                        const resData = sData.result || {};
+                        if (storyResultBox) storyResultBox.classList.remove("d-none");
+                        if (resultStatSentences) resultStatSentences.innerHTML = `<i class="fa-solid fa-list-ol"></i> ${resData.total_sentences || 0} câu`;
+
+                        const totalSec = Math.round(resData.total_duration_sec || 0);
+                        const durMins = Math.floor(totalSec / 60);
+                        const durSecs = totalSec % 60;
+                        const durStr = `${durMins}:${durSecs.toString().padStart(2, '0')}`;
+                        if (resultStatDuration) resultStatDuration.innerHTML = `<i class="fa-solid fa-clock"></i> ${durStr}`;
+                        if (resultStatVoice) resultStatVoice.innerHTML = `<i class="fa-brands fa-tiktok"></i> ${resData.voice_name || resData.voice || 'TikTok Voice'}`;
+
+                        const audioDownloadUrl = resData.audio_url || `/api/story-tts/download/${taskId}/audio`;
+                        const srtDownloadUrl = resData.srt_url || `/api/story-tts/download/${taskId}/srt`;
+
+                        if (storyAudioPlayer) {
+                            storyAudioPlayer.src = audioDownloadUrl;
+                            storyAudioPlayer.load();
+                        }
+                        if (btnStoryDownloadMp3) btnStoryDownloadMp3.href = audioDownloadUrl;
+                        if (btnStoryDownloadSrt) btnStoryDownloadSrt.href = srtDownloadUrl;
+
+                        await saveStoryProject(false);
+                        showToast("🎉 Đã tạo hoàn tất bản thu âm và phụ đề SRT!", "success");
+                    } else if (sData.status === "failed") {
+                        clearInterval(pollTimer);
+                        btnStoryGenerateAudio.disabled = false;
+                        if (storyProgressBox) storyProgressBox.classList.add("d-none");
+                        if (window.storyTerminal) window.storyTerminal.setStatus("Lỗi", "tag-error");
+                        showToast(sData.error || sData.message || "Lỗi tạo audio kịch bản.", "error");
+                    } else {
+                        if (window.storyTerminal) {
+                            window.storyTerminal.setStatus(`Đang xử lý ${prog}%`, "tag-running");
+                        }
+                    }
+                } catch (pe) {
+                    console.warn("Poll story error:", pe);
+                }
+            }, 600);
+        }
+
         if (btnStoryGenerateAudio) {
             btnStoryGenerateAudio.addEventListener("click", async () => {
                 const text = storyRawText.value.trim();
@@ -5222,52 +5720,48 @@ document.addEventListener("DOMContentLoaded", () => {
                     return;
                 }
 
+                if (!currentStoryProjectId) {
+                    await createNewStoryProject(true);
+                }
+
                 const voice = storyVoiceSelect ? storyVoiceSelect.value : "capcut_cogaithoatngon";
                 const pause_ms = storyPauseSlider ? parseInt(storyPauseSlider.value, 10) : 350;
 
                 btnStoryGenerateAudio.disabled = true;
                 if (storyProgressBox) storyProgressBox.classList.remove("d-none");
+                if (storyProgressBar) storyProgressBar.style.width = "2%";
+                if (storyProgressPercent) storyProgressPercent.textContent = "2%";
+                if (storyProgressText) storyProgressText.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Đang xếp hàng tác vụ thu âm...';
                 if (storyResultBox) storyResultBox.classList.add("d-none");
-                if (storyProgressText) storyProgressText.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Đang phân tích câu, sinh giọng đọc TikTok và ghép nối...';
+
+                if (window.storyTerminal) {
+                    window.storyTerminal.clear();
+                    window.storyTerminal.setStatus("Đang khởi tạo...", "tag-running");
+                }
 
                 try {
                     const res = await fetch("/api/story-tts/synthesize", {
                         method: "POST",
                         headers: { "Content-Type": "application/json" },
-                        body: JSON.stringify({ text, voice, pause_ms })
+                        body: JSON.stringify({
+                            text,
+                            voice,
+                            pause_ms,
+                            project_id: currentStoryProjectId
+                        })
                     });
                     const data = await res.json();
-                    if (!res.ok || data.status !== "ok") {
+                    if (!res.ok || (data.status !== "ok" && data.status !== "queued")) {
                         throw new Error(data.message || "Lỗi tạo audio kịch bản.");
                     }
 
-                    // Render Result
-                    if (storyResultBox) storyResultBox.classList.remove("d-none");
-                    if (resultStatSentences) resultStatSentences.innerHTML = `<i class="fa-solid fa-list-ol"></i> ${data.total_sentences} câu`;
-                    
-                    const totalSec = Math.round(data.total_duration_sec);
-                    const durMins = Math.floor(totalSec / 60);
-                    const durSecs = totalSec % 60;
-                    const durStr = `${durMins}:${durSecs.toString().padStart(2, '0')}`;
-                    if (resultStatDuration) resultStatDuration.innerHTML = `<i class="fa-solid fa-clock"></i> ${durStr}`;
-                    if (resultStatVoice) resultStatVoice.innerHTML = `<i class="fa-brands fa-tiktok"></i> ${data.voice_name || voice}`;
-
-                    const audioDownloadUrl = `/api/story-tts/download/${data.task_id}/audio`;
-                    const srtDownloadUrl = `/api/story-tts/download/${data.task_id}/srt`;
-
-                    if (storyAudioPlayer) {
-                        storyAudioPlayer.src = audioDownloadUrl;
-                        storyAudioPlayer.load();
-                    }
-                    if (btnStoryDownloadMp3) btnStoryDownloadMp3.href = audioDownloadUrl;
-                    if (btnStoryDownloadSrt) btnStoryDownloadSrt.href = srtDownloadUrl;
-
-                    showToast("🎉 Đã tạo hoàn tất bản thu âm và phụ đề SRT!", "success");
+                    const taskId = data.task_id || currentStoryProjectId;
+                    pollStorySynthesizeTask(taskId);
                 } catch (e) {
-                    showToast(e.message || "Không thể tạo bản thu âm.", "error");
-                } finally {
                     btnStoryGenerateAudio.disabled = false;
                     if (storyProgressBox) storyProgressBox.classList.add("d-none");
+                    if (window.storyTerminal) window.storyTerminal.setStatus("Lỗi", "tag-error");
+                    showToast(e.message || "Không thể tạo bản thu âm.", "error");
                 }
             });
         }
@@ -5346,7 +5840,241 @@ document.addEventListener("DOMContentLoaded", () => {
         const resultVideo = document.getElementById("social-result-video");
         const btnDownloadVideo = document.getElementById("btn-social-download-video");
 
+        // Project Controls for Social Video
+        const socialProjectNameDisplay = document.getElementById("social-project-name-display");
+        const socialProjectNameInput = document.getElementById("social-project-name-input");
+        const btnSocialEditProjectName = document.getElementById("btn-social-edit-project-name");
+        const socialProjectSaveStatus = document.getElementById("social-project-save-status");
+        const socialProjectSaveText = document.getElementById("social-project-save-text");
+        const btnSocialProjectOpen = document.getElementById("btn-social-project-open");
+        const btnSocialProjectNew = document.getElementById("btn-social-project-new");
+        const btnSocialProjectSave = document.getElementById("btn-social-project-save");
+        let currentSocialProjectId = localStorage.getItem("current_social_project_id") || null;
+        window.currentSocialProjectId = currentSocialProjectId;
+
         let currentActiveMode = "quick"; // "quick" or "step"
+
+        // Project Management Methods for Social Video
+        async function createNewSocialProject(silent = false) {
+            try {
+                const nowStr = `${new Date().toLocaleDateString('vi-VN')} ${new Date().toLocaleTimeString('vi-VN', {hour: '2-digit', minute: '2-digit'})}`;
+                const res = await fetch("/api/projects", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({
+                        type: "social_video",
+                        name: `Video Threads ${nowStr}`,
+                        data: {
+                            platform: selectPlatform ? selectPlatform.value : "threads",
+                            author_name: authorName ? authorName.value.trim() : "Hạt Tiêu Vietsub",
+                            author_handle: authorHandle ? authorHandle.value.trim() : "hattieuvietsub",
+                            post_content: "",
+                            post_likes: "1.2K",
+                            post_replies: "0",
+                            comments: [],
+                            post_voice: postVoice ? postVoice.value : "capcut_cogaithoatngon",
+                            background_video: selectBgVideo ? selectBgVideo.value : "",
+                            dark_mode: themeDark ? themeDark.checked : true,
+                            source_url: inputUrl ? inputUrl.value.trim() : ""
+                        }
+                    })
+                });
+                if (!res.ok) throw new Error("Không thể tạo dự án video mới.");
+                const p = await res.json();
+                currentSocialProjectId = p.id;
+                window.currentSocialProjectId = p.id;
+                localStorage.setItem("current_social_project_id", p.id);
+
+                if (socialProjectNameDisplay) socialProjectNameDisplay.textContent = p.name || "Dự án Video Threads/FB";
+                if (socialProjectNameInput) socialProjectNameInput.value = p.name || "";
+                if (postContent) postContent.value = "";
+                if (inputUrl) inputUrl.value = "";
+                if (commentsContainer) commentsContainer.innerHTML = "";
+                if (resultSection) resultSection.classList.add("d-none");
+                if (videoPreviewWrap) videoPreviewWrap.classList.add("d-none");
+                if (window.socialTerminal) window.socialTerminal.clear();
+                if (!silent) showToast("Đã tạo dự án Video Threads/FB mới!", "success");
+                return p;
+            } catch (e) {
+                if (!silent) showToast(e.message, "error");
+            }
+        }
+
+        async function saveSocialProject(manual = false) {
+            if (!currentSocialProjectId) {
+                await createNewSocialProject(true);
+                if (!currentSocialProjectId) return;
+            }
+
+            const comments = [];
+            if (commentsContainer) {
+                const commentCards = commentsContainer.querySelectorAll(".social-comment-card");
+                commentCards.forEach((cCard, i) => {
+                    const check = cCard.querySelector(".comment-check");
+                    const cText = cCard.querySelector(".comment-content")?.value?.trim() || "";
+                    comments.push({
+                        id: `c_${i + 1}`,
+                        author: {
+                            name: cCard.querySelector(".comment-author")?.value?.trim() || `Bình luận viên ${i + 1}`
+                        },
+                        content: cText,
+                        likes: cCard.querySelector(".comment-likes")?.value?.trim() || "20",
+                        voice: cCard.querySelector(".comment-voice")?.value || "capcut_thanhnientutin",
+                        selected: check ? check.checked : true
+                    });
+                });
+            }
+
+            const name = (socialProjectNameDisplay ? socialProjectNameDisplay.textContent.trim() : "") || "Dự án Video Threads/FB";
+            const payload = {
+                id: currentSocialProjectId,
+                name: name,
+                type: "social_video",
+                status: "saved",
+                data: {
+                    platform: selectPlatform ? selectPlatform.value : "threads",
+                    author_name: authorName ? authorName.value.trim() : "Hạt Tiêu Vietsub",
+                    author_handle: authorHandle ? authorHandle.value.trim() : "hattieuvietsub",
+                    post_content: postContent ? postContent.value : "",
+                    post_likes: postLikes ? postLikes.value.trim() : "1.2K",
+                    post_replies: postReplies ? postReplies.value.trim() : String(comments.length),
+                    comments: comments,
+                    post_voice: postVoice ? postVoice.value : "capcut_cogaithoatngon",
+                    background_video: selectBgVideo ? selectBgVideo.value : "",
+                    dark_mode: themeDark ? themeDark.checked : true,
+                    source_url: inputUrl ? inputUrl.value.trim() : ""
+                }
+            };
+
+            try {
+                if (socialProjectSaveText) socialProjectSaveText.textContent = "Đang lưu...";
+                const res = await fetch(`/api/projects/${currentSocialProjectId}/save`, {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify(payload)
+                });
+                if (res.ok) {
+                    if (socialProjectSaveText) socialProjectSaveText.textContent = manual ? "Đã lưu thành công" : "Đã tự động lưu";
+                    if (manual) showToast("Đã lưu dự án video thành công!", "success");
+                }
+            } catch (e) {
+                if (socialProjectSaveText) socialProjectSaveText.textContent = "Lỗi khi lưu";
+            }
+        }
+
+        async function loadSocialProject(projectId) {
+            try {
+                const res = await fetch(`/api/projects/${projectId}`);
+                if (!res.ok) throw new Error("Không thể tải dự án video.");
+                const p = await res.json();
+                currentSocialProjectId = p.id;
+                window.currentSocialProjectId = p.id;
+                localStorage.setItem("current_social_project_id", p.id);
+
+                if (socialProjectNameDisplay) socialProjectNameDisplay.textContent = p.name || "Dự án Video Threads/FB";
+                if (socialProjectNameInput) socialProjectNameInput.value = p.name || "";
+
+                const d = p.data || {};
+                if (inputUrl && d.source_url) inputUrl.value = d.source_url;
+                if (selectPlatform && d.platform) {
+                    selectPlatform.value = d.platform;
+                    updatePlatformBadge(d.platform);
+                }
+                if (authorName && d.author_name) authorName.value = d.author_name;
+                if (authorHandle && d.author_handle) authorHandle.value = d.author_handle;
+                if (postContent && d.post_content) postContent.value = d.post_content;
+                if (postVoice && d.post_voice) postVoice.value = d.post_voice;
+                if (postLikes && d.post_likes) postLikes.value = d.post_likes;
+                if (postReplies && d.post_replies) postReplies.value = d.post_replies;
+                if (selectBgVideo && d.background_video) selectBgVideo.value = d.background_video;
+                if (themeDark && d.dark_mode !== undefined) themeDark.checked = Boolean(d.dark_mode);
+
+                if (editorSection) editorSection.classList.remove("d-none");
+
+                if (commentsContainer) {
+                    commentsContainer.innerHTML = "";
+                    if (Array.isArray(d.comments) && d.comments.length > 0) {
+                        d.comments.forEach((c, idx) => {
+                            const cEl = createCommentElement(c, idx);
+                            commentsContainer.appendChild(cEl);
+                        });
+                    }
+                }
+
+                if (window.socialTerminal) {
+                    window.socialTerminal.clear();
+                    if (Array.isArray(p.logs) && p.logs.length > 0) {
+                        window.socialTerminal.updateLogs(p.logs);
+                    }
+                }
+
+                if (p.has_dubbed_video || d.video_url) {
+                    const videoUrl = d.video_url || `/api/projects/${p.id}/download/video`;
+                    if (resultSection) resultSection.classList.remove("d-none");
+                    if (progressWrap) progressWrap.classList.add("d-none");
+                    if (videoPreviewWrap) videoPreviewWrap.classList.remove("d-none");
+                    if (resultVideo) {
+                        resultVideo.src = videoUrl;
+                        resultVideo.load();
+                    }
+                    if (btnDownloadVideo) btnDownloadVideo.href = videoUrl;
+                } else {
+                    if (videoPreviewWrap) videoPreviewWrap.classList.add("d-none");
+                }
+
+                showToast(`Đã mở dự án video: "${p.name}"`, "info");
+            } catch (e) {
+                showToast(e.message, "error");
+            }
+        }
+        window.loadSocialProject = loadSocialProject;
+
+        // Project Rename Listeners
+        if (btnSocialEditProjectName && socialProjectNameDisplay && socialProjectNameInput) {
+            btnSocialEditProjectName.addEventListener("click", () => {
+                socialProjectNameInput.value = socialProjectNameDisplay.textContent.trim();
+                socialProjectNameDisplay.classList.add("d-none");
+                socialProjectNameInput.classList.remove("d-none");
+                socialProjectNameInput.focus();
+            });
+
+            const finalizeSocialName = async () => {
+                const newName = socialProjectNameInput.value.trim() || "Dự án Video Threads/FB";
+                socialProjectNameDisplay.textContent = newName;
+                socialProjectNameInput.classList.add("d-none");
+                socialProjectNameDisplay.classList.remove("d-none");
+                await saveSocialProject(false);
+            };
+
+            socialProjectNameInput.addEventListener("blur", finalizeSocialName);
+            socialProjectNameInput.addEventListener("keydown", (e) => {
+                if (e.key === "Enter") finalizeSocialName();
+                if (e.key === "Escape") {
+                    socialProjectNameInput.classList.add("d-none");
+                    socialProjectNameDisplay.classList.remove("d-none");
+                }
+            });
+        }
+
+        if (btnSocialProjectNew) {
+            btnSocialProjectNew.addEventListener("click", async () => {
+                await createNewSocialProject(false);
+            });
+        }
+
+        if (btnSocialProjectOpen) {
+            btnSocialProjectOpen.addEventListener("click", () => {
+                if (typeof window.openModalProjectsWithType === "function") {
+                    window.openModalProjectsWithType("social_video");
+                }
+            });
+        }
+
+        if (btnSocialProjectSave) {
+            btnSocialProjectSave.addEventListener("click", async () => {
+                await saveSocialProject(true);
+            });
+        }
 
         // Mode Switching
         if (btnModeQuick && btnModeStep) {
@@ -5606,7 +6334,12 @@ document.addEventListener("DOMContentLoaded", () => {
                 });
             }
 
+            if (!currentSocialProjectId) {
+                await createNewSocialProject(true);
+            }
+
             const payload = {
+                project_id: currentSocialProjectId,
                 platform: selectPlatform ? selectPlatform.value : "threads",
                 author_name: authorName ? authorName.value.trim() : "Tác giả",
                 author_handle: authorHandle ? authorHandle.value.trim() : "user",
@@ -5626,6 +6359,11 @@ document.addEventListener("DOMContentLoaded", () => {
             if (progressBar) progressBar.style.width = "5%";
             if (progressPercent) progressPercent.textContent = "5%";
             if (progressMsg) progressMsg.textContent = "Đang gửi yêu cầu khởi tạo...";
+
+            if (window.socialTerminal) {
+                window.socialTerminal.clear();
+                window.socialTerminal.setStatus("Đang gửi yêu cầu...", "tag-running");
+            }
 
             if (resultSection) {
                 resultSection.scrollIntoView({ behavior: "smooth", block: "start" });
@@ -5649,6 +6387,7 @@ document.addEventListener("DOMContentLoaded", () => {
                 pollSocialVideoTask(taskId);
 
             } catch (e) {
+                if (window.socialTerminal) window.socialTerminal.setStatus("Lỗi", "tag-error");
                 showToast(e.message, "error");
                 if (progressMsg) progressMsg.textContent = `Thất bại: ${e.message}`;
             }
@@ -5666,8 +6405,13 @@ document.addEventListener("DOMContentLoaded", () => {
                     if (progressPercent) progressPercent.textContent = `${task.progress || 0}%`;
                     if (progressMsg) progressMsg.textContent = task.message || "Đang xử lý...";
 
+                    if (window.socialTerminal && Array.isArray(task.logs)) {
+                        window.socialTerminal.updateLogs(task.logs);
+                    }
+
                     if (task.status === "completed") {
                         clearInterval(timer);
+                        if (window.socialTerminal) window.socialTerminal.setStatus("Hoàn tất", "tag-completed");
                         try { showToast("Đã tạo video hoàn tất!", "success"); } catch (e) {}
 
                         if (progressWrap) progressWrap.classList.add("d-none");
@@ -5683,14 +6427,21 @@ document.addEventListener("DOMContentLoaded", () => {
                         if (btnDownloadVideo) {
                             btnDownloadVideo.href = task.video_url;
                         }
+
+                        await saveSocialProject(false);
                     } else if (task.status === "failed") {
                         clearInterval(timer);
+                        if (window.socialTerminal) window.socialTerminal.setStatus("Lỗi", "tag-error");
                         try { showToast(`Lỗi tạo video: ${task.message}`, "error"); } catch (e) {}
+                    } else {
+                        if (window.socialTerminal) {
+                            window.socialTerminal.setStatus(`Đang xử lý ${task.progress || 0}%`, "tag-running");
+                        }
                     }
                 } catch (err) {
                     console.warn("Polling error:", err);
                 }
-            }, 1500);
+            }, 800);
         }
 
         if (btnBuildVideo) {

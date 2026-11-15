@@ -5,7 +5,7 @@ import logging
 import json
 import hashlib
 from typing import Optional, Dict, Any, List
-from fastapi import FastAPI, BackgroundTasks, HTTPException, UploadFile, File
+from fastapi import FastAPI, BackgroundTasks, HTTPException, UploadFile, File, Body
 from fastapi.responses import FileResponse, Response
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
@@ -58,6 +58,12 @@ def startup_event():
             logger.warning(f"Could not set custom asyncio exception handler: {e}")
 
     cleanup_old_tasks(max_age_hours=24)
+    cleanup_expired_projects(max_age_days=7)
+    try:
+        loop = asyncio.get_event_loop()
+        loop.create_task(periodic_projects_cleanup_worker())
+    except Exception as e:
+        logger.warning(f"Could not start periodic projects cleanup worker: {e}")
 
 
 # Define base paths
@@ -108,6 +114,7 @@ def load_project_meta(project_id: str) -> Dict[str, Any]:
     return {
         "id": project_id,
         "name": f"Dự án {datetime.now().strftime('%d/%m %H:%M')}",
+        "type": "dubber",
         "created_at": now_iso,
         "updated_at": now_iso,
         "current_step": 1,
@@ -150,6 +157,8 @@ def save_project_meta(project_id: str, updates: Dict[str, Any]) -> Dict[str, Any
     from datetime import datetime
     meta = load_project_meta(project_id)
     meta.update(updates)
+    if "type" not in meta:
+        meta["type"] = "dubber"
     meta["updated_at"] = datetime.now().isoformat()
     meta_path = get_project_meta_path(project_id)
     with open(meta_path, "w", encoding="utf-8") as f:
@@ -180,6 +189,90 @@ def cleanup_old_tasks(max_age_hours: int = 24):
 
 # In-memory cache of live project job progress
 projects_db: Dict[str, Dict[str, Any]] = {}
+
+
+def cleanup_expired_projects(max_age_days: int = 7) -> List[str]:
+    """
+    Cleans up project directories in PROJECTS_DIR older than max_age_days (default 7 days / 1 week).
+    Uses updated_at or created_at from project.json, falling back to directory mtime.
+    Skips projects currently in active processing/rendering/downloading states.
+    """
+    import time
+    from datetime import datetime
+    deleted_projects = []
+    if not os.path.exists(PROJECTS_DIR):
+        return deleted_projects
+
+    now_ts = time.time()
+    max_age_seconds = max_age_days * 86400
+
+    for item in os.listdir(PROJECTS_DIR):
+        item_path = os.path.join(PROJECTS_DIR, item)
+        if not os.path.isdir(item_path):
+            continue
+
+        # Skip if project is actively processing in memory
+        active_info = projects_db.get(item, {})
+        status = active_info.get("status")
+        if status in ("downloading", "processing", "rendering"):
+            continue
+
+        meta_path = os.path.join(item_path, "project.json")
+        last_active_ts = None
+
+        if os.path.exists(meta_path):
+            try:
+                with open(meta_path, "r", encoding="utf-8") as f:
+                    meta = json.load(f)
+
+                # Skip if metadata marks active job
+                if meta.get("status") in ("downloading", "processing", "rendering"):
+                    continue
+
+                ts_str = meta.get("updated_at") or meta.get("created_at")
+                if ts_str:
+                    try:
+                        clean_ts = ts_str.replace("Z", "+00:00")
+                        dt = datetime.fromisoformat(clean_ts)
+                        last_active_ts = dt.timestamp()
+                    except Exception:
+                        pass
+            except Exception as e:
+                logger.debug(f"Error reading project.json during cleanup for {item}: {e}")
+
+        # Fallback to directory mtime
+        if last_active_ts is None:
+            try:
+                last_active_ts = os.path.getmtime(item_path)
+            except Exception:
+                last_active_ts = now_ts
+
+        if (now_ts - last_active_ts) > max_age_seconds:
+            try:
+                shutil.rmtree(item_path, ignore_errors=True)
+                if item in projects_db:
+                    del projects_db[item]
+                deleted_projects.append(item)
+                logger.info(f"Auto-deleted project expired after {max_age_days} days: {item}")
+            except Exception as e:
+                logger.warning(f"Failed to delete expired project {item}: {e}")
+
+    return deleted_projects
+
+
+async def periodic_projects_cleanup_worker():
+    """
+    Runs periodically in the background (every 12 hours) to clean up projects older than 7 days.
+    """
+    import asyncio
+    while True:
+        try:
+            await asyncio.sleep(12 * 3600)
+            cleanup_expired_projects(max_age_days=7)
+        except asyncio.CancelledError:
+            break
+        except Exception as e:
+            logger.warning(f"Error in periodic_projects_cleanup_worker: {e}")
 
 
 def get_project_logs_path(project_id: str) -> str:
@@ -230,6 +323,8 @@ def append_project_log(project_id: str, message: str, level: str = "INFO"):
 class ProjectCreateRequest(BaseModel):
     name: Optional[str] = None
     video_url: Optional[str] = None
+    type: Optional[str] = "dubber"
+    data: Optional[Dict[str, Any]] = None
 
 
 class ProjectUpdateRequest(BaseModel):
@@ -248,6 +343,8 @@ class ProjectUpdateRequest(BaseModel):
     auto_extend_video: Optional[bool] = None
     logo_box: Optional[Dict[str, Any]] = None
     status: Optional[str] = None
+    type: Optional[str] = None
+    data: Optional[Dict[str, Any]] = None
 
 
 class ProjectDownloadRequest(BaseModel):
@@ -462,9 +559,14 @@ def process_project_transcribe_worker(
             append_project_log(project_id, "Bắt đầu quét phụ đề tiếng Trung (OCR)...", level="INFO")
             from app.ocr import extract_subtitles_from_video
 
+            last_logged_ocr = {"val": -1}
             def ocr_progress(pct):
                 projects_db[project_id]["progress"] = int(15 + (pct * 0.80))
                 projects_db[project_id]["message"] = f"Đang quét chữ phụ đề video... ({pct:.0f}%)"
+                cur_step = int(pct // 20) * 20
+                if cur_step > last_logged_ocr["val"] and cur_step > 0:
+                    last_logged_ocr["val"] = cur_step
+                    append_project_log(project_id, f"Quét OCR: Đã phân tích {cur_step}% khung hình video...", level="INFO")
 
             raw_segments = extract_subtitles_from_video(
                 input_video_path,
@@ -474,6 +576,8 @@ def process_project_transcribe_worker(
             )
             if not raw_segments:
                 raise ValueError("Không phát hiện được chữ phụ đề trong vùng khoanh chọn. Vui lòng kiểm tra lại khung khoanh vùng hoặc chuyển sang chế độ Whisper.")
+
+            append_project_log(project_id, f"Quét OCR thành công! Trích xuất được {len(raw_segments)} phân đoạn phụ đề gốc.", level="SUCCESS")
 
             raw_texts = [s["text"] for s in raw_segments]
             cleaned_zh, _ = preprocess_chinese_segments(raw_texts)
@@ -1080,6 +1184,11 @@ def api_get_rvc_models():
 class StoryExtractRequest(BaseModel):
     url: str
 
+class StoryIntroRequest(BaseModel):
+    channel_name: Optional[str] = "Hạt Tiêu Vietsub"
+    story_text: Optional[str] = ""
+    style: Optional[str] = "storytelling"
+
 class StoryRewriteRequest(BaseModel):
     text: str
     style: Optional[str] = "storytelling"
@@ -1089,6 +1198,7 @@ class StorySynthesizeRequest(BaseModel):
     text: str
     voice: Optional[str] = "capcut_cogaithoatngon"
     pause_ms: Optional[int] = 350
+    project_id: Optional[str] = None
 
 
 @app.get("/api/story-tts/voices")
@@ -1127,6 +1237,20 @@ def api_story_extract_youtube(req: StoryExtractRequest):
     return res
 
 
+@app.post("/api/story-tts/generate-intro")
+def api_story_generate_intro(req: StoryIntroRequest):
+    """
+    Generates channel introduction segment or hook using Groq/Gemini or presets.
+    """
+    from app.story_tts import generate_channel_intro
+    res = generate_channel_intro(
+        channel_name=req.channel_name,
+        story_text=req.story_text,
+        style=req.style
+    )
+    return res
+
+
 @app.post("/api/story-tts/rewrite")
 def api_story_rewrite(req: StoryRewriteRequest):
     """
@@ -1138,13 +1262,79 @@ def api_story_rewrite(req: StoryRewriteRequest):
 
 
 @app.post("/api/story-tts/synthesize")
-async def api_story_synthesize(req: StorySynthesizeRequest):
+async def api_story_synthesize(req: StorySynthesizeRequest, background_tasks: BackgroundTasks):
     """
-    Synthesizes story text into MP3 + synchronized SRT subtitle.
+    Synthesizes story text into MP3 + synchronized SRT subtitle asynchronously in the background.
     """
-    from app.story_tts import synthesize_story_session
-    res = await synthesize_story_session(req.text, voice_key=req.voice, pause_ms=req.pause_ms)
-    return res
+    import asyncio
+    from app.story_tts import synthesize_story_session, story_tasks, append_story_log
+    task_id = req.project_id or f"story_{int(time.time())}_{uuid.uuid4().hex[:6]}"
+
+    story_tasks[task_id] = {
+        "status": "processing",
+        "progress": 5,
+        "message": "Đang phân tích cấu trúc kịch bản và khởi động AI Voice...",
+        "logs": []
+    }
+    append_story_log(task_id, f"Bắt đầu khởi tạo tác vụ đọc truyện ({len(req.text)} ký tự)...", "INFO")
+
+    p_dir = os.path.join(PROJECTS_DIR, task_id)
+    if req.project_id or os.path.isdir(p_dir):
+        os.makedirs(p_dir, exist_ok=True)
+        save_project_meta(task_id, {
+            "status": "processing",
+            "type": "story_tts",
+            "data": {
+                "story_text": req.text,
+                "voice": req.voice,
+                "pause_ms": req.pause_ms
+            }
+        })
+
+    async def _run_story_bg():
+        try:
+            res = await synthesize_story_session(
+                req.text,
+                voice_key=req.voice or "capcut_cogaithoatngon",
+                pause_ms=req.pause_ms or 350,
+                task_id=task_id
+            )
+            if res.get("status") == "ok":
+                if os.path.isdir(p_dir):
+                    existing_meta = load_project_meta(task_id)
+                    p_data = existing_meta.get("data") or {}
+                    p_data.update({
+                        "story_text": req.text,
+                        "voice": req.voice,
+                        "pause_ms": req.pause_ms,
+                        "total_sentences": res.get("total_sentences"),
+                        "total_duration_sec": res.get("total_duration_sec"),
+                        "audio_url": f"/api/story-tts/download/{task_id}/audio",
+                        "srt_url": f"/api/story-tts/download/{task_id}/srt"
+                    })
+                    save_project_meta(task_id, {
+                        "status": "completed",
+                        "type": "story_tts",
+                        "data": p_data
+                    })
+        except Exception as e:
+            logger.exception(f"Story synthesis task error: {e}")
+            if task_id in story_tasks:
+                story_tasks[task_id]["status"] = "failed"
+                story_tasks[task_id]["message"] = f"Lỗi: {str(e)}"
+            append_story_log(task_id, f"Lỗi không mong muốn: {str(e)}", "ERROR")
+
+    background_tasks.add_task(_run_story_bg)
+    return {"status": "started", "task_id": task_id}
+
+
+@app.get("/api/story-tts/status/{task_id}")
+def api_get_story_task_status(task_id: str):
+    """
+    Returns real-time progress, status, message, and logs for Story TTS.
+    """
+    from app.story_tts import get_story_task_status
+    return get_story_task_status(task_id)
 
 
 @app.get("/api/story-tts/download/{task_id}/audio")
@@ -1153,10 +1343,13 @@ def api_story_download_audio(task_id: str):
     Downloads synthesized story MP3 file.
     """
     from app.story_tts import STORY_TEMP_DIR
+    p_path = os.path.join(PROJECTS_DIR, task_id, "final_story.mp3")
+    if os.path.isfile(p_path):
+        return FileResponse(p_path, media_type="audio/mpeg", filename=f"story_{task_id[:8]}.mp3")
     mp3_path = os.path.join(STORY_TEMP_DIR, task_id, "final_story.mp3")
     if not os.path.exists(mp3_path):
         raise HTTPException(status_code=404, detail="Không tìm thấy file âm thanh.")
-    return FileResponse(mp3_path, media_type="audio/mpeg", filename=f"{task_id}.mp3")
+    return FileResponse(mp3_path, media_type="audio/mpeg", filename=f"story_{task_id[:8]}.mp3")
 
 
 @app.get("/api/story-tts/download/{task_id}/srt")
@@ -1165,10 +1358,13 @@ def api_story_download_srt(task_id: str):
     Downloads synchronized story SRT file.
     """
     from app.story_tts import STORY_TEMP_DIR
+    p_path = os.path.join(PROJECTS_DIR, task_id, "final_story.srt")
+    if os.path.isfile(p_path):
+        return FileResponse(p_path, media_type="application/x-subrip", filename=f"story_{task_id[:8]}.srt")
     srt_path = os.path.join(STORY_TEMP_DIR, task_id, "final_story.srt")
     if not os.path.exists(srt_path):
         raise HTTPException(status_code=404, detail="Không tìm thấy file phụ đề.")
-    return FileResponse(srt_path, media_type="application/x-subrip", filename=f"{task_id}.srt")
+    return FileResponse(srt_path, media_type="application/x-subrip", filename=f"story_{task_id[:8]}.srt")
 
 
 # ==========================================
@@ -1176,10 +1372,12 @@ def api_story_download_srt(task_id: str):
 # ==========================================
 
 @app.get("/api/projects")
-def list_projects():
+def list_projects(type: Optional[str] = None):
     """
     Returns list of all saved projects sorted by updated_at descending.
+    Filters by type ('dubber', 'story_tts', 'social_video', 'all') if specified.
     """
+    cleanup_expired_projects(max_age_days=7)
     projects = []
     if not os.path.exists(PROJECTS_DIR):
         return []
@@ -1188,9 +1386,15 @@ def list_projects():
         item_path = os.path.join(PROJECTS_DIR, item)
         if os.path.isdir(item_path):
             meta = load_project_meta(item)
+            p_type = meta.get("type", "dubber")
+            if type and type != "all" and p_type != type:
+                continue
+
             segments_file = os.path.join(item_path, "segments.json")
             video_file = os.path.join(item_path, "input_video.mp4")
             output_file = os.path.join(item_path, "output_dubbed.mp4")
+            final_mp3 = os.path.join(item_path, "final_story.mp3")
+            social_mp4 = os.path.join(item_path, "short_video.mp4")
 
             seg_count = 0
             if os.path.exists(segments_file):
@@ -1202,7 +1406,20 @@ def list_projects():
 
             meta["segments_count"] = seg_count
             meta["has_raw_video"] = os.path.exists(video_file)
-            meta["has_dubbed_video"] = os.path.exists(output_file)
+            meta["has_dubbed_video"] = os.path.exists(output_file) or os.path.exists(social_mp4)
+            meta["has_audio"] = os.path.exists(final_mp3)
+
+            # Summaries for quick display
+            data = meta.get("data") or {}
+            if p_type == "story_tts":
+                meta["preview_text"] = (data.get("story_text") or "")[:120]
+                meta["voice_name"] = data.get("voice", "capcut_cogaithoatngon")
+                meta["author_name"] = data.get("channel_name", "")
+            elif p_type == "social_video":
+                meta["preview_text"] = (data.get("post_content") or "")[:120]
+                meta["platform"] = data.get("platform", "threads")
+                meta["author_name"] = data.get("author_name", "Tác giả")
+
             projects.append(meta)
 
     projects.sort(key=lambda x: x.get("updated_at", ""), reverse=True)
@@ -1212,56 +1429,117 @@ def list_projects():
 @app.post("/api/projects")
 def create_project(request: Optional[ProjectCreateRequest] = None):
     """
-    Creates a new empty project.
+    Creates a new empty project for dubber, story_tts, or social_video.
     """
     from datetime import datetime
     project_id = str(uuid.uuid4())
     get_project_dir(project_id)
-    name = (request.name.strip() if request and request.name and request.name.strip() else None)
-    if not name:
-        name = f"Dự án {datetime.now().strftime('%d/%m %H:%M')}"
+    p_type = (request.type if request and request.type else "dubber")
+    now_iso = datetime.now().isoformat()
+    now_date = datetime.now().strftime('%d/%m %H:%M')
 
-    meta = {
-        "id": project_id,
-        "name": name,
-        "created_at": datetime.now().isoformat(),
-        "updated_at": datetime.now().isoformat(),
-        "current_step": 1,
-        "completed_steps": [],
-        "video_url": request.video_url if request and request.video_url else "",
-        "bilibili_cookie": None,
-        "mode": "ocr",
-        "mask_box": {"x": 10, "y": 78, "w": 80, "h": 14, "enabled": True, "style": "blur"},
-        "sub_box": {"x": 10, "y": 78, "w": 80, "h": 14},
-        "sub_styling": {
-            "font_size": 48,
-            "font_name": "Nunito",
-            "primary_color": "#FFFFFF",
-            "outline_color": "#000000",
-            "outline_width": 4.0,
-            "box_style": "outline",
-            "back_color": "#000000",
-            "box_opacity": 0.75,
-            "bold": True
-        },
-        "voice": "capcut_cogaithoatngon",
-        "bg_volume": 0.15,
-        "tts_volume": 1.0,
-        "logo_box": {
-            "enabled": False,
-            "x": 80.0,
-            "y": 5.0,
-            "w": 15.0,
-            "h": 10.0,
-            "opacity": 1.0,
-            "keep_aspect": True,
-            "filename": None,
-            "image_path": None
-        },
-        "status": "draft"
-    }
+    name = (request.name.strip() if request and request.name and request.name.strip() else None)
+
+    if p_type == "story_tts":
+        if not name:
+            name = f"Truyện {now_date}"
+        meta = {
+            "id": project_id,
+            "name": name,
+            "type": "story_tts",
+            "created_at": now_iso,
+            "updated_at": now_iso,
+            "status": "draft",
+            "data": (request.data if request and request.data else {
+                "story_text": "",
+                "channel_name": "Hạt Tiêu Vietsub",
+                "intro_style": "storytelling",
+                "intro_text": "",
+                "source_type": "text",
+                "youtube_url": "",
+                "voice": "capcut_cogaithoatngon",
+                "pause_ms": 350
+            })
+        }
+    elif p_type == "social_video":
+        if not name:
+            name = f"Threads {now_date}"
+        meta = {
+            "id": project_id,
+            "name": name,
+            "type": "social_video",
+            "created_at": now_iso,
+            "updated_at": now_iso,
+            "status": "draft",
+            "data": (request.data if request and request.data else {
+                "url": "",
+                "platform": "threads",
+                "author_name": "Người dùng Threads",
+                "author_handle": "threads_user",
+                "post_content": "",
+                "post_likes": "1.5K",
+                "post_replies": "42",
+                "post_voice": "capcut_cogaithoatngon",
+                "comments": [],
+                "background_video": None,
+                "dark_mode": True
+            })
+        }
+    else:
+        if not name:
+            name = f"Dự án {now_date}"
+        meta = {
+            "id": project_id,
+            "name": name,
+            "type": "dubber",
+            "created_at": now_iso,
+            "updated_at": now_iso,
+            "current_step": 1,
+            "completed_steps": [],
+            "video_url": request.video_url if request and request.video_url else "",
+            "bilibili_cookie": None,
+            "mode": "ocr",
+            "mask_box": {"x": 10, "y": 78, "w": 80, "h": 14, "enabled": True, "style": "blur"},
+            "sub_box": {"x": 10, "y": 78, "w": 80, "h": 14},
+            "sub_styling": {
+                "font_size": 48,
+                "font_name": "Nunito",
+                "primary_color": "#FFFFFF",
+                "outline_color": "#000000",
+                "outline_width": 4.0,
+                "box_style": "outline",
+                "back_color": "#000000",
+                "box_opacity": 0.75,
+                "bold": True
+            },
+            "voice": "capcut_cogaithoatngon",
+            "bg_volume": 0.15,
+            "tts_volume": 1.0,
+            "logo_box": {
+                "enabled": False,
+                "x": 80.0,
+                "y": 5.0,
+                "w": 15.0,
+                "h": 10.0,
+                "opacity": 1.0,
+                "keep_aspect": True,
+                "filename": None,
+                "image_path": None
+            },
+            "status": "draft"
+        }
     save_project_meta(project_id, meta)
     return meta
+
+
+@app.post("/api/projects/{project_id}/save")
+def api_save_project_full(project_id: str, payload: Dict[str, Any] = Body(...)):
+    """
+    Saves or updates project state and custom data dictionary.
+    """
+    p_dir = get_project_dir(project_id, create=True)
+    meta = save_project_meta(project_id, payload)
+    return {"status": "ok", "project": meta}
 
 
 @app.get("/api/projects/{project_id}")
@@ -1285,7 +1563,10 @@ def get_project_detail(project_id: str):
 
     meta["segments"] = segments
     meta["has_raw_video"] = os.path.exists(os.path.join(p_dir, "input_video.mp4"))
-    meta["has_dubbed_video"] = os.path.exists(os.path.join(p_dir, "output_dubbed.mp4"))
+    meta["has_dubbed_video"] = os.path.exists(os.path.join(p_dir, "output_dubbed.mp4")) or os.path.exists(os.path.join(p_dir, "short_video.mp4"))
+    meta["has_audio"] = os.path.exists(os.path.join(p_dir, "final_story.mp3"))
+    meta["has_srt"] = os.path.exists(os.path.join(p_dir, "final_story.srt"))
+    meta["logs"] = get_project_logs(project_id)
     return meta
 
 
@@ -1328,6 +1609,20 @@ def delete_project_endpoint(project_id: str):
     if project_id in projects_db:
         del projects_db[project_id]
     return {"status": "ok", "message": "Đã xóa dự án thành công."}
+
+
+@app.post("/api/projects/cleanup")
+def api_cleanup_projects(max_age_days: int = 7):
+    """
+    Manually triggers cleanup of projects older than max_age_days (default 7 days / 1 week).
+    """
+    deleted = cleanup_expired_projects(max_age_days=max_age_days)
+    return {
+        "status": "ok",
+        "deleted_count": len(deleted),
+        "deleted_projects": deleted,
+        "max_age_days": max_age_days
+    }
 
 
 @app.post("/api/project/download")
@@ -1663,9 +1958,8 @@ def project_generate_tts(project_id: str, request: ProjectGenerateTTSRequest, ba
             
             def _progress_cb(done, total, text):
                 real_pct = int(done / max(1, total) * 100)
-                if done % 15 == 0 or done == total or done == 1:
-                    short_t = text[:35] + ("..." if len(text) > 35 else "")
-                    append_project_log(project_id, f"[Tạo Giọng] [{done}/{total}] ({real_pct}%): '{short_t}'")
+                short_t = text[:40] + ("..." if len(text) > 40 else "")
+                append_project_log(project_id, f"[Tạo Giọng] [{done}/{total}] ({real_pct}%): '{short_t}'")
                 if project_id in projects_db:
                     if done >= total:
                         projects_db[project_id]["progress"] = 96

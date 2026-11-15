@@ -1,5 +1,6 @@
 import os
 import uuid
+import json
 import logging
 from typing import Dict, Any, List, Optional
 from fastapi import APIRouter, BackgroundTasks, HTTPException, UploadFile, File
@@ -25,6 +26,27 @@ os.makedirs(BACKGROUNDS_DIR, exist_ok=True)
 social_tasks: Dict[str, Dict[str, Any]] = {}
 
 
+def append_social_log(task_id: str, message: str, level: str = "INFO"):
+    from datetime import datetime
+    now_str = datetime.now().strftime("%H:%M:%S")
+    clean_line = f"[{now_str}] [{level}] {message}"
+    if task_id not in social_tasks:
+        social_tasks[task_id] = {"status": "pending", "progress": 0, "logs": [], "message": message}
+    if "logs" not in social_tasks[task_id]:
+        social_tasks[task_id]["logs"] = []
+    social_tasks[task_id]["logs"].append(clean_line)
+    if len(social_tasks[task_id]["logs"]) > 400:
+        social_tasks[task_id]["logs"] = social_tasks[task_id]["logs"][-400:]
+
+    try:
+        task_dir = os.path.join(PROJECTS_DIR, task_id)
+        if os.path.isdir(task_dir):
+            with open(os.path.join(task_dir, "project_logs.json"), "w", encoding="utf-8") as f:
+                json.dump(social_tasks[task_id]["logs"], f, ensure_ascii=False, indent=2)
+    except Exception:
+        pass
+
+
 class SocialParseRequest(BaseModel):
     url: str
     cookie_raw: Optional[str] = None
@@ -42,6 +64,8 @@ class CommentItem(BaseModel):
 
 
 class SocialGenerateRequest(BaseModel):
+    project_id: Optional[str] = None
+    url: Optional[str] = ""
     platform: str = "threads"
     author_name: str = "Người dùng"
     author_handle: Optional[str] = "user"
@@ -135,10 +159,12 @@ async def _run_video_generation_task(task_id: str, req: SocialGenerateRequest):
     os.makedirs(task_dir, exist_ok=True)
 
     try:
+        append_social_log(task_id, f"Khởi tạo dự án video ngắn {req.platform.upper()}: Tác giả '{req.author_name}' (@{req.author_handle or 'user'}), {len(req.post_content)} ký tự, {len(req.comments)} bình luận.", "INFO")
+
         # Step 1: Render Post Card to PNG
         task["status"] = "rendering_cards"
-        task["message"] = "Đang tạo hình ảnh thẻ bài viết và bình luận..."
-        task["progress"] = 20
+        task["message"] = "Đang tạo hình ảnh thẻ bài viết..."
+        task["progress"] = 10
 
         post_data = {
             "author": {
@@ -154,9 +180,11 @@ async def _run_video_generation_task(task_id: str, req: SocialGenerateRequest):
 
         post_card_path = os.path.join(task_dir, "card_post.png")
         render_social_card(post_data, post_card_path, platform=req.platform, is_comment=False, dark_mode=req.dark_mode)
+        append_social_log(task_id, f"Đã xuất file thẻ bài viết chính ({os.path.basename(post_card_path)}).", "SUCCESS")
 
         # Render each comment card
         comment_card_items = []
+        total_cmts = len(req.comments)
         for idx, c in enumerate(req.comments):
             c_dict = c.model_dump()
             c_id = c_dict.get("id") or f"c_{idx+1}"
@@ -168,11 +196,20 @@ async def _run_video_generation_task(task_id: str, req: SocialGenerateRequest):
                 "content": c_dict.get("content", ""),
                 "voice": c_dict.get("voice")
             })
+            c_author = c_dict.get("author", {}).get("name", f"Bình luận #{idx+1}")
+            append_social_log(task_id, f"Đã vẽ thẻ bình luận #{idx+1} của '{c_author}' ({os.path.basename(c_card_path)}).", "INFO")
+
+            c_pct = 12 + int(((idx + 1) / max(1, total_cmts)) * 20)
+            task["progress"] = c_pct
+            task["message"] = f"Đang vẽ thẻ bình luận {idx + 1}/{total_cmts} ({c_pct}%)..."
 
         # Step 2: Generate Audio with TTS
         task["status"] = "generating_audio"
         task["message"] = "Đang tạo giọng đọc AI cho bài viết và bình luận..."
-        task["progress"] = 50
+        task["progress"] = 35
+
+        post_preview = (req.post_content[:35] + "...") if len(req.post_content) > 35 else req.post_content
+        append_social_log(task_id, f"Bắt đầu tạo giọng đọc bài viết (Giọng: {req.post_voice}): \"{post_preview}\"...", "INFO")
 
         audio_res = await generate_social_audio_timeline(
             post_text=req.post_content,
@@ -183,6 +220,8 @@ async def _run_video_generation_task(task_id: str, req: SocialGenerateRequest):
 
         master_audio_path = audio_res["master_audio_path"]
         segments = audio_res["segments"]
+        task["progress"] = 65
+        append_social_log(task_id, f"Đã tạo hoàn tất âm thanh master ({len(segments)} phân đoạn giọng đọc).", "SUCCESS")
 
         # Map start/end times to comment cards
         for seg in segments:
@@ -195,13 +234,17 @@ async def _run_video_generation_task(task_id: str, req: SocialGenerateRequest):
         # Step 3: Build Final Short Video
         task["status"] = "building_video"
         task["message"] = "Đang dựng và xuất video ngắn (FFmpeg)..."
-        task["progress"] = 75
+        task["progress"] = 72
 
         bg_video_path = None
+        bg_desc = "Gradient Động Tối"
         if req.background_video:
             candidate = os.path.join(BACKGROUNDS_DIR, req.background_video)
             if os.path.isfile(candidate):
                 bg_video_path = candidate
+                bg_desc = req.background_video
+
+        append_social_log(task_id, f"Bắt đầu dựng video 9:16 (1080x1920) với nền: {bg_desc}...", "INFO")
 
         out_video_path = os.path.join(task_dir, "short_video.mp4")
         build_social_short_video(
@@ -213,6 +256,44 @@ async def _run_video_generation_task(task_id: str, req: SocialGenerateRequest):
             background_video_path=bg_video_path
         )
 
+        task["progress"] = 95
+        append_social_log(task_id, "FFmpeg render xong! Đang cập nhật metadata dự án...", "INFO")
+
+        # Save metadata to project.json in task_dir
+        from datetime import datetime
+        now_iso = datetime.now().isoformat()
+        meta_file = os.path.join(task_dir, "project.json")
+        p_name = f"{req.author_name}: {req.post_content[:30]}..." if len(req.post_content) > 30 else f"Threads {task_id[:6]}"
+        meta_payload = {
+            "id": task_id,
+            "name": p_name,
+            "type": "social_video",
+            "created_at": now_iso,
+            "updated_at": now_iso,
+            "status": "completed",
+            "data": {
+                "url": req.url or "",
+                "platform": req.platform,
+                "author_name": req.author_name,
+                "author_handle": req.author_handle,
+                "author_avatar": req.author_avatar,
+                "time_ago": req.time_ago,
+                "post_content": req.post_content,
+                "post_likes": req.post_likes,
+                "post_replies": req.post_replies,
+                "post_voice": req.post_voice,
+                "comments": [c.model_dump() for c in req.comments],
+                "background_video": req.background_video,
+                "dark_mode": req.dark_mode,
+                "video_url": f"/api/social/video/{task_id}"
+            }
+        }
+        with open(meta_file, "w", encoding="utf-8") as f:
+            json.dump(meta_payload, f, ensure_ascii=False, indent=2)
+
+        filesize_mb = os.path.getsize(out_video_path) / (1024 * 1024) if os.path.isfile(out_video_path) else 0.0
+        append_social_log(task_id, f"🎉 Video hoàn tất! Kích thước: {filesize_mb:.2f} MB. Sẵn sàng tải về.", "SUCCESS")
+
         task["status"] = "completed"
         task["message"] = "Video đã tạo thành công!"
         task["progress"] = 100
@@ -222,6 +303,7 @@ async def _run_video_generation_task(task_id: str, req: SocialGenerateRequest):
         logger.exception(f"Social video generation failed: {e}")
         task["status"] = "failed"
         task["message"] = f"Lỗi: {str(e)}"
+        append_social_log(task_id, f"Lỗi dựng video: {str(e)}", "ERROR")
 
 
 @router.post("/generate")
@@ -230,12 +312,14 @@ async def generate_social_video(req: SocialGenerateRequest, background_tasks: Ba
     if not req.post_content.strip():
         raise HTTPException(status_code=400, detail="Nội dung bài viết không được để trống.")
 
-    task_id = str(uuid.uuid4())
+    task_id = req.project_id or str(uuid.uuid4())
     social_tasks[task_id] = {
         "status": "pending",
         "progress": 5,
-        "message": "Đang khởi tạo tác vụ tạo video..."
+        "message": "Đang khởi tạo tác vụ tạo video...",
+        "logs": []
     }
+    append_social_log(task_id, f"Bắt đầu khởi tạo dự án video ngắn {req.platform.upper()}...", "INFO")
 
     background_tasks.add_task(_run_video_generation_task, task_id, req)
     return {"task_id": task_id, "status": "started"}
@@ -246,6 +330,25 @@ def get_social_task_status(task_id: str):
     """Polls progress of a video generation task."""
     task = social_tasks.get(task_id)
     if not task:
+        task_dir = os.path.join(PROJECTS_DIR, task_id)
+        if os.path.isdir(task_dir):
+            logs = []
+            logs_file = os.path.join(task_dir, "project_logs.json")
+            if os.path.isfile(logs_file):
+                try:
+                    with open(logs_file, "r", encoding="utf-8") as f:
+                        logs = json.load(f)
+                except Exception:
+                    pass
+            video_file = os.path.join(task_dir, "short_video.mp4")
+            if os.path.isfile(video_file):
+                return {
+                    "status": "completed",
+                    "progress": 100,
+                    "message": "Video đã tạo thành công!",
+                    "logs": logs,
+                    "video_url": f"/api/social/video/{task_id}"
+                }
         raise HTTPException(status_code=404, detail="Task ID không tồn tại.")
     return task
 
@@ -253,6 +356,10 @@ def get_social_task_status(task_id: str):
 @router.get("/video/{task_id}")
 def download_social_video(task_id: str):
     """Serves the generated MP4 video file."""
+    video_path = os.path.join(PROJECTS_DIR, task_id, "short_video.mp4")
+    if not os.path.isfile(video_path):
+        raise HTTPException(status_code=404, detail="Video chưa sẵn sàng hoặc không tồn tại.")
+    return FileResponse(video_path, media_type="video/mp4", filename=f"short_{task_id[:8]}.mp4")
     video_path = os.path.join(PROJECTS_DIR, task_id, "short_video.mp4")
     if not os.path.isfile(video_path):
         raise HTTPException(status_code=404, detail="Video chưa sẵn sàng hoặc không tồn tại.")
