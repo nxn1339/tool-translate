@@ -426,6 +426,7 @@ class ProjectRenderRequest(BaseModel):
     segments: Optional[List[Dict[str, Any]]] = None
     auto_extend_video: bool = False
     logo_box: Optional[Dict[str, Any]] = None
+    text_overlays: Optional[List[Dict[str, Any]]] = None
 
 
 class TTSFreeRequest(BaseModel):
@@ -889,7 +890,8 @@ def process_project_render_worker(
     burn_subtitles: bool,
     segments: Optional[List[Dict[str, Any]]] = None,
     auto_extend_video: bool = False,
-    logo_box: Optional[Dict[str, Any]] = None
+    logo_box: Optional[Dict[str, Any]] = None,
+    text_overlays: Optional[List[Dict[str, Any]]] = None
 ):
     project_dir = get_project_dir(project_id)
     input_video_path = os.path.join(project_dir, "input_video.mp4")
@@ -965,12 +967,17 @@ def process_project_render_worker(
                 append_project_log(project_id, "[CẢNH BÁO] [Xuất Video] Bật chèn logo nhưng không tìm thấy file ảnh logo. Bỏ qua chèn logo.")
                 resolved_logo_box = None
 
-        logger.info(f"[{project_id}] Step 5: Merging audio, sub, logo and video (auto_extend={auto_extend_video}, has_logo={bool(resolved_logo_box)})...")
-        append_project_log(project_id, "[INFO] [Xuất Video] Đang ghép phụ đề, giọng đọc lồng tiếng và logo vào video bằng FFmpeg...")
+        # Resolve text_overlays if not passed directly
+        resolved_text_overlays = text_overlays
+        if resolved_text_overlays is None:
+            resolved_text_overlays = load_project_meta(project_id).get("text_overlays")
+
+        logger.info(f"[{project_id}] Step 5: Merging audio, sub, logo, text overlays and video (auto_extend={auto_extend_video}, has_logo={bool(resolved_logo_box)}, has_text_overlays={bool(resolved_text_overlays)})...")
+        append_project_log(project_id, "[INFO] [Xuất Video] Đang ghép phụ đề, giọng đọc lồng tiếng, logo và text watermark vào video bằng FFmpeg...")
         projects_db[project_id] = {
             "status": "rendering",
             "progress": 65,
-            "message": "Đang ghép lồng tiếng, logo và xử lý phụ đề video..."
+            "message": "Đang ghép lồng tiếng, logo, text watermark và xử lý phụ đề video..."
         }
         merge_audio_segments_to_video(
             original_video_path=input_video_path,
@@ -983,7 +990,8 @@ def process_project_render_worker(
             burn_subtitles=burn_subtitles,
             sub_styling=sub_styling,
             auto_extend_video=auto_extend_video,
-            logo_box=resolved_logo_box
+            logo_box=resolved_logo_box,
+            text_overlays=resolved_text_overlays
         )
 
         saved_logo_box = resolved_logo_box if resolved_logo_box else logo_box
@@ -1007,6 +1015,7 @@ def process_project_render_worker(
             "sub_styling": sub_styling,
             "burn_subtitles": burn_subtitles,
             "logo_box": saved_logo_box,
+            "text_overlays": resolved_text_overlays,
             "auto_extend_video": auto_extend_video,
             "current_step": 6,
             "completed_steps": [1, 2, 3, 4, 5, 6]
@@ -2102,7 +2111,8 @@ def project_start_render(project_id: str, request: ProjectRenderRequest, backgro
         burn_subtitles=request.burn_subtitles,
         segments=request.segments,
         auto_extend_video=request.auto_extend_video,
-        logo_box=request.logo_box
+        logo_box=request.logo_box,
+        text_overlays=request.text_overlays
     )
     return {"project_id": project_id, "status": "rendering"}
 

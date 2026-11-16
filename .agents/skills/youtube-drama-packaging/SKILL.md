@@ -36,6 +36,10 @@ Skill này chuẩn hóa toàn bộ quy trình đóng gói một video từ file 
 Áp dụng công thức:
 > **`[Thân phận / Trope mạnh] + [Hành động / Con số kịch tính] + [Cú lật kèo / Hệ quả] | Hạt Tiêu Vietsub`**
 
+#### Nguyên tắc sống còn khi đặt Tiêu đề:
+1. **Giới hạn cứng tối đa 100 ký tự (Bắt buộc):** YouTube Studio chặn lưu nếu tiêu đề vượt quá 100 ký tự (tính cả dấu cách và đuôi ` | Hạt Tiêu Vietsub`). Độ dài lý tưởng khuyên dùng: **70 – 90 ký tự**. Luôn đếm ký tự cẩn thận trước khi xuất phương án.
+2. **Ngôn ngữ thuần Việt cho khán giả đại chúng:** Tuyệt đối **không dùng từ lóng tiếng Anh / Gen Z** gây sượng tai hoặc khó hiểu với khán giả lớn tuổi (CẤM dùng `EX`, phải thay bằng `bồ cũ`, `người cũ`, `bạn trai cũ` / `bạn gái cũ`).
+
 Luôn đề xuất **3 nhóm tiêu đề** (mỗi nhóm 3 phương án):
 1. **Nhóm 1 - Giật gân / Chiếm hữu / Kịch tính (Khuyên dùng cho YouTube dài):** Đánh mạnh vào xung đột sinh tử, con số (30 tỷ, 100 triệu...), sự điên cuồng hoặc bí mật bị che giấu.
 2. **Nhóm 2 - Hài hước / Trà xanh lật mặt / Ngọt sủng:** Khai thác sự đối lập giữa vẻ ngoài và tâm cơ bên trong của nhân vật.
@@ -50,6 +54,7 @@ Luôn đề xuất **3 nhóm tiêu đề** (mỗi nhóm 3 phương án):
 - **Góc máy (Framing):** Luôn ưu tiên `medium bust shot` (bán thân trên, thu nhỏ chủ thể vừa phải, có khoảng thở hai bên và phía dưới) để **cân đối khung hình và có chỗ đặt chữ**, tránh `extreme close-up` phóng mặt quá to choán hết ảnh.
 - **Nguyên tắc Chữ Text Thumbnail:**
   - **Giật tít nhưng PHẢI CÓ NGHĨA & ĐÚNG CỐT TRUYỆN:** Tuyệt đối không giật con số ảo, số tiền vô lý gây cấn tai hoặc tối nghĩa (ví dụ: tránh dùng "giảm béo 70 tỷ" vì người xem sẽ tưởng là bỏ 70 tỷ đi hút mỡ). Phải tập trung vào **nghịch lý hành động / tình huống trớ trêu** (Ví dụ: `YÊU ĐỂ GIẢM BÉO` ➔ `VỚ THÁI TỬ GIA!`, hoặc `TÁN ĐỂ BỊ ĐÁ` ➔ `AI NGỜ ÉP CƯỚI!`).
+  - **Ngôn ngữ thuần Việt, dễ hiểu:** Tuyệt đối không dùng từ lóng tiếng Anh như `EX` trên text thumbnail (thay bằng `BỒ CŨ`, `NGƯỜI CŨ` để mọi lứa tuổi xem kênh đều đọc hiểu ngay trong 0.5 giây đầu lướt qua).
   - **Độ dài & Cân bằng ký tự 1:1 (Bắt buộc):**
     - Tối đa **2 dòng (mỗi dòng 3 - 4 từ)**, viết IN HOA 100%.
     - **Số lượng ký tự dòng 1 và dòng 2 phải xấp xỉ bằng nhau** (ví dụ: dòng 1 có 12-14 ký tự thì dòng 2 cũng 12-14 ký tự). Nếu dòng 2 quá dài, AI sẽ tự động co nhỏ cỡ chữ và giảm độ dày nét chữ (stroke weight) làm dòng 2 bị mỏng lét, mất cân đối.

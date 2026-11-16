@@ -1468,6 +1468,7 @@ document.addEventListener("DOMContentLoaded", () => {
                     filename: logoBoxCoords.filename || null,
                     image_path: logoBoxCoords.image_path || null
                 },
+                text_overlays: (typeof textOverlaysState !== "undefined" && textOverlaysState.enabled) ? textOverlaysState.items : [],
                 ...extraUpdates
             };
 
@@ -1608,6 +1609,9 @@ document.addEventListener("DOMContentLoaded", () => {
                     maskStyleSelectStep.value = meta.mask_box.style;
                 }
                 applyMaskVisualPreview();
+        if (typeof renderCanvasTextOverlays === "function") {
+            renderCanvasTextOverlays();
+        }
             }
             if (meta.sub_box) {
                 subBoxCoords = {
@@ -1658,6 +1662,19 @@ document.addEventListener("DOMContentLoaded", () => {
             } else {
                 logoBoxCoords.enabled = false;
                 updateLogoUIFromState();
+            }
+
+            // Populate text_overlays
+            if (meta.text_overlays && Array.isArray(meta.text_overlays) && meta.text_overlays.length > 0) {
+                textOverlaysState.enabled = true;
+                textOverlaysState.items = meta.text_overlays;
+                updateTextOverlaysUIFromState();
+            } else if (meta.text_overlays && typeof meta.text_overlays === "object" && Array.isArray(meta.text_overlays.items)) {
+                textOverlaysState.enabled = Boolean(meta.text_overlays.enabled);
+                textOverlaysState.items = meta.text_overlays.items;
+                updateTextOverlaysUIFromState();
+            } else {
+                updateTextOverlaysUIFromState();
             }
 
             // Populate Auto-Extend toggle
@@ -2064,6 +2081,9 @@ document.addEventListener("DOMContentLoaded", () => {
             }
         }
         applyMaskVisualPreview();
+        if (typeof renderCanvasTextOverlays === "function") {
+            renderCanvasTextOverlays();
+        }
     }
 
     function switchStep(stepNum) {
@@ -3940,6 +3960,9 @@ document.addEventListener("DOMContentLoaded", () => {
         step3MaskEnabled.addEventListener("change", () => {
             if (maskEnabledCheck) maskEnabledCheck.checked = step3MaskEnabled.checked;
             applyMaskVisualPreview();
+        if (typeof renderCanvasTextOverlays === "function") {
+            renderCanvasTextOverlays();
+        }
             triggerDebouncedAutoSave(500);
         });
     }
@@ -3948,6 +3971,9 @@ document.addEventListener("DOMContentLoaded", () => {
         maskEnabledCheck.addEventListener("change", () => {
             if (step3MaskEnabled) step3MaskEnabled.checked = maskEnabledCheck.checked;
             applyMaskVisualPreview();
+        if (typeof renderCanvasTextOverlays === "function") {
+            renderCanvasTextOverlays();
+        }
             triggerDebouncedAutoSave(500);
         });
     }
@@ -3955,6 +3981,9 @@ document.addEventListener("DOMContentLoaded", () => {
     if (maskStyleSelect) {
         maskStyleSelect.addEventListener("change", () => {
             applyMaskVisualPreview();
+        if (typeof renderCanvasTextOverlays === "function") {
+            renderCanvasTextOverlays();
+        }
             triggerDebouncedAutoSave(500);
         });
     }
@@ -3964,6 +3993,9 @@ document.addEventListener("DOMContentLoaded", () => {
             const style = chip.getAttribute("data-style");
             if (maskStyleSelect) maskStyleSelect.value = style;
             applyMaskVisualPreview();
+        if (typeof renderCanvasTextOverlays === "function") {
+            renderCanvasTextOverlays();
+        }
             triggerDebouncedAutoSave(500);
         });
     });
@@ -4230,6 +4262,7 @@ document.addEventListener("DOMContentLoaded", () => {
                     filename: logoBoxCoords.filename || null,
                     image_path: logoBoxCoords.image_path || null
                 },
+                text_overlays: (textOverlaysState && textOverlaysState.enabled) ? textOverlaysState.items : [],
                 segments: segments
             };
 
@@ -4466,6 +4499,7 @@ document.addEventListener("DOMContentLoaded", () => {
                             filename: logoBoxCoords.filename || null,
                             image_path: logoBoxCoords.image_path || null
                         },
+                        text_overlays: (textOverlaysState && textOverlaysState.enabled) ? textOverlaysState.items : [],
                         segments: segments
                     })
                 });
@@ -6797,6 +6831,530 @@ document.addEventListener("DOMContentLoaded", () => {
 
     // Initialize logo UI on load
     updateLogoUIFromState();
+
+    // ==========================================
+    // CUSTOM TEXT OVERLAYS & WATERMARK CHỮ LOGIC
+    // ==========================================
+    const defaultHattieuTextOverlays = [
+        {
+            id: "text_hattieu_1",
+            enabled: true,
+            text: "Đăng ký để không bỏ lỡ video mới",
+            x: 2,
+            y: 3,
+            font_size: 18,
+            color: "#000000",
+            opacity: 1.0,
+            bold: true,
+            italic: false,
+            shadow: false,
+            bg_enabled: true,
+            bg_color: "#FFFFFF",
+            bg_opacity: 1.0,
+            bg_radius: 6,
+            padding_x: 12,
+            padding_y: 5
+        },
+        {
+            id: "text_hattieu_2",
+            enabled: true,
+            text: "Hạt Tiêu Vietsub",
+            x: 72,
+            y: 74,
+            font_size: 22,
+            color: "#FFFFFF",
+            opacity: 1.0,
+            bold: false,
+            italic: true,
+            shadow: true,
+            bg_enabled: false,
+            bg_color: "#000000",
+            bg_opacity: 0.0,
+            bg_radius: 0,
+            padding_x: 0,
+            padding_y: 0
+        }
+    ];
+
+    let textOverlaysState = {
+        enabled: false,
+        showBoxes: true,
+        items: JSON.parse(JSON.stringify(defaultHattieuTextOverlays))
+    };
+
+    const textOverlayEnabledCheck = document.getElementById("text-overlay-enabled");
+    const textOverlayStatusLabel = document.getElementById("text-overlay-status-label");
+    const btnApplyPresetHattieu = document.getElementById("btn-apply-preset-hattieu");
+    const btnAddTextOverlay = document.getElementById("btn-add-text-overlay");
+    const btnToggleTextBoxesPreview = document.getElementById("btn-toggle-text-boxes-preview");
+    const textOverlaysList = document.getElementById("text-overlays-list");
+    const summaryTextOverlayStatus = document.getElementById("summary-text-overlay-status");
+
+    function hexToRgbaText(hex, alpha = 1.0) {
+        if (!hex) return `rgba(255, 255, 255, ${alpha})`;
+        let clean = hex.trim().replace("#", "");
+        if (clean.length === 3) clean = clean.split("").map(c => c + c).join("");
+        const r = parseInt(clean.substring(0, 2), 16) || 0;
+        const g = parseInt(clean.substring(2, 4), 16) || 0;
+        const b = parseInt(clean.substring(4, 6), 16) || 0;
+        return `rgba(${r}, ${g}, ${b}, ${alpha})`;
+    }
+
+    function renderCanvasTextOverlays() {
+        const container = document.getElementById("canvas-text-overlays-layer");
+        if (!container) return;
+        container.innerHTML = "";
+
+        const isEn = Boolean(textOverlaysState.enabled);
+        const shouldShow = textOverlaysState.showBoxes && (
+            (isEn && (currentStudioStep >= 2 || (previewVideoElement && previewVideoElement.src))) ||
+            currentStudioStep === 5
+        );
+
+        if (!isEn || !shouldShow) return;
+
+        textOverlaysState.items.forEach((item, idx) => {
+            if (!item.enabled) return;
+
+            const boxEl = document.createElement("div");
+            boxEl.className = "bbox bbox-text-overlay";
+            boxEl.id = `bbox-text-${idx}`;
+            boxEl.style.left = `${item.x}%`;
+            boxEl.style.top = `${item.y}%`;
+
+            const badge = document.createElement("span");
+            badge.className = "bbox-badge badge-text";
+            badge.innerHTML = `<i class="fa-solid fa-font"></i> Text ${idx + 1}`;
+            boxEl.appendChild(badge);
+
+            const inner = document.createElement("div");
+            inner.className = "bbox-text-inner";
+            inner.textContent = item.text || "Văn bản mẫu";
+            inner.style.fontFamily = "'Nunito', sans-serif";
+            inner.style.fontSize = `${Math.max(10, Math.round(item.font_size * 0.95))}px`;
+            inner.style.color = item.color || "#FFFFFF";
+            inner.style.fontWeight = item.bold ? "800" : "600";
+            inner.style.fontStyle = item.italic ? "italic" : "normal";
+            inner.style.opacity = item.opacity !== undefined ? item.opacity : 1.0;
+
+            if (item.bg_enabled) {
+                inner.style.backgroundColor = hexToRgbaText(item.bg_color || "#FFFFFF", item.bg_opacity !== undefined ? item.bg_opacity : 1.0);
+                inner.style.borderRadius = `${item.bg_radius || 6}px`;
+                inner.style.padding = `${item.padding_y || 4}px ${item.padding_x || 10}px`;
+            } else {
+                inner.style.backgroundColor = "transparent";
+                inner.style.padding = "2px 4px";
+            }
+
+            if (item.shadow) {
+                inner.style.textShadow = "1px 1px 3px rgba(0, 0, 0, 0.9)";
+            } else {
+                inner.style.textShadow = "none";
+            }
+
+            boxEl.appendChild(inner);
+            container.appendChild(boxEl);
+
+            setupTextDrag(boxEl, item, idx);
+        });
+    }
+
+    function setupTextDrag(element, item, idx) {
+        element.addEventListener("mousedown", (e) => {
+            if (!videoContainer) return;
+            const rect = videoContainer.getBoundingClientRect();
+            const startX = e.clientX;
+            const startY = e.clientY;
+            const initX = item.x;
+            const initY = item.y;
+
+            element.classList.add("active-focus");
+            e.stopPropagation();
+            e.preventDefault();
+
+            function onMouseMove(moveEvent) {
+                const deltaX = ((moveEvent.clientX - startX) / rect.width) * 100;
+                const deltaY = ((moveEvent.clientY - startY) / rect.height) * 100;
+
+                item.x = Math.max(0, Math.min(95, Math.round(initX + deltaX)));
+                item.y = Math.max(0, Math.min(95, Math.round(initY + deltaY)));
+
+                element.style.left = `${item.x}%`;
+                element.style.top = `${item.y}%`;
+
+                syncTextOverlayItemInputs(idx);
+            }
+
+            function onMouseUp() {
+                element.classList.remove("active-focus");
+                document.removeEventListener("mousemove", onMouseMove);
+                document.removeEventListener("mouseup", onMouseUp);
+                triggerDebouncedAutoSave(800);
+            }
+
+            document.addEventListener("mousemove", onMouseMove);
+            document.addEventListener("mouseup", onMouseUp);
+        });
+    }
+
+    function syncTextOverlayItemInputs(idx) {
+        const item = textOverlaysState.items[idx];
+        if (!item) return;
+
+        const xBadge = document.querySelector(`.text-x-val-${idx}`);
+        if (xBadge) xBadge.textContent = `${item.x}%`;
+        const xSlider = document.querySelector(`.slider-item-x[data-idx="${idx}"]`);
+        if (xSlider) xSlider.value = item.x;
+
+        const yBadge = document.querySelector(`.text-y-val-${idx}`);
+        if (yBadge) yBadge.textContent = `${item.y}%`;
+        const ySlider = document.querySelector(`.slider-item-y[data-idx="${idx}"]`);
+        if (ySlider) ySlider.value = item.y;
+    }
+
+    function renderTextOverlaysList() {
+        if (!textOverlaysList) return;
+        textOverlaysList.innerHTML = "";
+
+        textOverlaysState.items.forEach((item, idx) => {
+            const box = document.createElement("div");
+            box.className = "text-overlay-item-box";
+            box.innerHTML = `
+                <div class="text-overlay-item-header">
+                    <span class="text-overlay-item-title">
+                        <i class="fa-solid fa-font icon-accent" style="color: #c084fc;"></i>
+                        Text ${idx + 1}: ${item.text ? (item.text.length > 30 ? item.text.slice(0, 30) + '...' : item.text) : 'Chưa nhập chữ'}
+                    </span>
+                    <div style="display: flex; align-items: center; gap: 0.6rem;">
+                        <label class="switch-container">
+                            <input type="checkbox" class="chk-item-enabled" data-idx="${idx}" ${item.enabled ? 'checked' : ''}>
+                            <span class="switch-slider"></span>
+                        </label>
+                        ${textOverlaysState.items.length > 1 ? `<button type="button" class="btn-subtle text-danger btn-del-text-item" data-idx="${idx}" title="Xóa text này" style="padding: 2px 7px;"><i class="fa-solid fa-trash-can"></i></button>` : ''}
+                    </div>
+                </div>
+                <div class="text-overlay-item-body">
+                    <div class="input-group-sub" style="margin-bottom: 0.75rem;">
+                        <label>Nội dung chữ:</label>
+                        <input type="text" class="input-text-content" data-idx="${idx}" value="${item.text || ''}" placeholder="Nhập chữ hiển thị trên video..." style="width: 100%; padding: 0.45rem 0.65rem; border-radius: 6px; border: 1px solid rgba(255,255,255,0.12); background: rgba(0,0,0,0.3); color: #fff;">
+                    </div>
+                    <div class="text-overlay-item-grid">
+                        <div>
+                            <div style="display: flex; justify-content: space-between; font-size: 0.8rem; margin-bottom: 3px;">
+                                <span>Vị trí X (%):</span>
+                                <span class="val-badge text-x-val-${idx}">${item.x}%</span>
+                            </div>
+                            <input type="range" class="range-slider slider-item-x" data-idx="${idx}" min="0" max="95" value="${item.x}">
+                        </div>
+                        <div>
+                            <div style="display: flex; justify-content: space-between; font-size: 0.8rem; margin-bottom: 3px;">
+                                <span>Vị trí Y (%):</span>
+                                <span class="val-badge text-y-val-${idx}">${item.y}%</span>
+                            </div>
+                            <input type="range" class="range-slider slider-item-y" data-idx="${idx}" min="0" max="95" value="${item.y}">
+                        </div>
+                        <div>
+                            <div style="display: flex; justify-content: space-between; font-size: 0.8rem; margin-bottom: 3px;">
+                                <span>Cỡ chữ:</span>
+                                <span class="val-badge text-fs-val-${idx}">${item.font_size || 20}px</span>
+                            </div>
+                            <input type="range" class="range-slider slider-item-fs" data-idx="${idx}" min="12" max="44" value="${item.font_size || 20}">
+                        </div>
+                        <div>
+                            <div style="display: flex; justify-content: space-between; font-size: 0.8rem; margin-bottom: 3px;">
+                                <span>Màu chữ & Kiểu:</span>
+                            </div>
+                            <div style="display: flex; align-items: center; gap: 0.5rem; flex-wrap: wrap;">
+                                <input type="color" class="color-item-text" data-idx="${idx}" value="${item.color || '#FFFFFF'}" title="Chọn màu chữ" style="width: 30px; height: 30px; border: none; cursor: pointer; border-radius: 4px; background: transparent;">
+                                <label style="font-size: 0.8rem; display: flex; align-items: center; gap: 3px; cursor: pointer;"><input type="checkbox" class="chk-item-bold" data-idx="${idx}" ${item.bold ? 'checked' : ''}> Đậm</label>
+                                <label style="font-size: 0.8rem; display: flex; align-items: center; gap: 3px; cursor: pointer;"><input type="checkbox" class="chk-item-italic" data-idx="${idx}" ${item.italic ? 'checked' : ''}> Nghiêng</label>
+                                <label style="font-size: 0.8rem; display: flex; align-items: center; gap: 3px; cursor: pointer;"><input type="checkbox" class="chk-item-shadow" data-idx="${idx}" ${item.shadow ? 'checked' : ''}> Bóng</label>
+                            </div>
+                        </div>
+                    </div>
+                    <div style="margin-top: 0.75rem; padding-top: 0.6rem; border-top: 1px dashed rgba(255,255,255,0.08); display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 0.6rem;">
+                        <div style="display: flex; align-items: center; gap: 0.75rem;">
+                            <label style="font-size: 0.82rem; font-weight: 600; display: flex; align-items: center; gap: 4px; cursor: pointer;">
+                                <input type="checkbox" class="chk-item-bg" data-idx="${idx}" ${item.bg_enabled ? 'checked' : ''}> Hộp nền
+                            </label>
+                            <input type="color" class="color-item-bg" data-idx="${idx}" value="${item.bg_color || '#FFFFFF'}" title="Chọn màu nền" style="width: 26px; height: 26px; border: none; cursor: pointer; border-radius: 4px; background: transparent;">
+                        </div>
+                        <div class="logo-presets-row" style="margin: 0;">
+                            <span class="preset-label" style="font-size: 0.76rem;"><i class="fa-solid fa-crosshairs"></i> Vị trí mẫu:</span>
+                            <button type="button" class="logo-pos-btn btn-text-pos" data-idx="${idx}" data-pos="top-left" style="padding: 2px 7px; font-size: 0.75rem;">Trên-Trái</button>
+                            <button type="button" class="logo-pos-btn btn-text-pos" data-idx="${idx}" data-pos="top-right" style="padding: 2px 7px; font-size: 0.75rem;">Trên-Phải</button>
+                            <button type="button" class="logo-pos-btn btn-text-pos" data-idx="${idx}" data-pos="bottom-left" style="padding: 2px 7px; font-size: 0.75rem;">Dưới-Trái</button>
+                            <button type="button" class="logo-pos-btn btn-text-pos" data-idx="${idx}" data-pos="bottom-right" style="padding: 2px 7px; font-size: 0.75rem;">Dưới-Phải</button>
+                            <button type="button" class="logo-pos-btn btn-text-pos" data-idx="${idx}" data-pos="mid-right" style="padding: 2px 7px; font-size: 0.75rem;">Ngực phải</button>
+                        </div>
+                    </div>
+                </div>
+            `;
+            textOverlaysList.appendChild(box);
+        });
+
+        attachTextOverlaysEventListeners();
+    }
+
+    function attachTextOverlaysEventListeners() {
+        // Text content
+        document.querySelectorAll(".input-text-content").forEach(input => {
+            input.addEventListener("input", (e) => {
+                const idx = parseInt(e.target.getAttribute("data-idx"));
+                if (textOverlaysState.items[idx]) {
+                    textOverlaysState.items[idx].text = e.target.value;
+                    renderCanvasTextOverlays();
+                    triggerDebouncedAutoSave(1000);
+                }
+            });
+        });
+
+        // Toggle individual item
+        document.querySelectorAll(".chk-item-enabled").forEach(chk => {
+            chk.addEventListener("change", (e) => {
+                const idx = parseInt(e.target.getAttribute("data-idx"));
+                if (textOverlaysState.items[idx]) {
+                    textOverlaysState.items[idx].enabled = e.target.checked;
+                    renderCanvasTextOverlays();
+                    updateTextOverlaysUIFromState();
+                    triggerDebouncedAutoSave(1000);
+                }
+            });
+        });
+
+        // Delete individual item
+        document.querySelectorAll(".btn-del-text-item").forEach(btn => {
+            btn.addEventListener("click", (e) => {
+                const idx = parseInt(btn.getAttribute("data-idx"));
+                if (textOverlaysState.items.length > 1) {
+                    textOverlaysState.items.splice(idx, 1);
+                    updateTextOverlaysUIFromState();
+                    triggerDebouncedAutoSave(800);
+                }
+            });
+        });
+
+        // Slider X
+        document.querySelectorAll(".slider-item-x").forEach(slider => {
+            slider.addEventListener("input", (e) => {
+                const idx = parseInt(e.target.getAttribute("data-idx"));
+                if (textOverlaysState.items[idx]) {
+                    textOverlaysState.items[idx].x = parseInt(e.target.value);
+                    const b = document.querySelector(`.text-x-val-${idx}`);
+                    if (b) b.textContent = `${e.target.value}%`;
+                    renderCanvasTextOverlays();
+                    triggerDebouncedAutoSave(1000);
+                }
+            });
+        });
+
+        // Slider Y
+        document.querySelectorAll(".slider-item-y").forEach(slider => {
+            slider.addEventListener("input", (e) => {
+                const idx = parseInt(e.target.getAttribute("data-idx"));
+                if (textOverlaysState.items[idx]) {
+                    textOverlaysState.items[idx].y = parseInt(e.target.value);
+                    const b = document.querySelector(`.text-y-val-${idx}`);
+                    if (b) b.textContent = `${e.target.value}%`;
+                    renderCanvasTextOverlays();
+                    triggerDebouncedAutoSave(1000);
+                }
+            });
+        });
+
+        // Font size
+        document.querySelectorAll(".slider-item-fs").forEach(slider => {
+            slider.addEventListener("input", (e) => {
+                const idx = parseInt(e.target.getAttribute("data-idx"));
+                if (textOverlaysState.items[idx]) {
+                    textOverlaysState.items[idx].font_size = parseInt(e.target.value);
+                    const b = document.querySelector(`.text-fs-val-${idx}`);
+                    if (b) b.textContent = `${e.target.value}px`;
+                    renderCanvasTextOverlays();
+                    triggerDebouncedAutoSave(1000);
+                }
+            });
+        });
+
+        // Color text
+        document.querySelectorAll(".color-item-text").forEach(picker => {
+            picker.addEventListener("input", (e) => {
+                const idx = parseInt(e.target.getAttribute("data-idx"));
+                if (textOverlaysState.items[idx]) {
+                    textOverlaysState.items[idx].color = e.target.value;
+                    renderCanvasTextOverlays();
+                    triggerDebouncedAutoSave(1000);
+                }
+            });
+        });
+
+        // Bold, Italic, Shadow
+        document.querySelectorAll(".chk-item-bold").forEach(chk => {
+            chk.addEventListener("change", (e) => {
+                const idx = parseInt(e.target.getAttribute("data-idx"));
+                if (textOverlaysState.items[idx]) {
+                    textOverlaysState.items[idx].bold = e.target.checked;
+                    renderCanvasTextOverlays();
+                    triggerDebouncedAutoSave(1000);
+                }
+            });
+        });
+
+        document.querySelectorAll(".chk-item-italic").forEach(chk => {
+            chk.addEventListener("change", (e) => {
+                const idx = parseInt(e.target.getAttribute("data-idx"));
+                if (textOverlaysState.items[idx]) {
+                    textOverlaysState.items[idx].italic = e.target.checked;
+                    renderCanvasTextOverlays();
+                    triggerDebouncedAutoSave(1000);
+                }
+            });
+        });
+
+        document.querySelectorAll(".chk-item-shadow").forEach(chk => {
+            chk.addEventListener("change", (e) => {
+                const idx = parseInt(e.target.getAttribute("data-idx"));
+                if (textOverlaysState.items[idx]) {
+                    textOverlaysState.items[idx].shadow = e.target.checked;
+                    renderCanvasTextOverlays();
+                    triggerDebouncedAutoSave(1000);
+                }
+            });
+        });
+
+        // Background box
+        document.querySelectorAll(".chk-item-bg").forEach(chk => {
+            chk.addEventListener("change", (e) => {
+                const idx = parseInt(e.target.getAttribute("data-idx"));
+                if (textOverlaysState.items[idx]) {
+                    textOverlaysState.items[idx].bg_enabled = e.target.checked;
+                    if (e.target.checked && (!textOverlaysState.items[idx].bg_radius || textOverlaysState.items[idx].bg_radius === 0)) {
+                        textOverlaysState.items[idx].bg_radius = 6;
+                        textOverlaysState.items[idx].padding_x = 12;
+                        textOverlaysState.items[idx].padding_y = 5;
+                    }
+                    renderCanvasTextOverlays();
+                    triggerDebouncedAutoSave(1000);
+                }
+            });
+        });
+
+        document.querySelectorAll(".color-item-bg").forEach(picker => {
+            picker.addEventListener("input", (e) => {
+                const idx = parseInt(e.target.getAttribute("data-idx"));
+                if (textOverlaysState.items[idx]) {
+                    textOverlaysState.items[idx].bg_color = e.target.value;
+                    renderCanvasTextOverlays();
+                    triggerDebouncedAutoSave(1000);
+                }
+            });
+        });
+
+        // Position presets
+        document.querySelectorAll(".btn-text-pos").forEach(btn => {
+            btn.addEventListener("click", () => {
+                const idx = parseInt(btn.getAttribute("data-idx"));
+                const pos = btn.getAttribute("data-pos");
+                const item = textOverlaysState.items[idx];
+                if (!item) return;
+
+                if (pos === "top-left") {
+                    item.x = 2; item.y = 3;
+                } else if (pos === "top-right") {
+                    item.x = 76; item.y = 4;
+                } else if (pos === "bottom-left") {
+                    item.x = 2; item.y = 86;
+                } else if (pos === "bottom-right") {
+                    item.x = 76; item.y = 86;
+                } else if (pos === "mid-right") {
+                    item.x = 72; item.y = 74;
+                }
+                syncTextOverlayItemInputs(idx);
+                renderCanvasTextOverlays();
+                triggerDebouncedAutoSave(800);
+            });
+        });
+    }
+
+    function updateTextOverlaysUIFromState() {
+        const isEn = Boolean(textOverlaysState.enabled);
+        if (textOverlayEnabledCheck) textOverlayEnabledCheck.checked = isEn;
+        if (textOverlayStatusLabel) textOverlayStatusLabel.textContent = isEn ? "Bật" : "Tắt";
+
+        if (summaryTextOverlayStatus) {
+            const activeCount = isEn ? textOverlaysState.items.filter(i => i.enabled && i.text).length : 0;
+            summaryTextOverlayStatus.textContent = activeCount > 0 ? `Đang bật (${activeCount} chữ)` : "Chưa bật";
+            summaryTextOverlayStatus.className = "summary-val " + (activeCount > 0 ? "text-success" : "");
+        }
+
+        renderTextOverlaysList();
+        renderCanvasTextOverlays();
+    }
+
+    // Connect Main Switch
+    if (textOverlayEnabledCheck) {
+        textOverlayEnabledCheck.addEventListener("change", () => {
+            textOverlaysState.enabled = textOverlayEnabledCheck.checked;
+            updateTextOverlaysUIFromState();
+            triggerDebouncedAutoSave(800);
+        });
+    }
+
+    // Connect Preset Button: Hạt Tiêu Vietsub
+    if (btnApplyPresetHattieu) {
+        btnApplyPresetHattieu.addEventListener("click", () => {
+            textOverlaysState.enabled = true;
+            textOverlaysState.items = JSON.parse(JSON.stringify(defaultHattieuTextOverlays));
+            updateTextOverlaysUIFromState();
+            triggerDebouncedAutoSave(800);
+            if (typeof setSaveStatus === "function") {
+                setSaveStatus("saved", "Đã áp dụng mẫu kênh: Đăng ký + Hạt Tiêu Vietsub");
+            }
+        });
+    }
+
+    // Connect Add New Text Button
+    if (btnAddTextOverlay) {
+        btnAddTextOverlay.addEventListener("click", () => {
+            textOverlaysState.enabled = true;
+            const newIdx = textOverlaysState.items.length + 1;
+            textOverlaysState.items.push({
+                id: `text_custom_${Date.now()}`,
+                enabled: true,
+                text: `Chữ tự do ${newIdx}`,
+                x: 10,
+                y: 10 + (newIdx * 6),
+                font_size: 20,
+                color: "#FFFFFF",
+                opacity: 1.0,
+                bold: true,
+                italic: false,
+                shadow: true,
+                bg_enabled: false,
+                bg_color: "#FFFFFF",
+                bg_opacity: 1.0,
+                bg_radius: 6,
+                padding_x: 10,
+                padding_y: 4
+            });
+            updateTextOverlaysUIFromState();
+            triggerDebouncedAutoSave(800);
+        });
+    }
+
+    // Connect Toggle Text Boxes Preview Button
+    if (btnToggleTextBoxesPreview) {
+        btnToggleTextBoxesPreview.addEventListener("click", () => {
+            textOverlaysState.showBoxes = !textOverlaysState.showBoxes;
+            btnToggleTextBoxesPreview.innerHTML = textOverlaysState.showBoxes
+                ? '<i class="fa-solid fa-eye-slash"></i> Ẩn khung Text'
+                : '<i class="fa-solid fa-vector-square"></i> Hiện khung Text';
+            renderCanvasTextOverlays();
+        });
+    }
+
+    // Initialize Text Overlays UI
+    updateTextOverlaysUIFromState();
 
     // ==========================================
     // STEP 3: EXPLICIT GENERATE TTS BUTTON LOGIC

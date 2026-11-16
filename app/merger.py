@@ -4,6 +4,7 @@ import subprocess
 import logging
 import wave
 import numpy as np
+from PIL import Image, ImageDraw, ImageFont, ImageColor
 from typing import List, Dict, Any, Optional, Tuple
 from app.downloader import get_ffmpeg_path, get_ffprobe_path
 
@@ -322,6 +323,146 @@ Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
     logger.info(f"Exported ASS subtitles to: {ass_path} ({len(valid_segments)} entries, PlayRes={video_w}x{video_h}, Fontsize={font_size}, Center=({cx},{cy}))")
 
 
+def parse_color_rgba(hex_str: str, opacity: float = 1.0) -> Tuple[int, int, int, int]:
+    """Converts hex color string to (R, G, B, A) tuple with opacity compensation."""
+    if not hex_str:
+        return (255, 255, 255, int(round(max(0.0, min(1.0, opacity)) * 255)))
+    clean = hex_str.strip().lstrip("#")
+    if len(clean) == 3:
+        clean = "".join([c * 2 for c in clean])
+    try:
+        r = int(clean[0:2], 16)
+        g = int(clean[2:4], 16)
+        b = int(clean[4:6], 16)
+    except Exception:
+        r, g, b = 255, 255, 255
+    a = int(round(max(0.0, min(1.0, opacity)) * 255))
+    return (r, g, b, a)
+
+
+def render_text_overlays_image(
+    text_overlays: List[Dict[str, Any]],
+    video_w: int,
+    video_h: int,
+    output_png_path: str
+) -> Optional[str]:
+    """
+    Renders custom text overlay items onto a single full-resolution transparent PNG.
+    Supports Vietnamese UTF-8, Nunito fonts, rounded badges, italic slant, and shadows.
+    """
+    if not text_overlays:
+        return None
+
+    active_items = [
+        item for item in text_overlays
+        if item.get("enabled", True) and str(item.get("text", "")).strip()
+    ]
+    if not active_items:
+        return None
+
+    scale = max(0.35, float(video_h) / 720.0)
+    fonts_dir = os.path.join(os.path.dirname(__file__), "fonts")
+
+    composite_img = Image.new("RGBA", (video_w, video_h), (0, 0, 0, 0))
+
+    for item in active_items:
+        raw_text = str(item.get("text", "")).strip()
+        if not raw_text:
+            continue
+
+        x_pct = max(0.0, min(100.0, float(item.get("x", 2.0))))
+        y_pct = max(0.0, min(100.0, float(item.get("y", 3.0))))
+        pos_x = int(round((x_pct / 100.0) * video_w))
+        pos_y = int(round((y_pct / 100.0) * video_h))
+
+        base_font_size = float(item.get("font_size", 20))
+        # Compensate so preview on web canvas matches export
+        font_size = max(11, int(round(base_font_size * scale * 1.15)))
+
+        bold = bool(item.get("bold", False))
+        font_filename = "Nunito-Bold.ttf" if bold else "Nunito-Regular.ttf"
+        font_path = os.path.join(fonts_dir, font_filename)
+        if not os.path.exists(font_path):
+            font_path = os.path.join(fonts_dir, "Nunito.ttf")
+
+        try:
+            font = ImageFont.truetype(font_path, font_size)
+        except Exception:
+            font = ImageFont.load_default()
+
+        color_hex = item.get("color", "#FFFFFF")
+        text_opacity = float(item.get("opacity", 1.0))
+        text_rgba = parse_color_rgba(color_hex, text_opacity)
+
+        bg_enabled = bool(item.get("bg_enabled", False))
+        bg_color_hex = item.get("bg_color", "#FFFFFF")
+        bg_opacity = float(item.get("bg_opacity", 1.0))
+        bg_rgba = parse_color_rgba(bg_color_hex, bg_opacity)
+
+        raw_radius = float(item.get("bg_radius", 6.0))
+        bg_radius = max(0, int(round(raw_radius * scale)))
+
+        raw_pad_x = float(item.get("padding_x", 12.0))
+        raw_pad_y = float(item.get("padding_y", 6.0))
+        pad_x = max(2, int(round(raw_pad_x * scale))) if bg_enabled else 0
+        pad_y = max(2, int(round(raw_pad_y * scale))) if bg_enabled else 0
+
+        shadow = bool(item.get("shadow", False))
+        italic = bool(item.get("italic", False))
+
+        dummy_draw = ImageDraw.Draw(composite_img)
+        bbox = dummy_draw.textbbox((0, 0), raw_text, font=font)
+        tw = bbox[2] - bbox[0]
+        th = bbox[3] - bbox[1]
+
+        buffer_pad = max(12, int(round(15 * scale)))
+        item_w = tw + pad_x * 2 + buffer_pad * 2
+        item_h = th + pad_y * 2 + buffer_pad * 2
+
+        item_img = Image.new("RGBA", (item_w, item_h), (0, 0, 0, 0))
+        item_draw = ImageDraw.Draw(item_img)
+
+        origin_x = buffer_pad
+        origin_y = buffer_pad
+
+        if bg_enabled:
+            rect = [
+                origin_x,
+                origin_y,
+                origin_x + tw + pad_x * 2,
+                origin_y + th + pad_y * 2
+            ]
+            item_draw.rounded_rectangle(rect, radius=bg_radius, fill=bg_rgba)
+
+        tx = origin_x + pad_x - bbox[0]
+        ty = origin_y + pad_y - bbox[1]
+
+        if shadow:
+            shadow_offset = max(1, int(round(1.5 * scale)))
+            shadow_rgba = (0, 0, 0, int(round(160 * text_opacity)))
+            item_draw.text((tx + shadow_offset, ty + shadow_offset), raw_text, font=font, fill=shadow_rgba)
+
+        item_draw.text((tx, ty), raw_text, font=font, fill=text_rgba)
+
+        if italic:
+            shear = 0.22
+            item_img = item_img.transform(
+                item_img.size,
+                Image.Transform.AFFINE,
+                (1, -shear, 0, 0, 1, 0),
+                resample=Image.Resampling.BICUBIC
+            )
+
+        dest_x = max(-buffer_pad, min(video_w, pos_x - origin_x))
+        dest_y = max(-buffer_pad, min(video_h, pos_y - origin_y))
+        composite_img.paste(item_img, (dest_x, dest_y), item_img)
+
+    os.makedirs(os.path.dirname(os.path.abspath(output_png_path)), exist_ok=True)
+    composite_img.save(output_png_path, "PNG")
+    logger.info(f"Generated text overlays PNG at: {output_png_path} ({len(active_items)} items active)")
+    return output_png_path
+
+
 def merge_audio_segments_to_video(
     original_video_path: str,
     segments: List[Dict[str, Any]],
@@ -333,7 +474,8 @@ def merge_audio_segments_to_video(
     burn_subtitles: bool = True,
     sub_styling: Optional[Dict[str, Any]] = None,
     auto_extend_video: bool = False,
-    logo_box: Optional[Dict[str, Any]] = None
+    logo_box: Optional[Dict[str, Any]] = None,
+    text_overlays: Optional[List[Dict[str, Any]]] = None
 ):
     """
     Merges generated audio segments with the original video,
@@ -440,7 +582,14 @@ def merge_audio_segments_to_video(
         and logo_box.get("image_path")
         and os.path.exists(logo_box["image_path"])
     )
-    need_video_filter = has_mask or burn_subtitles or (needs_extension and bool(slices)) or has_logo
+
+    text_overlays_png_path = os.path.join(task_dir, "text_overlays.png")
+    rendered_text_path = None
+    if text_overlays:
+        rendered_text_path = render_text_overlays_image(text_overlays, video_w, video_h, text_overlays_png_path)
+    has_text_overlays = bool(rendered_text_path and os.path.exists(rendered_text_path))
+
+    need_video_filter = has_mask or burn_subtitles or (needs_extension and bool(slices)) or has_logo or has_text_overlays
 
     cmd = [ffmpeg_path, "-y", "-i", original_video_path]
     dubbed_input_idx = None
@@ -456,6 +605,11 @@ def merge_audio_segments_to_video(
     if has_logo:
         logo_input_idx = cmd.count("-i")
         cmd.extend(["-i", logo_box["image_path"]])
+
+    text_input_idx = None
+    if has_text_overlays and rendered_text_path:
+        text_input_idx = cmd.count("-i")
+        cmd.extend(["-i", rendered_text_path])
 
     filter_parts = []
 
@@ -577,6 +731,13 @@ def merge_audio_segments_to_video(
             f"[{current_video_label}][v_logo_prepared]{overlay_expr}[v_logo_out];"
         )
         current_video_label = "v_logo_out"
+
+    # --- 1.4 Video Filters: Custom Text Overlays (Watermark Chữ) ---
+    if has_text_overlays and text_input_idx is not None:
+        filter_parts.append(
+            f"[{current_video_label}][{text_input_idx}:v]overlay=0:0:eof_action=repeat[v_text_out];"
+        )
+        current_video_label = "v_text_out"
 
     # --- 2. Audio Filters: Non-overlapping Elastic Delay & Background Mixing ---
     if active_timeline_segments and dubbed_input_idx is not None:

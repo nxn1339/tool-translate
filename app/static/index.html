@@ -439,11 +439,11 @@
                             </div>
                         </button>
 
-                        <button type="button" class="step-tab-btn" data-step="5" id="tab-step-5" title="Bước 5: Chèn logo watermark thương hiệu lên video">
+                        <button type="button" class="step-tab-btn" data-step="5" id="tab-step-5" title="Bước 5: Chèn logo watermark & chữ text tự do lên video">
                             <span class="step-badge">5</span>
                             <div class="step-tab-info">
-                                <span class="step-title">Chèn Logo</span>
-                                <span class="step-desc">Định vị Watermark</span>
+                                <span class="step-title">Logo &amp; Chữ</span>
+                                <span class="step-desc">Watermark thương hiệu</span>
                             </div>
                         </button>
 
@@ -555,6 +555,9 @@
                                         <span id="bbox-logo-placeholder" class="bbox-logo-placeholder"><i class="fa-solid fa-image"></i> Chưa có Logo</span>
                                     </div>
                                 </div>
+
+                                <!-- TEXT OVERLAYS LAYER: Draggable Free Text Elements -->
+                                <div class="canvas-text-overlays-layer" id="canvas-text-overlays-layer"></div>
 
                             </div>
 
@@ -1553,6 +1556,44 @@
                             </div>
                         </div>
 
+                        <!-- CARD: CHÈN TEXT TỰ DO & WATERMARK CHỮ -->
+                        <div class="text-overlay-card" id="text-overlay-card" style="background: rgba(255,255,255,0.02); border: 1px solid rgba(255,255,255,0.08); border-radius: 10px; padding: 1.25rem; margin-top: 1.25rem;">
+                            <div class="logo-card-header" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+                                <div class="logo-header-left" style="display: flex; align-items: center; gap: 0.75rem;">
+                                    <i class="fa-solid fa-font icon-accent" style="font-size: 1.5rem; color: #c084fc;"></i>
+                                    <div>
+                                        <h4 class="logo-title" style="margin: 0; font-size: 1rem; font-weight: 600;">Chèn Text Tự Do / Watermark Chữ</h4>
+                                        <p class="logo-desc" style="margin: 0; font-size: 0.8rem; color: var(--text-muted);">Thêm chữ kêu gọi đăng ký, tên kênh, bản quyền... Kéo thả trực quan trên màn hình preview.</p>
+                                    </div>
+                                </div>
+                                <div class="logo-header-right" style="display: flex; align-items: center; gap: 0.6rem;">
+                                    <label class="switch-container">
+                                        <input type="checkbox" id="text-overlay-enabled">
+                                        <span class="switch-slider"></span>
+                                    </label>
+                                    <span class="toggle-label-sm" id="text-overlay-status-label" style="font-weight: 600;">Tắt</span>
+                                </div>
+                            </div>
+
+                            <div class="text-overlay-body" id="text-overlay-controls-body">
+                                <div class="text-overlay-actions-row" style="display: flex; align-items: center; gap: 0.75rem; flex-wrap: wrap; margin-bottom: 1rem;">
+                                    <button type="button" class="btn-preset-accent" id="btn-apply-preset-hattieu" title="Áp dụng mẫu chuẩn kênh: Đăng ký + Hạt Tiêu Vietsub">
+                                        <i class="fa-solid fa-wand-magic-sparkles"></i> Mẫu kênh: Đăng ký &amp; Hạt Tiêu Vietsub
+                                    </button>
+                                    <button type="button" class="btn-subtle" id="btn-add-text-overlay">
+                                        <i class="fa-solid fa-plus"></i> Thêm Text mới
+                                    </button>
+                                    <button type="button" class="btn-subtle-toggle" id="btn-toggle-text-boxes-preview" title="Ẩn/Hiện khung text trên video">
+                                        <i class="fa-solid fa-vector-square"></i> Hiện khung Text
+                                    </button>
+                                </div>
+
+                                <div id="text-overlays-list" class="text-overlays-list">
+                                    <!-- Dynamic text overlay item cards rendered by JS -->
+                                </div>
+                            </div>
+                        </div>
+
                         <div class="step-nav-buttons-row" style="display: flex; justify-content: space-between; margin-top: 1.5rem; padding-top: 1rem; border-top: 1px solid rgba(255,255,255,0.08);">
                             <button type="button" class="secondary-btn btn-nav-step" id="btn-step5-prev">
                                 <i class="fa-solid fa-arrow-left"></i> Quay lại Bước 4 (Tạo Giọng Đọc)
@@ -1578,6 +1619,7 @@
                             <div class="summary-item"><i class="fa-solid fa-microphone"></i> Giọng đọc: <span class="summary-val" id="summary-voice-name">Hoài My (Nữ chuẩn)</span></div>
                             <div class="summary-item"><i class="fa-solid fa-clock-rotate-left"></i> Tự dãn video: <span class="summary-val text-success" id="summary-auto-extend">Mượt mà (Elastic Sync)</span></div>
                             <div class="summary-item"><i class="fa-solid fa-stamp"></i> Ghép Logo: <span class="summary-val" id="summary-logo-status">Chưa bật</span></div>
+                            <div class="summary-item"><i class="fa-solid fa-font"></i> Text Watermark: <span class="summary-val" id="summary-text-overlay-status">Chưa bật</span></div>
                         </div>
 
                         <!-- Cấu hình tùy chọn xuất -->
